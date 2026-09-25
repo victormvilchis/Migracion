@@ -7,9 +7,9 @@ export const Sidebar: React.FC = () => {
   const businessItems = [
     {
       to: '/talent',
-      label: 'Talent',
+      label: 'Talent Bank',
       icon: UsersRound,
-      description: 'Prospectos, academias y disponibilidad',
+      description: 'Academias, prospectos y bajas',
     },
   ];
 

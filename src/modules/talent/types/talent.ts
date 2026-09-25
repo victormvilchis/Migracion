@@ -1,5 +1,14 @@
+export const TALENT_TYPES = ['ACADEMY', 'PROSPECT', 'BBVA_EXIT'] as const;
+export type TalentType = (typeof TALENT_TYPES)[number];
+
+export const TALENT_TYPE_LABELS: Record<TalentType, string> = {
+  ACADEMY: 'Academia',
+  PROSPECT: 'Prospecto de colaborador',
+  BBVA_EXIT: 'Baja de BBVA',
+};
+
 export const TALENT_STAGES = [
-  'PROSPECT',
+  'REGISTERED',
   'ACADEMY',
   'TRAINING',
   'EVALUATION',
@@ -11,7 +20,7 @@ export const TALENT_STAGES = [
 export type TalentStage = (typeof TALENT_STAGES)[number];
 
 export const TALENT_STAGE_LABELS: Record<TalentStage, string> = {
-  PROSPECT: 'Prospecto',
+  REGISTERED: 'Registrado',
   ACADEMY: 'Academia',
   TRAINING: 'Capacitación',
   EVALUATION: 'Evaluación',
@@ -20,18 +29,39 @@ export const TALENT_STAGE_LABELS: Record<TalentStage, string> = {
   CONVERTED: 'Convertido',
 };
 
+export const ACADEMY_PROFILES = ['TR', 'JR', 'STD', 'SR'] as const;
+export const EXPERTISE_LEVELS = ['TR', 'JR', 'STD', 'SR'] as const;
+
+export interface TalentCvMetadata {
+  fileName: string;
+  contentType: string;
+  fileSizeBytes: number;
+  updatedAt: string;
+}
+
 export interface Talent {
   id: string;
+  personId: string;
+  talentType: TalentType;
+  softtekCode: string | null;
+  corporateUser: string | null;
+  email: string;
+  firstName: string;
+  lastName: string | null;
   fullName: string;
-  email: string | null;
   profile: string | null;
   technologyProfile: string | null;
-  targetTechnology: string | null;
+  currentTechnology: string | null;
+  expertise: string | null;
   stage: TalentStage;
   active: boolean;
+  platformStartDate: string | null;
+  platformEndDate: string | null;
+  hireDate: string | null;
   entryDate: string;
   notes: string | null;
   convertedAt: string | null;
+  cv: TalentCvMetadata | null;
   createdAt: string;
   updatedAt: string;
   createdByEmail: string;
@@ -39,13 +69,39 @@ export interface Talent {
 }
 
 export interface TalentPayload {
-  fullName: string;
+  talentType: TalentType;
+  softtekCode: string;
+  corporateUser: string;
   email: string;
+  firstName: string;
+  lastName: string;
   profile: string;
   technologyProfile: string;
-  targetTechnology: string;
+  currentTechnology: string;
+  expertise: string;
   stage: TalentStage;
   active: boolean;
+  platformStartDate: string;
+  platformEndDate: string;
+  hireDate: string;
   entryDate: string;
   notes: string;
+}
+
+export interface TalentHistoryItem {
+  id: string;
+  eventType: string;
+  description: string;
+  createdAt: string;
+  createdByEmail: string;
+}
+
+export interface TalentCvPayload {
+  fileName: string;
+  contentType: string;
+  base64: string;
+}
+
+export interface TalentCvDownload extends TalentCvMetadata {
+  base64: string;
 }

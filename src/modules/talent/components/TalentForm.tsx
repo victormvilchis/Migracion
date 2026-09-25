@@ -1,20 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Save, X } from 'lucide-react';
+import { Download, Eye, FileText, Save, UploadCloud, X } from 'lucide-react';
 import { talentSchema, type TalentFormValues } from '../schemas/talentSchema';
-import { TALENT_STAGES, TALENT_STAGE_LABELS, type Talent, type TalentPayload } from '../types/talent';
+import {
+  ACADEMY_PROFILES,
+  EXPERTISE_LEVELS,
+  TALENT_STAGES,
+  TALENT_STAGE_LABELS,
+  TALENT_TYPE_LABELS,
+  type Talent,
+  type TalentCvMetadata,
+  type TalentPayload,
+  type TalentType,
+} from '../types/talent';
+import { formatBytes } from './talentDisplay';
+import { validateCvFile } from './talentCv';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+function defaultStage(type: TalentType) {
+  return type === 'ACADEMY' ? 'ACADEMY' : 'REGISTERED';
+}
+
 function toFormValues(talent?: Talent | null): TalentFormValues {
   return {
-    fullName: talent?.fullName ?? '',
+    talentType: talent?.talentType ?? 'ACADEMY',
+    softtekCode: talent?.softtekCode ?? '',
+    corporateUser: talent?.corporateUser ?? '',
     email: talent?.email ?? '',
+    firstName: talent?.firstName ?? '',
+    lastName: talent?.lastName ?? '',
     profile: talent?.profile ?? '',
     technologyProfile: talent?.technologyProfile ?? '',
-    targetTechnology: talent?.targetTechnology ?? '',
-    stage: talent?.stage ?? 'PROSPECT',
+    currentTechnology: talent?.currentTechnology ?? '',
+    expertise: talent?.expertise ?? '',
+    stage: talent?.stage ?? 'ACADEMY',
     active: talent?.active ?? true,
+    platformStartDate: talent?.platformStartDate ?? '',
+    platformEndDate: talent?.platformEndDate ?? '',
+    hireDate: talent?.hireDate ?? '',
     entryDate: talent?.entryDate ?? today(),
     notes: talent?.notes ?? '',
   };
@@ -22,19 +46,43 @@ function toFormValues(talent?: Talent | null): TalentFormValues {
 
 interface TalentFormProps {
   selected?: Talent | null;
+  currentCv?: TalentCvMetadata | null;
   saving?: boolean;
-  onSubmit: (payload: TalentPayload) => void;
-  onCancelEdit: () => void;
+  onSubmit: (payload: TalentPayload, cvFile: File | null) => void;
+  onCancel: () => void;
+  onViewCv?: () => void;
+  onDownloadCv?: () => void;
 }
 
-export const TalentForm: React.FC<TalentFormProps> = ({ selected, saving, onSubmit, onCancelEdit }) => {
+const fieldClass = 'w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-blue-500';
+const labelClass = 'mb-1.5 block text-[11px] font-medium text-slate-400';
+
+export const TalentForm: React.FC<TalentFormProps> = ({
+  selected,
+  currentCv,
+  saving,
+  onSubmit,
+  onCancel,
+  onViewCv,
+  onDownloadCv,
+}) => {
   const [formError, setFormError] = useState<string | null>(null);
-  const { register, handleSubmit, reset } = useForm<TalentFormValues>({ defaultValues: toFormValues(selected) });
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const { register, handleSubmit, reset, watch, setValue } = useForm<TalentFormValues>({ defaultValues: toFormValues(selected) });
+  const talentType = watch('talentType');
 
   useEffect(() => {
     reset(toFormValues(selected));
+    setCvFile(null);
     setFormError(null);
   }, [selected, reset]);
+
+  const changeType = (type: TalentType) => {
+    if (selected) return;
+    setValue('talentType', type);
+    setValue('stage', defaultStage(type));
+    setFormError(null);
+  };
 
   const submit = (values: TalentFormValues) => {
     const parsed = talentSchema.safeParse(values);
@@ -43,78 +91,152 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, saving, onSubm
       return;
     }
     setFormError(null);
-    onSubmit(parsed.data);
+    onSubmit(parsed.data, cvFile);
   };
 
+  const onFileSelected = (file?: File) => {
+    if (!file) return;
+    const error = validateCvFile(file);
+    if (error) {
+      setCvFile(null);
+      setFormError(error);
+      return;
+    }
+    setCvFile(file);
+    setFormError(null);
+  };
+
+  const fullForm = talentType !== 'ACADEMY';
+
   return (
-    <form onSubmit={handleSubmit(submit)} className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-bold text-slate-100">{selected ? 'Editar Talent' : 'Nuevo Talent'}</h3>
-          <p className="text-[11px] text-slate-500">Datos base del prospecto o talento disponible.</p>
+    <form onSubmit={handleSubmit(submit)} className="space-y-6">
+      <input type="hidden" {...register('talentType')} />
+
+      <section>
+        <div className="mb-3">
+          <h3 className="text-sm font-semibold text-slate-200">Tipo de talento</h3>
+          <p className="mt-1 text-xs text-slate-500">La selección define la información requerida para el registro.</p>
         </div>
-        {selected && (
-          <button type="button" onClick={onCancelEdit} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-800 hover:text-slate-200">
-            <X className="h-4 w-4" />
-          </button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(['ACADEMY', 'PROSPECT'] as const).map((type) => (
+            <button
+              key={type}
+              type="button"
+              disabled={Boolean(selected)}
+              onClick={() => changeType(type)}
+              className={`rounded-xl border p-4 text-left transition ${talentType === type ? 'border-blue-500/60 bg-blue-500/10' : 'border-slate-800 bg-slate-900/50 hover:border-slate-700'} disabled:cursor-default`}
+            >
+              <div className="text-sm font-semibold text-slate-100">{TALENT_TYPE_LABELS[type]}</div>
+              <div className="mt-1 text-xs leading-5 text-slate-500">
+                {type === 'ACADEMY' ? 'Formulario simplificado para integrantes de academia.' : 'Información profesional completa previa a incorporación.'}
+              </div>
+            </button>
+          ))}
+        </div>
+        {selected?.talentType === 'BBVA_EXIT' && (
+          <div className="mt-3 rounded-lg border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-xs text-orange-200">
+            Registro proveniente de una baja de BBVA. Conserva el formulario profesional completo.
+          </div>
         )}
-      </div>
+      </section>
 
-      {formError && <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-2.5 text-xs text-rose-300">{formError}</div>}
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-400">Nombre completo *</label>
-        <input {...register('fullName')} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500" />
-      </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-400">Correo</label>
-        <input type="email" {...register('email')} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Perfil</label>
-          <input {...register('profile')} placeholder="Ej. Backend" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500" />
+      <section className="space-y-3 border-t border-slate-800 pt-5">
+        <h3 className="text-sm font-semibold text-slate-200">Identificación</h3>
+        <div className="grid gap-3 md:grid-cols-12">
+          <label className="md:col-span-3"><span className={labelClass}>Código Softtek</span><input {...register('softtekCode')} className={fieldClass} placeholder="Ej. XMF5048" /></label>
+          {fullForm && <label className="md:col-span-3"><span className={labelClass}>Usuario corporativo</span><input {...register('corporateUser')} className={fieldClass} placeholder="Usuario BBVA / corporativo" /></label>}
+          <label className={fullForm ? 'md:col-span-6' : 'md:col-span-9'}><span className={labelClass}>Correo electrónico</span><input {...register('email')} type="email" className={fieldClass} placeholder="nombre@softtek.com" /></label>
+          <label className="md:col-span-5"><span className={labelClass}>Nombre</span><input {...register('firstName')} className={fieldClass} /></label>
+          <label className="md:col-span-7"><span className={labelClass}>Apellidos</span><input {...register('lastName')} className={fieldClass} /></label>
         </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Perfil tecnológico</label>
-          <input {...register('technologyProfile')} placeholder="Ej. Java" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500" />
+      </section>
+
+      <section className="space-y-3 border-t border-slate-800 pt-5">
+        <h3 className="text-sm font-semibold text-slate-200">Información profesional</h3>
+        <div className="grid gap-3 md:grid-cols-12">
+          <label className="md:col-span-4">
+            <span className={labelClass}>Perfil</span>
+            {talentType === 'ACADEMY' ? (
+              <select {...register('profile')} className={fieldClass}>
+                <option value="">Seleccionar</option>
+                {ACADEMY_PROFILES.map((profile) => <option key={profile} value={profile}>{profile}</option>)}
+              </select>
+            ) : (
+              <input {...register('profile')} className={fieldClass} placeholder="Ej. Analista Programador SR" />
+            )}
+          </label>
+          {fullForm && <label className="md:col-span-4"><span className={labelClass}>Perfil tecnológico</span><input {...register('technologyProfile')} className={fieldClass} placeholder="Ej. DESARROLLADOR" /></label>}
+          <label className={fullForm ? 'md:col-span-3' : 'md:col-span-5'}><span className={labelClass}>Tecnología actual</span><input {...register('currentTechnology')} className={fieldClass} placeholder="Ej. JAVA / APX" /></label>
+          {fullForm && (
+            <label className="md:col-span-1">
+              <span className={labelClass}>Expertise</span>
+              <select {...register('expertise')} className={fieldClass}>
+                <option value="">—</option>
+                {EXPERTISE_LEVELS.map((level) => <option key={level} value={level}>{level}</option>)}
+              </select>
+            </label>
+          )}
         </div>
-      </div>
+      </section>
 
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-400">Tecnología objetivo</label>
-        <input {...register('targetTechnology')} placeholder="Ej. APX / Java / Salesforce" className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Etapa</label>
-          <select {...register('stage')} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500">
-            {TALENT_STAGES.map((stage) => <option key={stage} value={stage}>{TALENT_STAGE_LABELS[stage]}</option>)}
-          </select>
+      <section className="space-y-3 border-t border-slate-800 pt-5">
+        <h3 className="text-sm font-semibold text-slate-200">Fechas y estado</h3>
+        <div className="grid gap-3 md:grid-cols-12">
+          <label className="md:col-span-3"><span className={labelClass}>Inicio de vigencia</span><input {...register('platformStartDate')} type="date" className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Vencimiento</span><input {...register('platformEndDate')} type="date" className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Fecha de contratación</span><input {...register('hireDate')} type="date" className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Fecha de alta en Talent Bank</span><input {...register('entryDate')} type="date" className={fieldClass} /></label>
+          <label className="md:col-span-4">
+            <span className={labelClass}>Etapa</span>
+            <select {...register('stage')} className={fieldClass}>
+              {TALENT_STAGES.filter((stage) => stage !== 'CONVERTED').map((stage) => <option key={stage} value={stage}>{TALENT_STAGE_LABELS[stage]}</option>)}
+            </select>
+          </label>
+          <label className="md:col-span-4 flex items-end">
+            <span className="flex h-[38px] w-full items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-300">
+              <input {...register('active')} type="checkbox" className="h-4 w-4 accent-blue-600" /> Registro activo
+            </span>
+          </label>
         </div>
+      </section>
+
+      <section className="space-y-3 border-t border-slate-800 pt-5">
         <div>
-          <label className="mb-1 block text-xs font-medium text-slate-400">Fecha de ingreso</label>
-          <input type="date" {...register('entryDate')} className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500" />
+          <h3 className="text-sm font-semibold text-slate-200">Currículum</h3>
+          <p className="mt-1 text-xs text-slate-500">Formatos permitidos: PDF, Word y PowerPoint. Máximo 10 MB.</p>
         </div>
+
+        {currentCv && (
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="rounded-lg bg-blue-500/10 p-2 text-blue-300"><FileText className="h-5 w-5" /></div>
+              <div className="min-w-0"><div className="truncate text-sm font-medium text-slate-200">{currentCv.fileName}</div><div className="text-[11px] text-slate-500">{formatBytes(currentCv.fileSizeBytes)}</div></div>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={onViewCv} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800"><Eye className="h-3.5 w-3.5" />Ver CV</button>
+              <button type="button" onClick={onDownloadCv} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 hover:bg-slate-800"><Download className="h-3.5 w-3.5" />Descargar</button>
+            </div>
+          </div>
+        )}
+
+        <label className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-950/70 px-5 py-7 text-center transition hover:border-blue-500/50 hover:bg-blue-500/5">
+          <UploadCloud className="h-6 w-6 text-blue-400" />
+          <span className="mt-2 text-sm font-medium text-slate-300">{cvFile ? cvFile.name : currentCv ? 'Seleccionar un CV para sustituir el actual' : 'Seleccionar CV'}</span>
+          <span className="mt-1 text-[11px] text-slate-500">.pdf, .doc, .docx, .ppt, .pptx</span>
+          <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx" onChange={(event) => onFileSelected(event.target.files?.[0])} />
+        </label>
+      </section>
+
+      <section className="border-t border-slate-800 pt-5">
+        <label><span className={labelClass}>Observaciones</span><textarea {...register('notes')} rows={4} className={fieldClass} placeholder="Información adicional relevante..." /></label>
+      </section>
+
+      {formError && <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{formError}</div>}
+
+      <div className="flex justify-end gap-2 border-t border-slate-800 pt-5">
+        <button type="button" onClick={onCancel} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"><X className="h-4 w-4" />Cancelar</button>
+        <button type="submit" disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"><Save className="h-4 w-4" />{saving ? 'Guardando...' : 'Guardar cambios'}</button>
       </div>
-
-      <div>
-        <label className="mb-1 block text-xs font-medium text-slate-400">Notas</label>
-        <textarea rows={3} {...register('notes')} className="w-full resize-none rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500" />
-      </div>
-
-      <label className="flex items-center gap-2 text-xs text-slate-400">
-        <input type="checkbox" {...register('active')} className="h-4 w-4 rounded border-slate-700 bg-slate-900" />
-        Registro activo
-      </label>
-
-      <button type="submit" disabled={saving} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50">
-        <Save className="h-4 w-4" />
-        {saving ? 'Guardando...' : selected ? 'Guardar cambios' : 'Crear Talent'}
-      </button>
     </form>
   );
 };

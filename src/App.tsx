@@ -7,6 +7,8 @@ import { DashboardPage } from './pages/DashboardPage';
 import { SampleCrudPage } from './pages/SampleCrudPage';
 import { SampleAiPage } from './pages/SampleAiPage';
 import { TalentPage } from './modules/talent/pages/TalentPage';
+import { TalentEditorPage } from './modules/talent/pages/TalentEditorPage';
+import { TalentDetailPage } from './modules/talent/pages/TalentDetailPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +44,9 @@ export const App: React.FC = () => {
                   <Route path="/crud" element={<SampleCrudPage />} />
                   <Route path="/ai" element={<SampleAiPage />} />
                   <Route path="/talent" element={<TalentPage />} />
+                  <Route path="/talent/new" element={<TalentEditorPage />} />
+                  <Route path="/talent/:id/edit" element={<TalentEditorPage />} />
+                  <Route path="/talent/:id" element={<TalentDetailPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>

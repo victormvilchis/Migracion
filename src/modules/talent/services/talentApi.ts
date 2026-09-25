@@ -1,5 +1,12 @@
 import { fetchApi } from '../../../lib/api';
-import type { Talent, TalentPayload, TalentStage } from '../types/talent';
+import type {
+  Talent,
+  TalentCvDownload,
+  TalentCvPayload,
+  TalentHistoryItem,
+  TalentPayload,
+  TalentStage,
+} from '../types/talent';
 
 export interface TalentListResponse {
   items: Talent[];
@@ -23,5 +30,16 @@ export const talentApi = {
     fetchApi<{ item: Talent; storage: string }>(`/talent/${id}/stage`, {
       method: 'PATCH',
       body: JSON.stringify({ stage }),
+    }),
+  remove: (id: string) =>
+    fetchApi<{ deleted: boolean }>(`/talent/${id}`, { method: 'DELETE' }),
+  history: (id: string) =>
+    fetchApi<{ items: TalentHistoryItem[] }>(`/talent/${id}/history`),
+  getCv: (id: string) =>
+    fetchApi<{ document: TalentCvDownload }>(`/talent/${id}/cv`),
+  saveCv: (id: string, payload: TalentCvPayload) =>
+    fetchApi<{ cv: Talent['cv'] }>(`/talent/${id}/cv`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
     }),
 };
