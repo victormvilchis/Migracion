@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # Base de datos SQL Server local compatible con Azure SQL
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: bfs-local-mssql
+    restart: always
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Password123!
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+
+  # Emulador local de Azure Storage (Blob y Queue)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: bfs-local-azurite
+    restart: always
+    ports:
+      - "10000:10000" # Blob service
+      - "10001:10001" # Queue service
+      - "10002:10002" # Table service
+    volumes:
+      - azurite-data:/data
+
+volumes:
+  mssql-data:
+    driver: local
+  azurite-data:
+    driver: local

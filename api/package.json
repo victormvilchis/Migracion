@@ -1,0 +1,29 @@
+{
+  "name": "base-bfs-api",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "npm@10.9.7",
+  "main": "./bootstrap.js",
+  "scripts": {
+    "build": "node scripts/assert-node-runtime.cjs && rimraf dist && tsc",
+    "watch": "tsc -w",
+    "start": "npm run build && func start",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.11.0",
+    "glob": "^10.3.10",
+    "mssql": "^12.2.1",
+    "openai": "^6.46.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.2.2"
+  },
+  "devDependencies": {
+    "@types/mssql": "^9.1.11",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": "22.x",
+    "npm": "10.x"
+  }
+}

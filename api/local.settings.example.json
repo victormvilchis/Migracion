@@ -1,0 +1,30 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "NODE_ENV": "development",
+
+    "AZURE_SQL_CONNECTION_STRING": "Server=localhost,1433;Database=bfs_local_db;User Id=sa;Password=Password123!;TrustServerCertificate=True;Connect Timeout=5;",
+    "AZURE_STORAGE_CONNECTION_STRING": "UseDevelopmentStorage=true",
+
+    "AI_MOCK_MODE": "true",
+
+    "OPENAI_BASE_URL": "https://tu-gateway-ai.com/v1",
+    "OPENAI_API_KEY": "tu-api-key-del-gateway",
+    "OPENAI_MODEL": "gpt-4o",
+    "AI_GATEWAY_CUSTOM_HEADERS": "{}",
+
+    "AZURE_OPENAI_ENDPOINT": "https://TU-RECURSO-OPENAI.openai.azure.com/",
+    "AZURE_OPENAI_KEY": "TU-API-KEY-DE-AZURE-OPENAI",
+    "AZURE_OPENAI_DEPLOYMENT_NAME": "gpt-4o",
+    "AZURE_OPENAI_API_VERSION": "2024-08-01-preview",
+
+    "AUTHZ_DEV_FALLBACK_EMAIL": "developer@softtek.com",
+    "ALLOW_DEV_FALLBACK": "true"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*"
+  }
+}
