@@ -31,13 +31,13 @@ export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-[#05070a] flex flex-col selection:bg-blue-600 selection:text-white">
+        <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-blue-600 selection:text-white">
           <Header onUserChanged={handleUserChanged} />
 
           <div className="flex flex-1 overflow-hidden">
             <Sidebar />
 
-            <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#05070a]">
+            <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50">
               <div key={userKey} className="max-w-7xl mx-auto">
                 <Routes>
                   <Route path="/" element={<DashboardPage />} />

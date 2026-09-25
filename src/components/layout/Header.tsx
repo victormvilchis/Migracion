@@ -17,14 +17,14 @@ export const Header: React.FC<HeaderProps> = ({ onUserChanged }) => {
   };
 
   return (
-    <header className="h-16 border-b border-slate-800/80 bg-[#070b12]/90 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-20">
+    <header className="h-16 border-b border-slate-200 bg-white/95 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-20">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-md shadow-blue-500/20">
           <Cpu className="w-5 h-5 text-white" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold text-slate-100 tracking-tight">
+            <h1 className="text-base font-bold text-slate-950 tracking-tight">
               Base<span className="text-blue-500">BFS</span> Platform
             </h1>
             <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded font-mono">
@@ -37,21 +37,21 @@ export const Header: React.FC<HeaderProps> = ({ onUserChanged }) => {
 
       <div className="flex items-center gap-4">
         {/* Selector de Usuario Local Simulado */}
-        <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 rounded-lg px-3 py-1.5 text-xs">
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs">
           <User className="w-3.5 h-3.5 text-blue-400" />
-          <span className="text-slate-400 hidden sm:inline">Usuario Local:</span>
+          <span className="text-slate-500 hidden sm:inline">Usuario Local:</span>
           <select
             value={currentUser}
             onChange={handleUserChange}
-            className="bg-transparent text-slate-200 font-medium focus:outline-none cursor-pointer"
+            className="bg-transparent text-slate-900 font-medium focus:outline-none cursor-pointer"
           >
-            <option value={DEV_USERS.FRANCISCO} className="bg-slate-900 text-white">
+            <option value={DEV_USERS.FRANCISCO} className="bg-white text-slate-900">
               Francisco Barrera (Admin)
             </option>
-            <option value={DEV_USERS.DEVELOPER} className="bg-slate-900 text-white">
+            <option value={DEV_USERS.DEVELOPER} className="bg-white text-slate-900">
               Equipo Desarrollador (Dev)
             </option>
-            <option value={DEV_USERS.GUEST} className="bg-slate-900 text-white">
+            <option value={DEV_USERS.GUEST} className="bg-white text-slate-900">
               Usuario Invitado (Guest)
             </option>
           </select>

@@ -35,7 +35,7 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 border-r border-slate-800/80 bg-[#070b12]/95 flex flex-col justify-between p-4 shrink-0 min-h-[calc(100vh-4rem)]">
+    <aside className="w-64 border-r border-slate-200 bg-white flex flex-col justify-between p-4 shrink-0 min-h-[calc(100vh-4rem)]">
       <div className="space-y-6">
         <div>
           <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
@@ -53,7 +53,7 @@ export const Sidebar: React.FC = () => {
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                       isActive
                         ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                     )
                   }
                 >
@@ -68,7 +68,7 @@ export const Sidebar: React.FC = () => {
           </nav>
         </div>
 
-        <div className="pt-4 border-t border-slate-800/60">
+        <div className="pt-4 border-t border-slate-200">
           <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
             Negocio
           </p>
@@ -84,7 +84,7 @@ export const Sidebar: React.FC = () => {
                       'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                       isActive
                         ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-sm'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
                     )
                   }
                 >
@@ -99,12 +99,12 @@ export const Sidebar: React.FC = () => {
           </nav>
         </div>
 
-        <div className="pt-4 border-t border-slate-800/60">
+        <div className="pt-4 border-t border-slate-200">
           <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
             Arquitectura Softtek
           </p>
-          <div className="bg-slate-900/40 rounded-lg p-3 border border-slate-800/60 text-xs space-y-2">
-            <div className="flex items-center gap-2 text-slate-300 font-medium">
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs space-y-2">
+            <div className="flex items-center gap-2 text-slate-700 font-medium">
               <Layers className="w-4 h-4 text-indigo-400" />
               <span>Contrato de Stack</span>
             </div>
@@ -115,15 +115,15 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 text-xs space-y-2">
-        <div className="flex items-center justify-between text-slate-400">
+      <div className="p-3 rounded-lg bg-white border border-slate-200 text-xs space-y-2">
+        <div className="flex items-center justify-between text-slate-500">
           <span className="font-mono text-[11px]">Node v22.22.2</span>
           <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
             Verified
           </span>
         </div>
         <p className="text-[10px] text-slate-500">
-          Revisa <strong className="text-slate-400">GUIA_INTEGRACION_BFS_US.md</strong> para el flujo de entrega a producción.
+          Revisa <strong className="text-slate-500">GUIA_INTEGRACION_BFS_US.md</strong> para el flujo de entrega a producción.
         </p>
       </div>
     </aside>

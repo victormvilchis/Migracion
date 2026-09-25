@@ -60,17 +60,17 @@ export const TalentEditorPage: React.FC = () => {
   };
 
   if (editing && talentQuery.isLoading) return <div className="p-10 text-center text-sm text-slate-500">Cargando talento...</div>;
-  if (editing && (talentQuery.error || !selected)) return <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-6 text-sm text-rose-300">{(talentQuery.error as Error)?.message || 'No se encontró el talento.'}</div>;
+  if (editing && (talentQuery.error || !selected)) return <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-6 text-sm text-rose-700">{(talentQuery.error as Error)?.message || 'No se encontró el talento.'}</div>;
 
   return (
     <div className="space-y-5 animate-fade-in">
-      <div className="border-b border-slate-800/80 pb-5">
-        <Link to="/talent" className="mb-3 inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200"><ArrowLeft className="h-3.5 w-3.5" />Regresar</Link>
-        <div className="flex items-center gap-2"><UsersRound className="h-5 w-5 text-blue-400" /><h2 className="text-2xl font-bold text-slate-100">{editing ? 'Editar talento' : 'Nuevo talento'}</h2></div>
-        <p className="mt-1 text-xs text-slate-400">{editing ? 'Actualiza únicamente la información necesaria.' : 'Selecciona Academia o Prospecto para mostrar el formulario correspondiente.'}</p>
+      <div className="border-b border-slate-200 pb-5">
+        <Link to="/talent" className="mb-3 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Regresar</Link>
+        <div className="flex items-center gap-2"><UsersRound className="h-5 w-5 text-blue-400" /><h2 className="text-2xl font-bold text-slate-950">{editing ? 'Editar talento' : 'Nuevo talento'}</h2></div>
+        <p className="mt-1 text-xs text-slate-500">{editing ? 'Actualiza únicamente la información necesaria.' : 'Selecciona Academia o Prospecto para mostrar el formulario correspondiente.'}</p>
       </div>
 
-      {error && <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{error}</div>}
+      {error && <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
       <Card className="p-5 sm:p-6">
         <TalentForm

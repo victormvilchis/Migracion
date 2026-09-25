@@ -16,7 +16,7 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       className={cn(
-        'glass-panel rounded-xl p-5 shadow-lg shadow-black/40',
+        'glass-panel rounded-xl p-5 shadow-lg shadow-slate-200/70',
         hoverEffect && 'glass-panel-hover',
         className
       )}

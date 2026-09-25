@@ -71,21 +71,21 @@ export const SampleCrudPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-blue-400" />
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-100">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-950">
               Gestión de Registros (CRUD SQL)
             </h2>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Ejemplo de arquitectura conectando Frontend (React Query) con Backend (Azure Functions) y Base de Datos (SQL Server).
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-slate-400">Motor Activo:</span>
+          <span className="text-xs text-slate-500">Motor Activo:</span>
           <span
             className={`text-xs px-2.5 py-1 rounded-full font-medium border flex items-center gap-1.5 ${
               isSqlServer
@@ -100,10 +100,10 @@ export const SampleCrudPage: React.FC = () => {
       </div>
 
       {data?.warning && (
-        <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2.5">
+        <div className="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
           <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400" />
           <span>
-            {data.warning} Los datos se guardarán temporalmente hasta que inicies SQL Server con <code className="bg-slate-900 px-1 py-0.5 rounded text-amber-200">docker compose up -d</code>.
+            {data.warning} Los datos se guardarán temporalmente hasta que inicies SQL Server con <code className="bg-white px-1 py-0.5 rounded text-amber-700">docker compose up -d</code>.
           </span>
         </div>
       )}
@@ -111,42 +111,42 @@ export const SampleCrudPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Formulario de Creación */}
         <Card className="lg:col-span-1 h-fit">
-          <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
             <Plus className="w-4 h-4 text-blue-400" />
             Nuevo Registro
           </h3>
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
             <div>
-              <label className="block text-slate-400 font-medium mb-1">Título *</label>
+              <label className="block text-slate-500 font-medium mb-1">Título *</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ej. Análisis de requerimientos"
                 required
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
+                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-950 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-slate-400 font-medium mb-1">Descripción</label>
+              <label className="block text-slate-500 font-medium mb-1">Descripción</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Detalle o notas de la tarea..."
                 rows={3}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
+                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-slate-950 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors resize-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Categoría</label>
+                <label className="block text-slate-500 font-medium mb-1">Categoría</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-950 focus:outline-none focus:border-blue-500"
                 >
                   <option value="Frontend">Frontend</option>
                   <option value="Backend">Backend</option>
@@ -157,11 +157,11 @@ export const SampleCrudPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Estado</label>
+                <label className="block text-slate-500 font-medium mb-1">Estado</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-slate-100 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-950 focus:outline-none focus:border-blue-500"
                 >
                   <option value="Activo">Activo</option>
                   <option value="En Progreso">En Progreso</option>
@@ -184,7 +184,7 @@ export const SampleCrudPage: React.FC = () => {
         {/* Lista de Registros */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
               Registros Guardados ({data?.items?.length || 0})
             </h3>
             <span className="text-xs text-slate-500">Actualizado vía React Query</span>
@@ -203,7 +203,7 @@ export const SampleCrudPage: React.FC = () => {
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1.5 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="text-sm font-semibold text-slate-100">{item.title}</h4>
+                        <h4 className="text-sm font-semibold text-slate-950">{item.title}</h4>
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
                           {item.category}
                         </span>
@@ -212,7 +212,7 @@ export const SampleCrudPage: React.FC = () => {
                         </span>
                       </div>
                       {item.description && (
-                        <p className="text-xs text-slate-400 leading-relaxed">{item.description}</p>
+                        <p className="text-xs text-slate-500 leading-relaxed">{item.description}</p>
                       )}
                       <div className="flex items-center gap-4 text-[11px] text-slate-500 pt-1">
                         <span className="flex items-center gap-1">
@@ -229,7 +229,7 @@ export const SampleCrudPage: React.FC = () => {
                     <button
                       onClick={() => deleteMutation.mutate(item.id)}
                       disabled={deleteMutation.isPending}
-                      className="text-slate-500 hover:text-rose-400 p-1.5 rounded-md hover:bg-slate-800/60 transition-colors"
+                      className="text-slate-500 hover:text-rose-400 p-1.5 rounded-md hover:bg-slate-100 transition-colors"
                       title="Eliminar registro"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -239,7 +239,7 @@ export const SampleCrudPage: React.FC = () => {
               ))}
             </div>
           ) : (
-            <div className="p-8 text-center text-slate-500 text-sm bg-slate-900/30 rounded-xl border border-slate-800/50">
+            <div className="p-8 text-center text-slate-500 text-sm bg-white rounded-xl border border-slate-200">
               No hay registros todavía. Crea el primero desde el formulario.
             </div>
           )}

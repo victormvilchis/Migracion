@@ -3,44 +3,61 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    @apply bg-slate-50;
+  }
+
   body {
-    @apply bg-[#05070a] text-slate-100 min-h-screen font-sans antialiased;
+    @apply min-h-screen bg-slate-50 font-sans text-slate-900 antialiased;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    color-scheme: light;
   }
 }
 
-/* Custom scrollbar matching BFS style */
+/* Scrollbar claro y discreto */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: #f8fafc;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(59, 130, 246, 0.3);
+  background: #cbd5e1;
+  border: 2px solid #f8fafc;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(59, 130, 246, 0.6);
+  background: #94a3b8;
 }
 
-/* Glassmorphism utilities */
+/* Superficie base compartida por las tarjetas de BaseBFS */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid #e2e8f0;
 }
 
 .glass-panel-hover {
-  transition: all 0.2s ease-in-out;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .glass-panel-hover:hover {
-  background: rgba(30, 41, 59, 0.7);
-  border-color: rgba(59, 130, 246, 0.3);
+  background: #ffffff;
+  border-color: #bfdbfe;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
   transform: translateY(-1px);
 }

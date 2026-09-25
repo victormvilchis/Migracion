@@ -91,50 +91,50 @@ export const SampleAiPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
       {/* Header */}
-      <div className="border-b border-slate-800/80 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="border-b border-slate-200 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-100">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-950">
               Asistente AI (OpenAI Gateway / Azure OpenAI)
             </h2>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Endpoint <code className="text-indigo-400 font-mono text-xs">/api/ai/chat</code> con soporte para Gateway compatible con OpenAI, Azure OpenAI y Mock.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg">
+        <div className="flex items-center gap-2 text-xs bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
           <Cpu className="w-4 h-4 text-indigo-400" />
-          <span className="text-slate-400">Configurable en:</span>
-          <code className="text-indigo-300 font-mono text-[11px]">api/local.settings.json</code>
+          <span className="text-slate-500">Configurable en:</span>
+          <code className="text-indigo-700 font-mono text-[11px]">api/local.settings.json</code>
         </div>
       </div>
 
       {/* Info Callout */}
-      <div className="p-4 rounded-xl bg-indigo-950/20 border border-indigo-800/30 text-xs text-indigo-200 flex items-start gap-3">
+      <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 flex items-start gap-3">
         <Info className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
         <div className="space-y-1">
-          <strong className="text-indigo-100 block">¿Cómo configurar tu Gateway OpenAI o Azure OpenAI?</strong>
-          <p className="text-indigo-300/80 text-[11px] leading-relaxed">
-            Abre <code className="text-white bg-indigo-900/50 px-1 py-0.5 rounded">api/local.settings.json</code> y configura cualquiera de las dos opciones:
+          <strong className="text-indigo-950 block">¿Cómo configurar tu Gateway OpenAI o Azure OpenAI?</strong>
+          <p className="text-indigo-700 text-[11px] leading-relaxed">
+            Abre <code className="text-indigo-900 bg-indigo-50 px-1 py-0.5 rounded">api/local.settings.json</code> y configura cualquiera de las dos opciones:
           </p>
-          <ul className="list-disc pl-4 space-y-1 text-indigo-200/90 text-[11px] pt-1">
+          <ul className="list-disc pl-4 space-y-1 text-indigo-700 text-[11px] pt-1">
             <li>
-              <strong>Opción A (Gateway OpenAI Compatible):</strong> Asigna <code className="text-white">OPENAI_BASE_URL="https://tu-gateway.com/v1"</code> y <code className="text-white">OPENAI_API_KEY="tu-key"</code>.
+              <strong>Opción A (Gateway OpenAI Compatible):</strong> Asigna <code className="text-indigo-950">OPENAI_BASE_URL="https://tu-gateway.com/v1"</code> y <code className="text-indigo-950">OPENAI_API_KEY="tu-key"</code>.
             </li>
             <li>
-              <strong>Opción B (Azure OpenAI Nativo):</strong> Asigna <code className="text-white">AZURE_OPENAI_ENDPOINT</code> y <code className="text-white">AZURE_OPENAI_KEY</code>.
+              <strong>Opción B (Azure OpenAI Nativo):</strong> Asigna <code className="text-indigo-950">AZURE_OPENAI_ENDPOINT</code> y <code className="text-indigo-950">AZURE_OPENAI_KEY</code>.
             </li>
             <li>
-              Para activar cualquier proveedor real, cambia <code className="text-white">AI_MOCK_MODE</code> a <code className="text-white">"false"</code>.
+              Para activar cualquier proveedor real, cambia <code className="text-indigo-950">AI_MOCK_MODE</code> a <code className="text-indigo-950">"false"</code>.
             </li>
           </ul>
         </div>
       </div>
 
       {/* Chat Container */}
-      <Card className="flex flex-col h-[520px] p-0 overflow-hidden border-slate-800">
+      <Card className="flex flex-col h-[520px] p-0 overflow-hidden border-slate-200">
         {/* Messages List */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           {messages.map((msg, index) => {
@@ -161,13 +161,13 @@ export const SampleAiPage: React.FC = () => {
                   className={`max-w-[80%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed ${
                     isUser
                       ? 'bg-blue-600 text-white rounded-tr-none'
-                      : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-none'
+                      : 'bg-white/90 border border-slate-200 text-slate-900 rounded-tl-none'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
 
                   {!isUser && (
-                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-800/80 text-[10px] text-slate-500 flex-wrap">
+                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200 text-[10px] text-slate-500 flex-wrap">
                       <span>{msg.model || 'AI Model'}</span>
                       {isGateway && (
                         <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.2 rounded font-mono flex items-center gap-1">
@@ -197,7 +197,7 @@ export const SampleAiPage: React.FC = () => {
               <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 flex items-center justify-center shrink-0">
                 <Bot className="w-4 h-4 animate-spin" />
               </div>
-              <div className="bg-slate-900/90 border border-slate-800 text-slate-400 rounded-2xl rounded-tl-none px-4 py-3 text-xs flex items-center gap-2">
+              <div className="bg-white/90 border border-slate-200 text-slate-500 rounded-2xl rounded-tl-none px-4 py-3 text-xs flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
                 <span>Generando respuesta...</span>
               </div>
@@ -210,7 +210,7 @@ export const SampleAiPage: React.FC = () => {
         {/* Input Bar */}
         <form
           onSubmit={handleSend}
-          className="p-3 sm:p-4 bg-[#070b12] border-t border-slate-800 flex items-center gap-2"
+          className="p-3 sm:p-4 bg-white border-t border-slate-200 flex items-center gap-2"
         >
           <input
             type="text"
@@ -218,7 +218,7 @@ export const SampleAiPage: React.FC = () => {
             onChange={(e) => setInputPrompt(e.target.value)}
             placeholder="Escribe tu consulta para el asistente de IA..."
             disabled={chatMutation.isPending}
-            className="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
+            className="flex-1 bg-white border border-slate-300/80 rounded-xl px-4 py-2.5 text-xs sm:text-sm text-slate-950 placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition-colors"
           />
           <button
             type="submit"
