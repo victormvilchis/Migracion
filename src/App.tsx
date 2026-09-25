@@ -6,6 +6,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { DashboardPage } from './pages/DashboardPage';
 import { SampleCrudPage } from './pages/SampleCrudPage';
 import { SampleAiPage } from './pages/SampleAiPage';
+import { TalentPage } from './modules/talent/pages/TalentPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -40,6 +41,7 @@ export const App: React.FC = () => {
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/crud" element={<SampleCrudPage />} />
                   <Route path="/ai" element={<SampleAiPage />} />
+                  <Route path="/talent" element={<TalentPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>

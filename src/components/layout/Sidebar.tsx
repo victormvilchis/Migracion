@@ -1,9 +1,18 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Database, Bot, Layers } from 'lucide-react';
+import { LayoutDashboard, Database, Bot, Layers, UsersRound } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const Sidebar: React.FC = () => {
+  const businessItems = [
+    {
+      to: '/talent',
+      label: 'Talent',
+      icon: UsersRound,
+      description: 'Prospectos, academias y disponibilidad',
+    },
+  ];
+
   const navItems = [
     {
       to: '/',
@@ -34,6 +43,37 @@ export const Sidebar: React.FC = () => {
           </p>
           <nav className="space-y-1">
             {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                      isActive
+                        ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                    )
+                  }
+                >
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <div className="flex flex-col text-left">
+                    <span>{item.label}</span>
+                    <span className="text-[10px] text-slate-500 font-normal">{item.description}</span>
+                  </div>
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
+
+        <div className="pt-4 border-t border-slate-800/60">
+          <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
+            Negocio
+          </p>
+          <nav className="space-y-1">
+            {businessItems.map((item) => {
               const Icon = item.icon;
               return (
                 <NavLink
