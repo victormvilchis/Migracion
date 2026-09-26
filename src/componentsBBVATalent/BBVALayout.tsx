@@ -1,40 +1,73 @@
-import React, { useState } from 'react';
-import { BBVAHeader } from './BBVAHeader';
+import React, { useEffect, useState } from 'react';
+import { BBVAAssistant } from './BBVAAssistant';
+import { BBVAContextBar } from './BBVAContextBar';
 import { BBVASidebar } from './BBVASidebar';
+
+export type BBVAThemeMode = 'light' | 'dark';
 
 interface BBVALayoutProps {
   children: React.ReactNode;
+  /**
+   * BBVA is intentionally light by default. When the BFS global header exposes
+   * its theme state to modules, pass that resolved value here. This keeps the
+   * workspace isolated from any unrelated global `.dark` class in BaseBFS.
+   */
+  themeMode?: BBVAThemeMode;
 }
 
-export const BBVALayout: React.FC<BBVALayoutProps> = ({ children }) => {
+const SIDEBAR_STORAGE_KEY = 'bbva.sidebar.collapsed';
+
+export const BBVALayout: React.FC<BBVALayoutProps> = ({ children, themeMode = 'light' }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_STORAGE_KEY) === 'true');
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
+  }, [collapsed]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950">
-      <BBVAHeader onOpenNavigation={() => setMobileOpen(true)} />
-
-      <div className="flex min-h-[calc(100vh-4rem)]">
-        <div className="hidden lg:block">
-          <BBVASidebar />
+    <div
+      className={themeMode === 'dark' ? 'bbva-dark' : 'bbva-light'}
+      data-bbva-theme={themeMode}
+      data-bbva-theme-source="module-default"
+    >
+      <div className="flex min-h-[calc(100vh-4rem)] w-full bg-white text-slate-950 transition-colors duration-300 [.bbva-dark_&]:bg-[#07111f] [.bbva-dark_&]:text-slate-100">
+        <div className="sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 lg:block">
+          <BBVASidebar collapsed={collapsed} />
         </div>
 
         {mobileOpen && (
-          <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="fixed inset-0 z-[1100] lg:hidden">
             <button
               type="button"
               aria-label="Cerrar navegación"
-              className="absolute inset-0 bg-slate-950/35"
+              className="absolute inset-0 bg-slate-950/25 backdrop-blur-[1px] [.bbva-dark_&]:bg-black/60"
               onClick={() => setMobileOpen(false)}
             />
-            <div className="absolute inset-y-0 left-0 w-72 max-w-[86vw]">
+            <div className="absolute bottom-0 left-0 top-16">
               <BBVASidebar mobile onClose={() => setMobileOpen(false)} />
             </div>
           </div>
         )}
 
-        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-5 sm:px-6 sm:py-6 lg:px-8">
-          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
-        </main>
+        <div className="min-w-0 flex-1 bg-white transition-colors duration-300 [.bbva-dark_&]:bg-[#07111f]">
+          <BBVAContextBar
+            collapsed={collapsed}
+            onToggleSidebar={() => {
+              if (window.matchMedia('(min-width: 1024px)').matches) {
+                setCollapsed((current) => !current);
+              } else {
+                setMobileOpen(true);
+              }
+            }}
+          />
+
+          <main className="w-full min-w-0 overflow-x-auto bg-white px-3 py-3 transition-colors duration-300 [.bbva-dark_&]:bg-[#07111f] sm:px-4 sm:py-4">
+            {children}
+          </main>
+        </div>
+
+        <BBVAAssistant />
       </div>
     </div>
   );

@@ -13,6 +13,10 @@ const TalentEditorPage = React.lazy(() => import('./pagesBBVATalent/talentBank/T
 const TalentDetailPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentDetailPage').then((m) => ({ default: m.TalentDetailPage })));
 const TalentConvertPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentConvertPage').then((m) => ({ default: m.TalentConvertPage })));
 const CollaboratorsPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorsPage').then((m) => ({ default: m.CollaboratorsPage })));
+const CollaboratorDetailPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorDetailPage').then((m) => ({ default: m.CollaboratorDetailPage })));
+const CollaboratorEditorPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorEditorPage').then((m) => ({ default: m.CollaboratorEditorPage })));
+const CollaboratorImportPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorImportPage').then((m) => ({ default: m.CollaboratorImportPage })));
+const BBVAPlaceholderPage = React.lazy(() => import('./pagesBBVATalent/BBVAPlaceholderPage'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,7 +28,7 @@ const queryClient = new QueryClient({
 });
 
 const modulePage = (page: React.ReactNode) => (
-  <React.Suspense fallback={<div className="p-8 text-sm text-slate-500">Cargando módulo BBVA...</div>}>
+  <React.Suspense fallback={<div className="p-4 text-xs text-slate-500">Cargando módulo...</div>}>
     {page}
   </React.Suspense>
 );
@@ -38,42 +42,47 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
   const location = useLocation();
   const isBbvaRoute = location.pathname.startsWith('/bbva/');
 
-  if (isBbvaRoute) {
-    return (
-      <BBVALayout>
-        <div key={userKey}>
-          <Routes>
-            <Route path="/bbva/talent-bank" element={modulePage(<TalentPage />)} />
-            <Route path="/bbva/talent-bank/new" element={modulePage(<TalentEditorPage />)} />
-            <Route path="/bbva/talent-bank/:id/edit" element={modulePage(<TalentEditorPage />)} />
-            <Route path="/bbva/talent-bank/:id/convert" element={modulePage(<TalentConvertPage />)} />
-            <Route path="/bbva/talent-bank/:id" element={modulePage(<TalentDetailPage />)} />
-            <Route path="/bbva/collaborators" element={modulePage(<CollaboratorsPage />)} />
-            <Route path="/bbva/*" element={<Navigate to="/bbva/talent-bank" replace />} />
-          </Routes>
-        </div>
-      </BBVALayout>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 selection:bg-blue-600 selection:text-white">
+    <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900 selection:bg-blue-600 selection:text-white">
+      {/* Header BFS corporativo/global: obligatorio en todos los módulos. */}
       <Header onUserChanged={onUserChanged} />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-8">
-          <div key={userKey} className="mx-auto max-w-7xl">
+
+      {isBbvaRoute ? (
+        <BBVALayout>
+          <div key={userKey} className="w-full min-w-0">
             <Routes>
-              <Route path="/" element={<DashboardPage />} />
-              <Route path="/crud" element={<SampleCrudPage />} />
-              <Route path="/ai" element={<SampleAiPage />} />
-              <Route path="/talent/*" element={<Navigate to="/bbva/talent-bank" replace />} />
-              <Route path="/collaborators/*" element={<Navigate to="/bbva/collaborators" replace />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/bbva/dashboard" element={modulePage(<BBVAPlaceholderPage />)} />
+              <Route path="/bbva/talent-bank" element={modulePage(<TalentPage />)} />
+              <Route path="/bbva/talent-bank/new" element={modulePage(<TalentEditorPage />)} />
+              <Route path="/bbva/talent-bank/:id/edit" element={modulePage(<TalentEditorPage />)} />
+              <Route path="/bbva/talent-bank/:id/convert" element={modulePage(<TalentConvertPage />)} />
+              <Route path="/bbva/talent-bank/:id" element={modulePage(<TalentDetailPage />)} />
+              <Route path="/bbva/collaborators" element={modulePage(<CollaboratorsPage />)} />
+              <Route path="/bbva/collaborators/new" element={modulePage(<CollaboratorEditorPage />)} />
+              <Route path="/bbva/collaborators/import" element={modulePage(<CollaboratorImportPage />)} />
+              <Route path="/bbva/collaborators/:id/edit" element={modulePage(<CollaboratorEditorPage />)} />
+              <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage />)} />
+              <Route path="/bbva/*" element={modulePage(<BBVAPlaceholderPage />)} />
             </Routes>
           </div>
-        </main>
-      </div>
+        </BBVALayout>
+      ) : (
+        <div className="flex flex-1 overflow-hidden">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto bg-[#f8fafc] p-4 sm:p-8">
+            <div key={userKey} className="mx-auto max-w-7xl">
+              <Routes>
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/crud" element={<SampleCrudPage />} />
+                <Route path="/ai" element={<SampleAiPage />} />
+                <Route path="/talent/*" element={<Navigate to="/bbva/talent-bank" replace />} />
+                <Route path="/collaborators/*" element={<Navigate to="/bbva/collaborators" replace />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </main>
+        </div>
+      )}
     </div>
   );
 };

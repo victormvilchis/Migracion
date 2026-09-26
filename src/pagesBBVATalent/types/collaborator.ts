@@ -1,5 +1,21 @@
 export type CollaboratorStatus = 'ACTIVE' | 'INACTIVE';
 
+export interface CollaboratorPayload {
+  softtekCode: string;
+  corporateUser: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  profile: string;
+  technologyProfile: string;
+  currentTechnology: string;
+  expertise: string;
+  startDate: string;
+  endDate: string;
+  hireDate: string;
+  notes: string;
+}
+
 export interface Collaborator {
   id: string;
   personId: string;

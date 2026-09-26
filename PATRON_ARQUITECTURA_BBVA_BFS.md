@@ -1,191 +1,171 @@
 # Patrón de Arquitectura BBVA sobre BaseBFS / bfs_US
 
-## 1. Objetivo
+## Principios obligatorios
 
-El dominio BBVA debe desarrollarse como un módulo autocontenido que pueda integrarse en `bfs_US` mediante copia de carpetas y registro mínimo de rutas, sin modificar infraestructura compartida.
+1. El Header corporativo/global de BFS es infraestructura compartida y **no se reemplaza, elimina ni duplica** dentro del módulo BBVA.
+2. El módulo BBVA se monta debajo del Header global y encapsula únicamente su navegación lateral, breadcrumbs y vistas de dominio.
+3. La navegación puede tener hasta tres niveles: **Grupo > Sección opcional > Módulo**.
+4. El menú contiene únicamente módulos. Operaciones como Alta, Editar, Detalle, Importar, Convertir, Historial, etc. viven dentro de la vista del módulo y nunca como entradas independientes de navegación.
+5. El sidebar BBVA debe poder expandirse y compactarse. En modo compacto conserva acceso visual mediante iconos.
+6. Las vistas funcionales utilizan todo el ancho disponible. No se aplican `max-width` globales al contenido BBVA.
+7. Se conserva el patrón visual funcional de NexoSkill para tablas y vistas: filtros compactos, breadcrumbs, columnas de negocio, paginación, botón `Acciones` con dropdown y vistas detalle/edición separadas.
+8. No se modifica `src/index.css` con estilos ad-hoc. Se utilizan Tailwind y tokens existentes de BaseBFS.
+9. El frontend BBVA continúa encapsulado en `src/pagesBBVATalent/` y `src/componentsBBVATalent/`.
+10. El backend BBVA continúa encapsulado en `api/src/functions/bbva*.ts` y `api/src/lib/bbva*.ts`.
+11. La persistencia del dominio se mantiene bajo schema SQL `bbva`.
+12. Las llamadas frontend usan rutas relativas `/api/...`; nunca hosts o puertos locales hardcodeados.
 
-## 2. Regla de aislamiento
-
-### Frontend portable
-
-```text
-src/
-├── pagesBBVATalent/
-│   ├── talentBank/
-│   ├── collaborators/
-│   ├── hooks/
-│   ├── api/
-│   ├── schemas/
-│   ├── types/
-│   └── lib/
-└── componentsBBVATalent/
-    ├── BBVALayout.tsx
-    ├── BBVAHeader.tsx
-    ├── BBVASidebar.tsx
-    └── componentes compartidos del dominio
-```
-
-`BBVALayout`, `BBVAHeader` y `BBVASidebar` pertenecen al dominio BBVA y pueden evolucionar sin modificar el shell global de BFS.
-
-`src/App.tsx` y `src/components/layout/Sidebar.tsx` son únicamente puntos de integración local. No forman parte del paquete portable del dominio.
-
-### Backend portable
+## Estructura de shell
 
 ```text
-api/src/
-├── functions/
-│   ├── bbvaTalentBank.ts
-│   └── bbvaCollaborators.ts
-└── lib/
-    ├── bbvaTalentService.ts
-    ├── bbvaTalentRepository.ts
-    ├── bbvaCollaboratorService.ts
-    ├── bbvaCollaboratorRepository.ts
-    ├── bbvaTalentConversionService.ts
-    ├── bbvaTalentConversionRepository.ts
-    ├── bbvaTalentDomain.ts
-    ├── bbvaCollaboratorDomain.ts
-    └── bbvaHttp.ts
+Header BFS global (obligatorio)
+└── BBVA Workspace
+    ├── Sidebar BBVA expandible/compactable
+    ├── Context bar + breadcrumbs
+    └── Vista del módulo a ancho completo
 ```
 
-Las Azure Functions son adaptadores HTTP delgados. Las reglas de negocio viven en servicios y la persistencia en repositorios.
+## Navegación funcional
 
-## 3. Integración entre módulos BBVA
+```text
+Dashboard
+Administración
+├── Usuarios
+└── Roles
+Talent
+├── Colaboradores
+└── Talent Bank
+Catálogos
+├── Categorías
+├── Tecnologías
+├── Perfiles
+└── Perfiles tecnológicos
+Banco de Preguntas
+├── Preguntas
+├── Formularios
+└── Colecciones
+Evaluaciones
+├── Evaluaciones
+└── Paths
+Certificaciones
+└── Gestión
+    ├── Certificaciones
+    ├── Seguimiento
+    └── Métricas
+Reportes
+└── Por dominio
+    ├── Talent
+    ├── Colaboradores
+    ├── Evaluaciones
+    └── Certificaciones
+Ayuda
+└── Recursos
+    ├── Documentación
+    ├── Soporte
+    └── Acerca de
+```
 
-Talent Bank y Colaboradores son subdominios distintos, pero comparten la identidad `Person`.
+## Regla de vistas
 
-Las operaciones que cruzan ambos módulos no deben ejecutarse directamente desde un repositorio de un módulo. Se implementan como workflow/caso de uso independiente.
+Cada módulo tiene una vista principal. Desde ella se ejecutan las operaciones relacionadas mediante botones, dropdowns, modales y rutas internas.
 
 Ejemplo:
 
 ```text
-POST /api/bbva/talent-bank/{id}/convert
-            ↓
-bbvaTalentConversionService
-            ↓
-bbvaTalentConversionRepository
-            ↓
-Transacción SQL única
+Colaboradores
+├── tabla principal
+├── Cargar Excel
+├── Crear colaborador
+├── Acciones
+│   ├── Ver
+│   ├── Editar
+│   ├── Gestionar
+│   ├── Certificaciones
+│   └── Eliminar definitivamente
+└── rutas internas de detalle/edición/importación
 ```
 
-## 4. Convención SQL
+Estas operaciones no generan elementos adicionales en el sidebar.
 
-Todo objeto de negocio BBVA vive bajo el schema SQL:
+## Tema visual global BFS
 
-```text
-bbva
-```
+1. El selector de tema pertenece al **Header global de BFS**. El módulo BBVA no implementa ni persiste un selector de tema propio.
+2. El módulo BBVA debe reaccionar a la clase global `dark` configurada por BFS/Tailwind (`darkMode: 'class'`).
+3. El estado por defecto del módulo es **Light**: fondo blanco/gris muy claro, superficies blancas, texto slate oscuro.
+4. Cuando el shell global aplica `dark`, todas las superficies, tablas, formularios, dropdowns, modales, breadcrumbs y navegación BBVA deben cambiar a sus variantes `dark:*`.
+5. Nunca se debe forzar `document.documentElement.classList.add('dark')` desde código BBVA ni guardar una preferencia de tema dentro del módulo.
+6. El Header global se conserva intacto para que la misma configuración visual gobierne todos los módulos de `bfs_US`.
+7. Los componentes BBVA reutilizables deben incluir sus variantes Light/Dark dentro de `componentsBBVATalent/` para no depender de estilos ad-hoc globales.
 
-Tablas actuales:
-
-```text
-bbva.Person
-bbva.TalentBankEntry
-bbva.PersonDocument
-bbva.TalentHistory
-bbva.Collaborator
-bbva.CollaboratorHistory
-```
-
-### Nombres de objetos
+Flujo esperado:
 
 ```text
-PK_BBVA_<Tabla>
-FK_BBVA_<TablaHija>_<TablaPadre>
-DF_BBVA_<Tabla>_<Campo>
-CK_BBVA_<Tabla>_<Regla>
-UX_BBVA_<Tabla>_<Campos>
-IX_BBVA_<Tabla>_<Campos>
-```
-
-El schema `bbva` es la frontera principal para evitar colisiones con otros módulos de `bfs_US`.
-
-## 5. SQL y transacciones
-
-- SQL siempre parametrizado mediante `mssql` y `@param`.
-- Operaciones de múltiples tablas se ejecutan dentro de una transacción.
-- Scripts DDL usan `SET XACT_ABORT ON` y `TRY/CATCH`.
-- La ejecución local debe usar `sqlcmd -b` para detenerse ante cualquier error.
-- El script entregable a producción no debe asumir el nombre de una base de datos local.
-
-## 6. Frontend
-
-- Tailwind CSS exclusivamente para estilos del dominio.
-- No modificar `src/index.css` para estilos BBVA ad-hoc.
-- No hardcodear `localhost:7071`; los clientes usan rutas relativas `/api/bbva/...`.
-- TanStack React Query maneja fetching, caché e invalidaciones.
-- Los componentes compartidos entre Talent Bank y Colaboradores permanecen en `componentsBBVATalent`.
-- El shell BBVA es responsive e independiente del header/sidebar global de BaseBFS.
-
-## 7. Backend
-
-Flujo obligatorio:
-
-```text
-Azure Function
+Header BFS global
+    ↓ selecciona Light / Dark
+clase global `dark` (cuando aplica)
     ↓
-Application Service
-    ↓
-Repository
-    ↓
-Azure SQL / SQL Server
+BBVA Layout
+├── Sidebar
+├── Breadcrumbs
+├── Tablas
+├── Formularios
+├── Modales
+└── Vistas de negocio
 ```
 
-No colocar SQL directamente en Azure Functions.
+## Estándar visual BBVA Workspace — NexoSkill compact
 
-## 8. Rutas
+A partir de esta entrega, los módulos BBVA deben conservar el patrón visual funcional de NexoSkill y adaptarlo al shell BFS:
 
-Frontend:
+- El Header global de BFS es obligatorio y no se duplica ni se reemplaza dentro del módulo.
+- El tema pertenece al Header/shell global. BBVA Workspace no mantiene estado de tema propio: Light es el valor por defecto y todos los componentes deben responder a la clase global `dark` mediante utilidades Tailwind `dark:*`.
+- La navegación lateral es propia del dominio BBVA, pero puede compactarse/expandirse. El branding interno se limita a `BBVA Workspace`.
+- El menú representa módulos, nunca operaciones. Alta, edición, detalle, importación, conversiones y otras acciones son rutas internas y aparecen únicamente en breadcrumbs.
+- Las páginas de listado no repiten el nombre del módulo con un título grande. El breadcrumb del shell identifica el contexto.
+- Los listados ocupan el máximo ancho disponible y utilizan densidad compacta: encabezados de 9–10 px, filas aproximadas de 39 px, filtros de 32 px y acciones en menú desplegable.
+- Cada módulo ofrece su acción primaria en la esquina superior derecha (`Agregar talento`, `Agregar colaborador`, etc.). Las acciones secundarias como `Cargar Excel` aparecen junto a la acción primaria cuando correspondan.
+- Las tablas incluyen paginación compacta y selector 10/25/50/100.
+- Las vistas Nuevo/Editar/Detalle muestran siempre `Regresar`, breadcrumb compacto y no duplican títulos de página.
+- Los mensajes de éxito, error e información usan alertas integradas; no se utiliza `window.alert()` para UX de negocio.
+- Los formularios mantienen secciones internas cuando ayudan a escanear información, pero usan controles compactos y anchos acordes al dato.
 
-```text
-/bbva/talent-bank
-/bbva/collaborators
-```
+---
 
-Backend:
+## Navegación, tema y asistente global BBVA Workspace
 
-```text
-/api/bbva/talent-bank
-/api/bbva/collaborators
-```
+A partir de esta entrega, el shell funcional BBVA utiliza el siguiente orden oficial:
 
-Todo nuevo módulo BBVA debe respetar el prefijo `/bbva` para evitar colisiones.
+1. Dashboard
+2. Talent
+3. Certificaciones
+4. Reportes
+5. Estudio
+   - Evaluaciones
+   - Banco de Preguntas
+6. Administración
+   - Usuarios
+   - Roles
+   - Catálogos
+     - Categorías
+     - Tecnologías
+     - Perfiles
+     - Perfiles tecnológicos
 
-## 9. Infraestructura que el dominio no modifica
+### Tema visual
 
-Salvo requerimiento explícito de la plataforma, el módulo BBVA no debe modificar:
+- El estado base del módulo BBVA es **Light** y todos sus contenedores deben renderizar en blanco o superficies claras.
+- El módulo no mantiene un estado de tema propio ni agrega un selector de tema.
+- Los componentes deben incluir variantes Tailwind `dark:*` desde su creación.
+- Cuando el Header global BFS aplique el modo oscuro mediante la clase global `dark`, BBVA Workspace heredará esa configuración automáticamente.
+- El Header global BFS permanece fuera del dominio BBVA y no debe duplicarse ni reemplazarse.
 
-```text
-src/index.css
-tailwind.config.js
-api/bootstrap.js
-api/src/lib/db.ts
-api/src/lib/authzLocal.ts
-docker-compose.yml
-```
+### Asistente de IA
 
-## 10. Entrega a bfs_US
+- El asistente se considera una capacidad transversal de BBVA Workspace y no una entrada del menú.
+- Se monta una sola vez desde `BBVALayout` para que esté disponible desde cualquier ruta `/bbva/*`.
+- Su UI debe ser contextual a la ruta actual y preparada para una integración posterior con el proveedor de IA autorizado por BFS.
+- En esta fase no realiza llamadas a backend ni contiene credenciales.
 
-El paquete productivo contiene únicamente:
+### Branding
 
-```text
-src/pagesBBVATalent/
-src/componentsBBVATalent/
-api/src/functions/bbva*.ts
-api/src/lib/bbva*.ts
-api/scripts/init-bbva-talent.sql
-NOTAS_ENTREGA.md
-```
-
-Los archivos globales utilizados para ejecutar BaseBFS localmente no se copian a producción.
-
-## 11. Patrón para módulos futuros
-
-Certificaciones, Evaluaciones, Paths y demás capacidades deberán seguir exactamente la misma estrategia:
-
-- páginas bajo un namespace BBVA;
-- componentes BBVA encapsulados;
-- Azure Functions con prefijo `bbva`;
-- servicios/repositorios con prefijo `bbva`;
-- tablas dentro del schema `bbva`;
-- integración entre subdominios mediante servicios/workflows, no acceso cruzado informal a repositorios.
+El nombre visible del workspace es **BBVA Workspace**. No utilizar `Talent Platform` como branding del shell BBVA.

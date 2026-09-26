@@ -1,13 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRightLeft } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Card } from '../../components/common/Card';
+import { useNavigate, useParams } from 'react-router-dom';
+import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useConvertTalent, useTalent, useUpdateTalent } from '../hooks/useTalent';
 import type { Talent, TalentPayload } from '../types/talent';
 
-const fieldClass = 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-blue-500';
-const labelClass = 'mb-1.5 block text-[11px] font-medium text-slate-500';
+const fieldClass = 'h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
+const labelClass = 'mb-1 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:text-slate-400';
 
 function toPayload(talent: Talent, values: { profile: string; technologyProfile: string; currentTechnology: string; expertise: string; corporateUser: string }): TalentPayload {
   return {
@@ -73,50 +73,33 @@ export const TalentConvertPage: React.FC = () => {
     }
   };
 
-  if (talentQuery.isLoading) return <div className="p-10 text-center text-sm text-slate-500">Cargando talento...</div>;
-  if (talentQuery.error || !talent) return <div className="rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">{(talentQuery.error as Error)?.message || 'No se encontró el talento.'}</div>;
+  if (talentQuery.isLoading) return <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75 [.bbva-dark_&]:text-slate-400">Cargando talento...</div>;
+  if (talentQuery.error || !talent) return <BBVAAlert tone="error">{(talentQuery.error as Error)?.message || 'No se encontró el talento.'}</BBVAAlert>;
 
   const busy = updateMutation.isPending || convertMutation.isPending;
 
   return (
-    <div className="space-y-5 animate-fade-in">
-      <div className="border-b border-slate-200 pb-5">
-        <Link to="/bbva/talent-bank" className="mb-3 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900"><ArrowLeft className="h-3.5 w-3.5" />Regresar</Link>
-        <div className="flex items-center gap-2"><ArrowRightLeft className="h-5 w-5 text-emerald-600" /><h2 className="text-2xl font-bold text-slate-950">Convertir a colaborador</h2></div>
-        <p className="mt-1 text-xs text-slate-500">Se reutilizará la misma persona, su CV y su información histórica. Completa únicamente la información profesional necesaria.</p>
+    <div className="space-y-3 animate-fade-in">
+      <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-xs hover:bg-slate-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"><ArrowLeft className="h-3.5 w-3.5" />Regresar</button>
+      {error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}
+      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75 [.bbva-dark_&]:shadow-none">
+        <div className="mb-3 grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-[11px] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-950/50 sm:grid-cols-2">
+          <div><span className="font-semibold text-slate-500 [.bbva-dark_&]:text-slate-400">Persona</span><div className="mt-1 font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{talent.fullName}</div><div className="text-[10px] text-slate-500 [.bbva-dark_&]:text-slate-400">{talent.email}</div></div>
+          <div><span className="font-semibold text-slate-500 [.bbva-dark_&]:text-slate-400">Origen</span><div className="mt-1 text-slate-900 [.bbva-dark_&]:text-slate-100">{talent.talentType === 'ACADEMY' ? 'Academia' : talent.talentType === 'PROSPECT' ? 'Prospecto' : 'Baja de BBVA'}</div></div>
+        </div>
+        <div className="grid gap-2 md:grid-cols-12">
+          <label className="md:col-span-4"><span className={labelClass}>Perfil *</span><input value={values.profile} onChange={(e) => setValues((v) => ({ ...v, profile: e.target.value }))} className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Perfil tecnológico *</span><input value={values.technologyProfile} onChange={(e) => setValues((v) => ({ ...v, technologyProfile: e.target.value }))} className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Tecnología actual *</span><input value={values.currentTechnology} onChange={(e) => setValues((v) => ({ ...v, currentTechnology: e.target.value }))} className={fieldClass} /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Expertise</span><select value={values.expertise} onChange={(e) => setValues((v) => ({ ...v, expertise: e.target.value }))} className={fieldClass}><option value="">—</option><option value="TR">TR</option><option value="JR">JR</option><option value="STD">STD</option><option value="SR">SR</option></select></label>
+          <label className="md:col-span-4"><span className={labelClass}>Usuario corporativo</span><input value={values.corporateUser} onChange={(e) => setValues((v) => ({ ...v, corporateUser: e.target.value }))} className={fieldClass} /></label>
+        </div>
+        <div className="mt-3 flex justify-end gap-2 border-t border-slate-200 pt-3 [.bbva-dark_&]:border-slate-800">
+          <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="h-8 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800">Cancelar</button>
+          <button type="button" disabled={busy} onClick={requestConfirmation} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" />Continuar</button>
+        </div>
       </div>
-
-      {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
-
-      <Card className="p-5 sm:p-6">
-        <div className="mb-5 grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
-          <div><div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Persona</div><div className="mt-1 text-sm font-semibold text-slate-900">{talent.fullName}</div><div className="text-xs text-slate-500">{talent.email}</div></div>
-          <div><div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Origen</div><div className="mt-1 text-sm text-slate-900">{talent.talentType === 'ACADEMY' ? 'Academia' : talent.talentType === 'PROSPECT' ? 'Prospecto de colaborador' : 'Baja de BBVA'}</div></div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-12">
-          <label className="md:col-span-6"><span className={labelClass}>Perfil *</span><input value={values.profile} onChange={(e) => setValues((v) => ({ ...v, profile: e.target.value }))} className={fieldClass} /></label>
-          <label className="md:col-span-6"><span className={labelClass}>Perfil tecnológico *</span><input value={values.technologyProfile} onChange={(e) => setValues((v) => ({ ...v, technologyProfile: e.target.value }))} className={fieldClass} placeholder="Ej. DESARROLLADOR" /></label>
-          <label className="md:col-span-5"><span className={labelClass}>Tecnología actual *</span><input value={values.currentTechnology} onChange={(e) => setValues((v) => ({ ...v, currentTechnology: e.target.value }))} className={fieldClass} placeholder="Ej. JAVA / APX" /></label>
-          <label className="md:col-span-3"><span className={labelClass}>Expertise</span><select value={values.expertise} onChange={(e) => setValues((v) => ({ ...v, expertise: e.target.value }))} className={fieldClass}><option value="">—</option><option value="TR">TR</option><option value="JR">JR</option><option value="STD">STD</option><option value="SR">SR</option></select></label>
-          <label className="md:col-span-4"><span className={labelClass}>Usuario corporativo</span><input value={values.corporateUser} onChange={(e) => setValues((v) => ({ ...v, corporateUser: e.target.value }))} className={fieldClass} placeholder="Opcional" /></label>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2 border-t border-slate-200 pt-5">
-          <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Cancelar</button>
-          <button type="button" disabled={busy} onClick={requestConfirmation} className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"><ArrowRightLeft className="h-4 w-4" />Continuar</button>
-        </div>
-      </Card>
-
-      <ConfirmDialog
-        open={confirmOpen}
-        title="Convertir a colaborador"
-        message="Esta persona dejará de formar parte de Talent Bank y será incorporada al módulo Colaboradores. A partir de ese momento comenzará a contabilizarse en los procesos e indicadores correspondientes. ¿Deseas continuar?"
-        confirmLabel="Confirmar conversión"
-        busy={busy}
-        onConfirm={() => void confirm()}
-        onCancel={() => setConfirmOpen(false)}
-      />
+      <ConfirmDialog open={confirmOpen} title="Convertir a colaborador" message="Esta persona dejará Talent Bank y será incorporada a Colaboradores conservando su identidad e historial. ¿Deseas continuar?" confirmLabel="Confirmar conversión" busy={busy} onConfirm={() => void confirm()} onCancel={() => setConfirmOpen(false)} />
     </div>
   );
 };
