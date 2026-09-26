@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Header } from './components/layout/Header';
@@ -19,6 +19,9 @@ const CollaboratorImportPage = React.lazy(() => import('./pagesBBVATalent/collab
 const CatalogListPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogListPage').then((m) => ({ default: m.CatalogListPage })));
 const CatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogEditorPage').then((m) => ({ default: m.CatalogEditorPage })));
 const CatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogDetailPage').then((m) => ({ default: m.CatalogDetailPage })));
+const CertificationCatalogListPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogListPage').then((m) => ({ default: m.CertificationCatalogListPage })));
+const CertificationCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogEditorPage').then((m) => ({ default: m.CertificationCatalogEditorPage })));
+const CertificationCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogDetailPage').then((m) => ({ default: m.CertificationCatalogDetailPage })));
 const BBVAPlaceholderPage = React.lazy(() => import('./pagesBBVATalent/BBVAPlaceholderPage'));
 
 const queryClient = new QueryClient({
@@ -31,7 +34,7 @@ const queryClient = new QueryClient({
 });
 
 const modulePage = (page: React.ReactNode) => (
-  <React.Suspense fallback={<div className="p-4 text-xs text-slate-500">Cargando módulo...</div>}>
+  <React.Suspense fallback={<div className="p-4 text-xs text-slate-500">Cargando mÃ³dulo...</div>}>
     {page}
   </React.Suspense>
 );
@@ -47,7 +50,7 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900 selection:bg-blue-600 selection:text-white">
-      {/* Header BFS corporativo/global: obligatorio en todos los módulos. */}
+      {/* Header BFS corporativo/global: obligatorio en todos los mÃ³dulos. */}
       <Header onUserChanged={onUserChanged} />
 
       {isBbvaRoute ? (
@@ -85,6 +88,11 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/admin/catalogs/technology-profiles/new" element={modulePage(<CatalogEditorPage type="technology-profiles" />)} />
               <Route path="/bbva/admin/catalogs/technology-profiles/:id/edit" element={modulePage(<CatalogEditorPage type="technology-profiles" />)} />
               <Route path="/bbva/admin/catalogs/technology-profiles/:id" element={modulePage(<CatalogDetailPage type="technology-profiles" />)} />
+
+              <Route path="/bbva/admin/catalogs/certifications" element={modulePage(<CertificationCatalogListPage />)} />
+              <Route path="/bbva/admin/catalogs/certifications/new" element={modulePage(<CertificationCatalogEditorPage />)} />
+              <Route path="/bbva/admin/catalogs/certifications/:id/edit" element={modulePage(<CertificationCatalogEditorPage />)} />
+              <Route path="/bbva/admin/catalogs/certifications/:id" element={modulePage(<CertificationCatalogDetailPage />)} />
 
               <Route path="/bbva/*" element={modulePage(<BBVAPlaceholderPage />)} />
             </Routes>
@@ -129,3 +137,5 @@ export const App: React.FC = () => {
 };
 
 export default App;
+
+

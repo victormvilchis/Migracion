@@ -7,8 +7,11 @@ export interface CollaboratorInput {
   firstName: string;
   lastName: string;
   profile: string | null;
+  profileCatalogId: string | null;
   technologyProfile: string | null;
+  technologyProfileCatalogId: string | null;
   currentTechnology: string | null;
+  currentTechnologyCatalogId: string | null;
   expertise: string | null;
   startDate: string | null;
   endDate: string | null;
@@ -26,8 +29,11 @@ export interface CollaboratorRecord {
   lastName: string | null;
   fullName: string;
   profile: string | null;
+  profileCatalogId: string | null;
   technologyProfile: string | null;
+  technologyProfileCatalogId: string | null;
   currentTechnology: string | null;
+  currentTechnologyCatalogId: string | null;
   expertise: string | null;
   status: CollaboratorStatus;
   startDate: string | null;

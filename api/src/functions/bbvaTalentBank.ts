@@ -3,6 +3,7 @@ import { getCurrentUser } from '../lib/authzLocal.js';
 import { TalentService } from '../lib/bbvaTalentService.js';
 import { TalentConversionService } from '../lib/bbvaTalentConversionService.js';
 import { bbvaErrorResponse, readBbvaJson } from '../lib/bbvaHttp.js';
+import { assertBbvaPermission } from '../lib/bbvaAuthz.js';
 
 const service = new TalentService();
 const conversionService = new TalentConversionService();
@@ -10,6 +11,7 @@ const conversionService = new TalentConversionService();
 export async function talentCollectionHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
     const user = getCurrentUser(request);
+    assertBbvaPermission(user, request.method === 'GET' ? 'TALENT_READ' : 'TALENT_WRITE');
     if (request.method === 'GET') return { status: 200, jsonBody: { items: await service.list(), storage: 'sql-server' } };
     if (request.method === 'POST') {
       const item = await service.create(await readBbvaJson(request), user.email);
@@ -23,6 +25,8 @@ export async function talentCollectionHandler(request: HttpRequest, context: Inv
 
 export async function talentItemHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, request.method === 'GET' ? 'TALENT_READ' : 'TALENT_WRITE');
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
 
@@ -32,7 +36,6 @@ export async function talentItemHandler(request: HttpRequest, context: Invocatio
     }
 
     if (request.method === 'PUT') {
-      const user = getCurrentUser(request);
       const item = await service.update(id, await readBbvaJson(request), user.email);
       return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
     }
@@ -50,9 +53,10 @@ export async function talentItemHandler(request: HttpRequest, context: Invocatio
 
 export async function talentStageHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, 'TALENT_WRITE');
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
-    const user = getCurrentUser(request);
     const payload = await readBbvaJson(request);
     const item = await service.updateStage(id, payload?.stage, user.email);
     return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
@@ -63,6 +67,8 @@ export async function talentStageHandler(request: HttpRequest, context: Invocati
 
 export async function talentHistoryHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, 'TALENT_READ');
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
     const item = await service.get(id);
@@ -75,6 +81,8 @@ export async function talentHistoryHandler(request: HttpRequest, context: Invoca
 
 export async function talentCvHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, request.method === 'GET' ? 'TALENT_READ' : 'TALENT_WRITE');
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
 
@@ -84,7 +92,6 @@ export async function talentCvHandler(request: HttpRequest, context: InvocationC
     }
 
     if (request.method === 'PUT') {
-      const user = getCurrentUser(request);
       const item = await service.saveCv(id, await readBbvaJson(request), user.email);
       return item ? { status: 200, jsonBody: { cv: item.cv } } : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
     }
@@ -98,9 +105,10 @@ export async function talentCvHandler(request: HttpRequest, context: InvocationC
 
 export async function talentConvertHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, 'TALENT_WRITE');
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
-    const user = getCurrentUser(request);
     const result = await conversionService.convert(id, user.email);
     return result
       ? { status: 200, jsonBody: { collaboratorId: result.collaboratorId, message: 'El talento se convirtió correctamente en colaborador.' } }

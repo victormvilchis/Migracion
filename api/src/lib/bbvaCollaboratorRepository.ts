@@ -13,8 +13,11 @@ const COLLABORATOR_SELECT = `
     p.LastName AS lastName,
     LTRIM(RTRIM(CONCAT(p.FirstName, N' ', ISNULL(p.LastName, N'')))) AS fullName,
     p.Profile AS profile,
+    CAST(p.ProfileCatalogId AS NVARCHAR(36)) AS profileCatalogId,
     p.TechnologyProfile AS technologyProfile,
+    CAST(p.TechnologyProfileCatalogId AS NVARCHAR(36)) AS technologyProfileCatalogId,
     p.CurrentTechnology AS currentTechnology,
+    CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS currentTechnologyCatalogId,
     p.Expertise AS expertise,
     c.Status AS status,
     CONVERT(VARCHAR(10), c.StartDate, 23) AS startDate,
@@ -37,8 +40,11 @@ function bindPerson(request: sql.Request, input: CollaboratorInput) {
     .input('firstName', sql.NVarChar(120), input.firstName)
     .input('lastName', sql.NVarChar(180), input.lastName)
     .input('profile', sql.NVarChar(120), input.profile)
+    .input('profileCatalogId', sql.UniqueIdentifier, input.profileCatalogId)
     .input('technologyProfile', sql.NVarChar(120), input.technologyProfile)
+    .input('technologyProfileCatalogId', sql.UniqueIdentifier, input.technologyProfileCatalogId)
     .input('currentTechnology', sql.NVarChar(120), input.currentTechnology)
+    .input('currentTechnologyCatalogId', sql.UniqueIdentifier, input.currentTechnologyCatalogId)
     .input('expertise', sql.NVarChar(40), input.expertise)
     .input('hireDate', sql.Date, input.hireDate)
     .input('notes', sql.NVarChar(2000), input.notes);
@@ -67,8 +73,8 @@ export class CollaboratorRepository {
       await bindPerson(new sql.Request(transaction), input)
         .input('personId', sql.UniqueIdentifier, personId)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`INSERT INTO bbva.Person (Id, SofttekCode, CorporateUser, Email, FirstName, LastName, Profile, TechnologyProfile, CurrentTechnology, Expertise, HireDate, Notes, CreatedByEmail, UpdatedByEmail)
-                VALUES (@personId,@softtekCode,@corporateUser,@email,@firstName,@lastName,@profile,@technologyProfile,@currentTechnology,@expertise,@hireDate,@notes,@actorEmail,@actorEmail);`);
+        .query(`INSERT INTO bbva.Person (Id, SofttekCode, CorporateUser, Email, FirstName, LastName, Profile, ProfileCatalogId, TechnologyProfile, TechnologyProfileCatalogId, CurrentTechnology, CurrentTechnologyCatalogId, Expertise, HireDate, Notes, CreatedByEmail, UpdatedByEmail)
+                VALUES (@personId,@softtekCode,@corporateUser,@email,@firstName,@lastName,@profile,@profileCatalogId,@technologyProfile,@technologyProfileCatalogId,@currentTechnology,@currentTechnologyCatalogId,@expertise,@hireDate,@notes,@actorEmail,@actorEmail);`);
       await new sql.Request(transaction)
         .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
         .input('personId', sql.UniqueIdentifier, personId)
@@ -93,7 +99,7 @@ export class CollaboratorRepository {
       await bindPerson(new sql.Request(transaction), input)
         .input('personId', sql.UniqueIdentifier, current.personId)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`UPDATE bbva.Person SET SofttekCode=@softtekCode,CorporateUser=@corporateUser,Email=@email,FirstName=@firstName,LastName=@lastName,Profile=@profile,TechnologyProfile=@technologyProfile,CurrentTechnology=@currentTechnology,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@personId;`);
+        .query(`UPDATE bbva.Person SET SofttekCode=@softtekCode,CorporateUser=@corporateUser,Email=@email,FirstName=@firstName,LastName=@lastName,Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@personId;`);
       await new sql.Request(transaction)
         .input('id', sql.UniqueIdentifier, id)
         .input('status', sql.NVarChar(20), input.startDate ? 'ACTIVE' : 'INACTIVE')

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
 
 type BBVAAlertTone = 'success' | 'error' | 'info' | 'warning';
@@ -110,9 +111,9 @@ export const BBVAAlert: React.FC<BBVAAlertProps> = ({
 
   if (!visible) return null;
 
-  return (
+  const toast = (
     <div
-      className="fixed right-3 top-[68px] z-[1400] w-[min(330px,calc(100vw-1.5rem))] sm:right-4"
+      className="fixed right-3 top-[66px] z-[2000] w-[min(320px,calc(100vw-1.5rem))] sm:right-4"
       role={tone === 'error' ? 'alert' : 'status'}
       aria-live={tone === 'error' ? 'assertive' : 'polite'}
       onMouseEnter={() => setPaused(true)}
@@ -162,4 +163,8 @@ export const BBVAAlert: React.FC<BBVAAlertProps> = ({
       </div>
     </div>
   );
+
+  // Renderizar en document.body evita que transforms/animaciones de la vista
+  // desplacen temporalmente una notificación con position: fixed.
+  return typeof document === 'undefined' ? toast : createPortal(toast, document.body);
 };

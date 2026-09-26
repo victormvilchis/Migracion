@@ -7,6 +7,7 @@ import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVAStatusBadge, certificationStatusLabel, type CertificationStatus } from '../../componentsBBVATalent/BBVAStatusBadge';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useCollaborators, useDeleteCollaborator } from '../hooks/useCollaborators';
+import { useCatalogOptions } from '../hooks/useCatalog';
 import type { Collaborator } from '../types/collaborator';
 
 function roleDisplay(profile?: string | null, technologyProfile?: string | null) {
@@ -37,6 +38,8 @@ function certificationStatus(endDate?: string | null): CertificationStatus {
 
 export const CollaboratorsPage: React.FC = () => {
   const query = useCollaborators();
+  const profilesQuery = useCatalogOptions('profiles');
+  const technologiesQuery = useCatalogOptions('technologies');
   const deleteMutation = useDeleteCollaborator();
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,8 +60,8 @@ export const CollaboratorsPage: React.FC = () => {
   }, [location.pathname, location.state, navigate]);
 
   const items = query.data?.items ?? [];
-  const roleOptions = useMemo(() => Array.from(new Set(items.map((item) => roleDisplay(item.profile, item.technologyProfile)).filter((value) => value !== 'N/A'))).sort(), [items]);
-  const technologyOptions = useMemo(() => Array.from(new Set(items.map((item) => item.currentTechnology).filter((value): value is string => Boolean(value)))).sort(), [items]);
+  const roleOptions = profilesQuery.data?.items ?? [];
+  const technologyOptions = technologiesQuery.data?.items ?? [];
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -69,8 +72,8 @@ export const CollaboratorsPage: React.FC = () => {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
       return matchesSearch
-        && (roleFilter === 'ALL' || role === roleFilter)
-        && (technologyFilter === 'ALL' || item.currentTechnology === technologyFilter)
+        && (roleFilter === 'ALL' || item.profileCatalogId === roleFilter)
+        && (technologyFilter === 'ALL' || item.currentTechnologyCatalogId === technologyFilter)
         && (statusFilter === 'ALL' || cert === statusFilter);
     });
   }, [items, roleFilter, search, statusFilter, technologyFilter]);
@@ -101,11 +104,11 @@ export const CollaboratorsPage: React.FC = () => {
         </div>
         <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className={selectClass} aria-label="Filtrar por rol">
           <option value="ALL">Todos los roles</option>
-          {roleOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          {roleOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
         </select>
         <select value={technologyFilter} onChange={(event) => setTechnologyFilter(event.target.value)} className={selectClass} aria-label="Filtrar por tecnología">
           <option value="ALL">Todas las tecnologías</option>
-          {technologyOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          {technologyOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
         </select>
         <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'ALL' | CertificationStatus)} className={selectClass} aria-label="Filtrar por estatus de certificación">
           <option value="ALL">Todos los estatus</option>

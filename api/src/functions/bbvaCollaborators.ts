@@ -2,14 +2,16 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { getCurrentUser } from '../lib/authzLocal.js';
 import { CollaboratorService } from '../lib/bbvaCollaboratorService.js';
 import { bbvaErrorResponse, readBbvaJson } from '../lib/bbvaHttp.js';
+import { assertBbvaPermission } from '../lib/bbvaAuthz.js';
 
 const service = new CollaboratorService();
 
 export async function collaboratorsCollectionHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, request.method === 'GET' ? 'COLLABORATOR_READ' : 'COLLABORATOR_WRITE');
     if (request.method === 'GET') return { status: 200, jsonBody: { items: await service.list(), storage: 'sql-server' } };
     if (request.method === 'POST') {
-      const user = getCurrentUser(request);
       const item = await service.create(await readBbvaJson(request), user.email);
       return { status: 201, jsonBody: { item, storage: 'sql-server' } };
     }
@@ -19,6 +21,8 @@ export async function collaboratorsCollectionHandler(request: HttpRequest, conte
 
 export async function collaboratorItemHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, request.method === 'GET' ? 'COLLABORATOR_READ' : 'COLLABORATOR_WRITE');
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
     if (request.method === 'GET') {
@@ -26,7 +30,6 @@ export async function collaboratorItemHandler(request: HttpRequest, context: Inv
       return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Colaborador no encontrado.' } };
     }
     if (request.method === 'PUT') {
-      const user = getCurrentUser(request);
       const item = await service.update(id, await readBbvaJson(request), user.email);
       return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Colaborador no encontrado.' } };
     }

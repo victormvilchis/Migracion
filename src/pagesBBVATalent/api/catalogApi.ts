@@ -1,4 +1,4 @@
-import type { CatalogPageResponse, CatalogPayload, CatalogRecord, CatalogStatus, CatalogType } from '../types/catalog';
+import type { CatalogOption, CatalogPageResponse, CatalogPayload, CatalogRecord, CatalogStatus, CatalogType } from '../types/catalog';
 
 async function parseJson(response: Response) {
   const body = await response.json().catch(() => ({}));
@@ -29,6 +29,10 @@ export async function listCatalog(type: CatalogType, query: CatalogListQuery): P
 
 export async function getCatalogItem(type: CatalogType, id: string): Promise<{ item: CatalogRecord }> {
   return parseJson(await fetch(`/api/bbva/catalogs/${type}/${id}`));
+}
+
+export async function listCatalogOptions(type: CatalogType): Promise<{ items: CatalogOption[] }> {
+  return parseJson(await fetch(`/api/bbva/catalog-options/${type}`));
 }
 
 export async function createCatalogItem(type: CatalogType, payload: CatalogPayload): Promise<{ item: CatalogRecord }> {

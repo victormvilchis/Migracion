@@ -10,6 +10,7 @@ import {
   type TalentType,
 } from './bbvaTalentDomain.js';
 import { TalentRepository } from './bbvaTalentRepository.js';
+import { resolveProfessionalCatalogReferences } from './bbvaProfessionalCatalogService.js';
 
 const repository = new TalentRepository();
 const allowedCvExtensions = new Set(['.pdf', '.doc', '.docx', '.ppt', '.pptx']);
@@ -52,7 +53,7 @@ function normalizeDate(value: unknown, field: string, required = false): string 
   return candidate;
 }
 
-function normalizePayload(payload: any): TalentInput {
+async function normalizePayload(payload: any): Promise<TalentInput> {
   const talentType = normalizeType(payload?.talentType);
   const email = requiredText(payload?.email, 'El correo electrónico', 255).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('El correo electrónico no tiene un formato válido.');
@@ -60,13 +61,16 @@ function normalizePayload(payload: any): TalentInput {
   const firstName = requiredText(payload?.firstName, 'El nombre', 120);
   const lastName = requiredText(payload?.lastName, 'Los apellidos', 180);
   const softtekCode = cleanText(payload?.softtekCode, 80)?.toUpperCase() ?? null;
-  const profile = cleanText(payload?.profile, 120);
-  const currentTechnology = cleanText(payload?.currentTechnology, 120);
+  const catalogs = await resolveProfessionalCatalogReferences(payload ?? {});
 
   if (talentType === 'ACADEMY') {
     if (!softtekCode) throw new Error('El Código Softtek es obligatorio para Academia.');
-    if (!profile) throw new Error('El perfil es obligatorio para Academia.');
-    if (!currentTechnology) throw new Error('La tecnología es obligatoria para Academia.');
+    if (!catalogs.profileCatalogId) throw new Error('El perfil es obligatorio para Academia y debe seleccionarse del catálogo.');
+    if (!catalogs.currentTechnologyCatalogId) throw new Error('La tecnología es obligatoria para Academia y debe seleccionarse del catálogo.');
+  } else {
+    if (!catalogs.profileCatalogId) throw new Error('El perfil es obligatorio y debe seleccionarse del catálogo.');
+    if (!catalogs.technologyProfileCatalogId) throw new Error('El perfil tecnológico es obligatorio y debe seleccionarse del catálogo.');
+    if (!catalogs.currentTechnologyCatalogId) throw new Error('La tecnología actual es obligatoria y debe seleccionarse del catálogo.');
   }
 
   const platformStartDate = normalizeDate(payload?.platformStartDate, 'Inicio de vigencia');
@@ -82,10 +86,13 @@ function normalizePayload(payload: any): TalentInput {
     email,
     firstName,
     lastName,
-    profile,
-    technologyProfile: cleanText(payload?.technologyProfile, 120),
-    currentTechnology,
-    expertise: cleanText(payload?.expertise, 40)?.toUpperCase() ?? null,
+    profile: catalogs.profile,
+    profileCatalogId: catalogs.profileCatalogId,
+    technologyProfile: catalogs.technologyProfile,
+    technologyProfileCatalogId: catalogs.technologyProfileCatalogId,
+    currentTechnology: catalogs.currentTechnology,
+    currentTechnologyCatalogId: catalogs.currentTechnologyCatalogId,
+    expertise: cleanText(payload?.expertise, 40)?.toUpperCase() ?? catalogs.profileSeniority,
     stage: normalizeStage(payload?.stage, talentType),
     active: payload?.active === undefined ? true : Boolean(payload.active),
     platformStartDate,
@@ -124,14 +131,14 @@ function normalizeCv(payload: any): TalentCvInput {
 export class TalentService {
   list(): Promise<TalentRecord[]> { return repository.list(); }
   get(id: string): Promise<TalentRecord | null> { return repository.findById(id); }
-  create(payload: any, actorEmail: string): Promise<TalentRecord> {
-    const normalized = normalizePayload(payload);
+  async create(payload: any, actorEmail: string): Promise<TalentRecord> {
+    const normalized = await normalizePayload(payload);
     if (normalized.talentType === 'BBVA_EXIT') {
       throw new Error('La Baja de BBVA no puede registrarse manualmente; se genera desde Colaboradores.');
     }
     return repository.create(normalized, actorEmail);
   }
-  update(id: string, payload: any, actorEmail: string): Promise<TalentRecord | null> { return repository.update(id, normalizePayload(payload), actorEmail); }
+  async update(id: string, payload: any, actorEmail: string): Promise<TalentRecord | null> { return repository.update(id, await normalizePayload(payload), actorEmail); }
 
   updateStage(id: string, stageValue: unknown, actorEmail: string): Promise<TalentRecord | null> {
     const stage = String(stageValue ?? '').trim().toUpperCase() as TalentStage;

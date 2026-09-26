@@ -30,8 +30,11 @@ export interface TalentRecord {
   lastName: string | null;
   fullName: string;
   profile: string | null;
+  profileCatalogId: string | null;
   technologyProfile: string | null;
+  technologyProfileCatalogId: string | null;
   currentTechnology: string | null;
+  currentTechnologyCatalogId: string | null;
   expertise: string | null;
   stage: TalentStage;
   active: boolean;
@@ -56,8 +59,11 @@ export interface TalentInput {
   firstName: string;
   lastName?: string | null;
   profile?: string | null;
+  profileCatalogId?: string | null;
   technologyProfile?: string | null;
+  technologyProfileCatalogId?: string | null;
   currentTechnology?: string | null;
+  currentTechnologyCatalogId?: string | null;
   expertise?: string | null;
   stage: TalentStage;
   active: boolean;

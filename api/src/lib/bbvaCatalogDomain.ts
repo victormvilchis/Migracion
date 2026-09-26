@@ -9,6 +9,7 @@ export interface BbvaCatalogDefinition {
   supportsCode: boolean;
   supportsSeniority: boolean;
   usageColumn?: 'CurrentTechnology' | 'Profile' | 'TechnologyProfile';
+  usageIdColumn?: 'CurrentTechnologyCatalogId' | 'ProfileCatalogId' | 'TechnologyProfileCatalogId';
 }
 
 export interface BbvaCatalogInput {
@@ -30,6 +31,13 @@ export interface BbvaCatalogRecord {
   updatedAt: string;
   createdByEmail: string;
   updatedByEmail: string;
+}
+
+export interface BbvaCatalogOption {
+  id: string;
+  name: string;
+  code: string | null;
+  seniority: string | null;
 }
 
 export interface BbvaCatalogListParams {
@@ -66,6 +74,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
     supportsCode: true,
     supportsSeniority: false,
     usageColumn: 'CurrentTechnology',
+    usageIdColumn: 'CurrentTechnologyCatalogId',
   },
   profiles: {
     type: 'profiles',
@@ -75,6 +84,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
     supportsCode: true,
     supportsSeniority: true,
     usageColumn: 'Profile',
+    usageIdColumn: 'ProfileCatalogId',
   },
   'technology-profiles': {
     type: 'technology-profiles',
@@ -84,6 +94,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
     supportsCode: false,
     supportsSeniority: false,
     usageColumn: 'TechnologyProfile',
+    usageIdColumn: 'TechnologyProfileCatalogId',
   },
 };
 

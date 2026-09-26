@@ -9,6 +9,7 @@ import { TalentTypeBadge } from '../../componentsBBVATalent/TalentTypeBadge';
 import { downloadCvDocument, viewCvDocument } from '../lib/talentCv';
 import { roleDisplay, technologyDisplay } from '../lib/talentDisplay';
 import { useDeleteTalent, useTalentList } from '../hooks/useTalent';
+import { useCatalogOptions } from '../hooks/useCatalog';
 import { talentApi } from '../api/talentApi';
 import { TALENT_TYPES, TALENT_TYPE_LABELS, type Talent, type TalentType } from '../types/talent';
 
@@ -17,6 +18,8 @@ interface LocationState { message?: string; }
 export const TalentPage: React.FC = () => {
   const listQuery = useTalentList();
   const deleteMutation = useDeleteTalent();
+  const profilesQuery = useCatalogOptions('profiles');
+  const technologiesQuery = useCatalogOptions('technologies');
   const navigate = useNavigate();
   const location = useLocation();
   const [search, setSearch] = useState('');
@@ -34,8 +37,8 @@ export const TalentPage: React.FC = () => {
   }, [location.pathname, location.state, navigate]);
 
   const items = listQuery.data?.items ?? [];
-  const profileOptions = useMemo(() => Array.from(new Set(items.map((item) => item.profile).filter((value): value is string => Boolean(value)))).sort(), [items]);
-  const technologyOptions = useMemo(() => Array.from(new Set(items.map((item) => item.currentTechnology).filter((value): value is string => Boolean(value)))).sort(), [items]);
+  const profileOptions = profilesQuery.data?.items ?? [];
+  const technologyOptions = technologiesQuery.data?.items ?? [];
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -44,8 +47,8 @@ export const TalentPage: React.FC = () => {
       const matchesSearch = !term || values.filter(Boolean).some((value) => String(value).toLowerCase().includes(term));
       return matchesSearch
         && (typeFilter === 'ALL' || item.talentType === typeFilter)
-        && (profileFilter === 'ALL' || item.profile === profileFilter)
-        && (technologyFilter === 'ALL' || item.currentTechnology === technologyFilter);
+        && (profileFilter === 'ALL' || item.profileCatalogId === profileFilter)
+        && (technologyFilter === 'ALL' || item.currentTechnologyCatalogId === technologyFilter);
     });
   }, [items, profileFilter, search, technologyFilter, typeFilter]);
 
@@ -98,11 +101,11 @@ export const TalentPage: React.FC = () => {
         </select>
         <select value={profileFilter} onChange={(event) => setProfileFilter(event.target.value)} className={selectClass} aria-label="Filtrar por perfil">
           <option value="ALL">Todos los perfiles</option>
-          {profileOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          {profileOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
         </select>
         <select value={technologyFilter} onChange={(event) => setTechnologyFilter(event.target.value)} className={selectClass} aria-label="Filtrar por tecnología">
           <option value="ALL">Todas las tecnologías</option>
-          {technologyOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          {technologyOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
         </select>
       </div>
 

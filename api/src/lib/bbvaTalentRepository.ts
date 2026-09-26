@@ -14,8 +14,11 @@ const TALENT_SELECT = `
     p.LastName AS lastName,
     LTRIM(RTRIM(CONCAT(p.FirstName, N' ', ISNULL(p.LastName, N'')))) AS fullName,
     p.Profile AS profile,
+    CAST(p.ProfileCatalogId AS NVARCHAR(36)) AS profileCatalogId,
     p.TechnologyProfile AS technologyProfile,
+    CAST(p.TechnologyProfileCatalogId AS NVARCHAR(36)) AS technologyProfileCatalogId,
     p.CurrentTechnology AS currentTechnology,
+    CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS currentTechnologyCatalogId,
     p.Expertise AS expertise,
     t.Stage AS stage,
     t.Active AS active,
@@ -68,8 +71,11 @@ function bindPerson(request: sql.Request, input: TalentInput) {
     .input('firstName', sql.NVarChar(120), input.firstName)
     .input('lastName', sql.NVarChar(180), input.lastName || null)
     .input('profile', sql.NVarChar(120), input.profile || null)
+    .input('profileCatalogId', sql.UniqueIdentifier, input.profileCatalogId || null)
     .input('technologyProfile', sql.NVarChar(120), input.technologyProfile || null)
+    .input('technologyProfileCatalogId', sql.UniqueIdentifier, input.technologyProfileCatalogId || null)
     .input('currentTechnology', sql.NVarChar(120), input.currentTechnology || null)
+    .input('currentTechnologyCatalogId', sql.UniqueIdentifier, input.currentTechnologyCatalogId || null)
     .input('expertise', sql.NVarChar(40), input.expertise || null)
     .input('hireDate', sql.Date, input.hireDate || null)
     .input('notes', sql.NVarChar(2000), input.notes || null);
@@ -126,13 +132,13 @@ export class TalentRepository {
       const personRequest = bindPerson(new sql.Request(transaction), input).input('actorEmail', sql.NVarChar(255), actorEmail);
       const personResult = await personRequest.query(`
         INSERT INTO bbva.Person (
-          SofttekCode, CorporateUser, Email, FirstName, LastName, Profile, TechnologyProfile,
-          CurrentTechnology, Expertise, HireDate, Notes, CreatedByEmail, UpdatedByEmail
+          SofttekCode, CorporateUser, Email, FirstName, LastName, Profile, ProfileCatalogId, TechnologyProfile, TechnologyProfileCatalogId,
+          CurrentTechnology, CurrentTechnologyCatalogId, Expertise, HireDate, Notes, CreatedByEmail, UpdatedByEmail
         )
         OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
         VALUES (
-          @softtekCode, @corporateUser, @email, @firstName, @lastName, @profile, @technologyProfile,
-          @currentTechnology, @expertise, @hireDate, @notes, @actorEmail, @actorEmail
+          @softtekCode, @corporateUser, @email, @firstName, @lastName, @profile, @profileCatalogId, @technologyProfile, @technologyProfileCatalogId,
+          @currentTechnology, @currentTechnologyCatalogId, @expertise, @hireDate, @notes, @actorEmail, @actorEmail
         );
       `);
       const personId = String(personResult.recordset[0].id);
@@ -183,9 +189,9 @@ export class TalentRepository {
         .query(`
           UPDATE bbva.Person
           SET SofttekCode=@softtekCode, CorporateUser=@corporateUser, Email=@email,
-              FirstName=@firstName, LastName=@lastName, Profile=@profile,
-              TechnologyProfile=@technologyProfile, CurrentTechnology=@currentTechnology,
-              Expertise=@expertise, HireDate=@hireDate, Notes=@notes,
+              FirstName=@firstName, LastName=@lastName, Profile=@profile, ProfileCatalogId=@profileCatalogId,
+              TechnologyProfile=@technologyProfile, TechnologyProfileCatalogId=@technologyProfileCatalogId, CurrentTechnology=@currentTechnology,
+              CurrentTechnologyCatalogId=@currentTechnologyCatalogId, Expertise=@expertise, HireDate=@hireDate, Notes=@notes,
               UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
           WHERE Id=@personId;
         `);

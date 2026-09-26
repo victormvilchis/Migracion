@@ -44,7 +44,7 @@ export interface BBVANavGroup {
  *   (perfiles aplicables, vigencia, tiempo para completar y obligatoriedad).
  * - Seguimiento de certificaciones es un solo módulo.
  * - Métricas de certificaciones es un solo módulo.
- * - Estudio agrupa Banco de Preguntas y Evaluaciones con sus módulos NexoSkill.
+ * - Estudio agrupa Banco de Preguntas y Evaluaciones con sus módulos funcionales.
  * - El asistente IA es global al workspace y no aparece como opción del menú.
  */
 export const bbvaNavigation: BBVANavGroup[] = [
@@ -146,7 +146,7 @@ export const bbvaNavigation: BBVANavGroup[] = [
             label: 'Certificaciones',
             path: '/bbva/admin/catalogs/certifications',
             description: 'Catálogo y reglas por certificación.',
-            status: 'planned',
+            status: 'ready',
           },
         ],
       },

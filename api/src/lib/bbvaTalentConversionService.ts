@@ -9,9 +9,9 @@ export class TalentConversionService {
   async convert(id: string, actorEmail: string) {
     const current = await talentRepository.findById(id);
     if (!current) return null;
-    if (!current.profile) throw new Error('El Perfil es obligatorio para realizar la conversión.');
-    if (!current.technologyProfile) throw new Error('El Perfil tecnológico es obligatorio para realizar la conversión.');
-    if (!current.currentTechnology) throw new Error('La Tecnología actual es obligatoria para realizar la conversión.');
+    if (!current.profileCatalogId) throw new Error('El Perfil es obligatorio y debe provenir del catálogo para realizar la conversión.');
+    if (!current.technologyProfileCatalogId) throw new Error('El Perfil tecnológico es obligatorio y debe provenir del catálogo para realizar la conversión.');
+    if (!current.currentTechnologyCatalogId) throw new Error('La Tecnología actual es obligatoria y debe provenir del catálogo para realizar la conversión.');
     return conversionRepository.convert(current, actorEmail);
   }
 }

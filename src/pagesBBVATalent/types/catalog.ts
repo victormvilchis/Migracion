@@ -15,6 +15,13 @@ export interface CatalogRecord {
   updatedByEmail: string;
 }
 
+export interface CatalogOption {
+  id: string;
+  name: string;
+  code: string | null;
+  seniority: string | null;
+}
+
 export interface CatalogPayload {
   name: string;
   code?: string | null;

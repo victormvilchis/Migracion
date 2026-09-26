@@ -4,6 +4,7 @@ import type {
   BbvaCatalogDefinition,
   BbvaCatalogInput,
   BbvaCatalogListParams,
+  BbvaCatalogOption,
   BbvaCatalogPage,
   BbvaCatalogRecord,
   BbvaCatalogStatus,
@@ -18,7 +19,9 @@ const SORT_MAP = {
 
 function usageExpression(definition: BbvaCatalogDefinition): string {
   if (!definition.usageColumn) return 'CAST(0 AS INT)';
-  return `(SELECT COUNT_BIG(1) FROM bbva.Person p WHERE UPPER(LTRIM(RTRIM(ISNULL(p.${definition.usageColumn}, N'')))) = UPPER(LTRIM(RTRIM(c.Name))))`;
+  const byName = `UPPER(LTRIM(RTRIM(ISNULL(p.${definition.usageColumn}, N'')))) = UPPER(LTRIM(RTRIM(c.Name)))`;
+  if (!definition.usageIdColumn) return `(SELECT COUNT_BIG(1) FROM bbva.Person p WHERE ${byName})`;
+  return `(SELECT COUNT_BIG(1) FROM bbva.Person p WHERE p.${definition.usageIdColumn}=c.Id OR (p.${definition.usageIdColumn} IS NULL AND ${byName}))`;
 }
 
 function selectColumns(definition: BbvaCatalogDefinition): string {
@@ -53,28 +56,24 @@ export class BbvaCatalogRepository {
     if (status !== 'ALL') where.push('c.Status = @status');
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-    const request = pool.request()
+    const countResult = await pool.request()
       .input('search', sql.NVarChar(220), `%${search}%`)
       .input('status', sql.NVarChar(16), status === 'ALL' ? null : status)
-      .input('offset', sql.Int, offset)
-      .input('size', sql.Int, size);
-
-    const countResult = await request.query(`SELECT COUNT(1) AS total FROM ${definition.tableName} c ${whereSql};`);
+      .query(`SELECT COUNT(1) AS total FROM ${definition.tableName} c ${whereSql};`);
     const total = Number(countResult.recordset[0]?.total ?? 0);
 
-    const dataRequest = pool.request()
+    const result = await pool.request()
       .input('search', sql.NVarChar(220), `%${search}%`)
       .input('status', sql.NVarChar(16), status === 'ALL' ? null : status)
       .input('offset', sql.Int, offset)
-      .input('size', sql.Int, size);
-
-    const result = await dataRequest.query(`
-      SELECT ${selectColumns(definition)}
-      FROM ${definition.tableName} c
-      ${whereSql}
-      ORDER BY ${sortColumn} ${direction}, c.Id ASC
-      OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;
-    `);
+      .input('size', sql.Int, size)
+      .query(`
+        SELECT ${selectColumns(definition)}
+        FROM ${definition.tableName} c
+        ${whereSql}
+        ORDER BY ${sortColumn} ${direction}, c.Id ASC
+        OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;
+      `);
 
     return {
       items: result.recordset as BbvaCatalogRecord[],
@@ -85,6 +84,17 @@ export class BbvaCatalogRepository {
     };
   }
 
+  async listOptions(definition: BbvaCatalogDefinition): Promise<BbvaCatalogOption[]> {
+    const pool = await getDbConnection();
+    const result = await pool.request().query(`
+      SELECT CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Code AS code, Seniority AS seniority
+      FROM ${definition.tableName}
+      WHERE Status=N'ACTIVE'
+      ORDER BY Name ASC, Id ASC;
+    `);
+    return result.recordset as BbvaCatalogOption[];
+  }
+
   async findById(definition: BbvaCatalogDefinition, id: string): Promise<BbvaCatalogRecord | null> {
     const pool = await getDbConnection();
     const result = await pool.request().input('id', sql.UniqueIdentifier, id).query(`
@@ -93,6 +103,26 @@ export class BbvaCatalogRepository {
       WHERE c.Id=@id;
     `);
     return (result.recordset[0] as BbvaCatalogRecord | undefined) ?? null;
+  }
+
+  async findActiveOptionById(definition: BbvaCatalogDefinition, id: string): Promise<BbvaCatalogOption | null> {
+    const pool = await getDbConnection();
+    const result = await pool.request().input('id', sql.UniqueIdentifier, id).query(`
+      SELECT CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Code AS code, Seniority AS seniority
+      FROM ${definition.tableName}
+      WHERE Id=@id AND Status=N'ACTIVE';
+    `);
+    return (result.recordset[0] as BbvaCatalogOption | undefined) ?? null;
+  }
+
+  async findActiveOptionByName(definition: BbvaCatalogDefinition, name: string): Promise<BbvaCatalogOption | null> {
+    const pool = await getDbConnection();
+    const result = await pool.request().input('name', sql.NVarChar(180), name).query(`
+      SELECT TOP 1 CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Code AS code, Seniority AS seniority
+      FROM ${definition.tableName}
+      WHERE Status=N'ACTIVE' AND UPPER(LTRIM(RTRIM(Name)))=UPPER(LTRIM(RTRIM(@name)));
+    `);
+    return (result.recordset[0] as BbvaCatalogOption | undefined) ?? null;
   }
 
   async create(definition: BbvaCatalogDefinition, input: BbvaCatalogInput, actorEmail: string): Promise<BbvaCatalogRecord> {

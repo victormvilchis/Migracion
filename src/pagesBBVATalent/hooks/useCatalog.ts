@@ -4,6 +4,7 @@ import {
   deleteCatalogItem,
   getCatalogItem,
   listCatalog,
+  listCatalogOptions,
   updateCatalogItem,
   updateCatalogStatus,
   type CatalogListQuery,
@@ -18,6 +19,10 @@ export function useCatalogList(type: CatalogType, query: CatalogListQuery) {
 
 export function useCatalogItem(type: CatalogType, id?: string) {
   return useQuery({ queryKey: [...key(type), 'item', id], queryFn: () => getCatalogItem(type, id!), enabled: Boolean(id) });
+}
+
+export function useCatalogOptions(type: CatalogType) {
+  return useQuery({ queryKey: [...key(type), 'options'], queryFn: () => listCatalogOptions(type), staleTime: 60_000 });
 }
 
 export function useCreateCatalogItem(type: CatalogType) {
