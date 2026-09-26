@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
+import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { BBVAStatusBadge, certificationStatusLabel, type CertificationStatus } from '../../componentsBBVATalent/BBVAStatusBadge';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useCollaborators, useDeleteCollaborator } from '../hooks/useCollaborators';
@@ -81,8 +82,6 @@ export const CollaboratorsPage: React.FC = () => {
   useEffect(() => setPage(0), [search, roleFilter, technologyFilter, statusFilter, size]);
   const paged = useMemo(() => filtered.slice(page * size, page * size + size), [filtered, page, size]);
 
-  const selectClass = 'h-8 rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-800 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
-
   return (
     <div className="space-y-3 animate-fade-in">
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -97,23 +96,14 @@ export const CollaboratorsPage: React.FC = () => {
       {message && <BBVAAlert tone="success" onClose={() => setMessage(null)}>{message}</BBVAAlert>}
       {actionError && <BBVAAlert tone="error" onClose={() => setActionError(null)}>{actionError}</BBVAAlert>}
 
-      <div className="grid gap-2 lg:grid-cols-[minmax(260px,1fr)_minmax(180px,0.6fr)_minmax(160px,0.45fr)_minmax(155px,0.42fr)]">
+      <div className="grid gap-2 lg:grid-cols-[minmax(260px,1fr)_minmax(230px,0.58fr)_minmax(220px,0.52fr)_minmax(220px,0.48fr)]">
         <div className="relative">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, correo, IS o usuario" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
         </div>
-        <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className={selectClass} aria-label="Filtrar por rol">
-          <option value="ALL">Todos los roles</option>
-          {roleOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-        </select>
-        <select value={technologyFilter} onChange={(event) => setTechnologyFilter(event.target.value)} className={selectClass} aria-label="Filtrar por tecnología">
-          <option value="ALL">Todas las tecnologías</option>
-          {technologyOptions.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-        </select>
-        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'ALL' | CertificationStatus)} className={selectClass} aria-label="Filtrar por estatus de certificación">
-          <option value="ALL">Todos los estatus</option>
-          {(['OK', 'EXPIRING', 'EXPIRED', 'NA'] as CertificationStatus[]).map((status) => <option key={status} value={status}>{certificationStatusLabel[status]}</option>)}
-        </select>
+        <BBVASearchableSelect value={roleFilter} onChange={setRoleFilter} options={[{ value: 'ALL', label: 'Todos los roles' }, ...roleOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Filtrar por rol" />
+        <BBVASearchableSelect value={technologyFilter} onChange={setTechnologyFilter} options={[{ value: 'ALL', label: 'Todas las tecnologías' }, ...technologyOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Filtrar por tecnología" />
+        <BBVASearchableSelect value={statusFilter} onChange={(value) => setStatusFilter(value as 'ALL' | CertificationStatus)} options={[{ value: 'ALL', label: 'Todos los estatus' }, ...(['OK', 'EXPIRING', 'EXPIRED', 'NA'] as CertificationStatus[]).map((status) => ({ value: status, label: certificationStatusLabel[status] }))]} ariaLabel="Filtrar por estatus de certificación" />
       </div>
 
       {query.isLoading ? (

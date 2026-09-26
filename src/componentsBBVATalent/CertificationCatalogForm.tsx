@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save, X } from 'lucide-react';
 import { useCatalogOptions } from '../pagesBBVATalent/hooks/useCatalog';
 import { BBVAAlert } from './BBVAAlert';
+import { BBVASearchableSelect } from './BBVASearchableSelect';
 import {
   CERTIFICATION_LEVEL_LABELS,
   CERTIFICATION_LEVELS,
@@ -20,10 +21,10 @@ interface Props {
   onCancel: () => void;
 }
 
-const fieldClass = 'h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500/15';
-const areaClass = 'min-h-[64px] w-full resize-y rounded-md border border-slate-300 bg-white px-2.5 py-2 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500/15';
-const labelClass = 'mb-1 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500';
-const sectionClass = 'rounded-lg border border-slate-200 bg-white p-3 shadow-sm';
+const fieldClass = 'h-9 w-full rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
+const areaClass = 'min-h-[90px] w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
+const labelClass = 'mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:text-slate-400';
+const sectionClass = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75';
 
 const initialPayload = (selected?: CertificationCatalogRecord | null): CertificationCatalogPayload => ({
   code: selected?.code ?? '',
@@ -46,8 +47,6 @@ const initialPayload = (selected?: CertificationCatalogRecord | null): Certifica
   requirementGroup: selected?.requirementGroup ?? '',
   requirementGroupMinimum: selected?.requirementGroupMinimum ?? null,
   allowedLevels: selected?.allowedLevels ?? ['JR', 'STD', 'SR'],
-  // Se conserva de forma transparente al editar registros existentes. La asignación
-  // por perfil deja de ser parte del formulario operativo solicitado.
   profileRules: selected?.profileRules.map((rule) => ({ profileId: rule.profileId, mandatory: rule.mandatory })) ?? [],
 });
 
@@ -103,42 +102,42 @@ export const CertificationCatalogForm: React.FC<Props> = ({ selected, saving, on
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      {validation && <BBVAAlert tone="error" onClose={() => setValidation(null)}>{validation}</BBVAAlert>}
+      {validation ? <BBVAAlert tone="error" onClose={() => setValidation(null)}>{validation}</BBVAAlert> : null}
 
       <section className={sectionClass}>
-        <div className="grid gap-2 md:grid-cols-12">
+        <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-5"><span className={labelClass}>Certificación *</span><input className={fieldClass} value={values.name} maxLength={180} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} /></label>
-          <label className="md:col-span-3"><span className={labelClass}>Tipo *</span><select className={fieldClass} value={values.certificationType} onChange={(e) => updateType(e.target.value as CertificationType)}>{CERTIFICATION_TYPES.map((type) => <option key={type} value={type}>{CERTIFICATION_TYPE_LABELS[type]}</option>)}</select></label>
+          <label className="md:col-span-3"><span className={labelClass}>Tipo *</span><BBVASearchableSelect value={values.certificationType} onChange={(value) => updateType(value as CertificationType)} options={CERTIFICATION_TYPES.map((type) => ({ value: type, label: CERTIFICATION_TYPE_LABELS[type] }))} ariaLabel="Tipo de certificación" /></label>
           <label className="md:col-span-4"><span className={labelClass}>Certificadora</span><input className={fieldClass} value={values.provider} maxLength={120} onChange={(e) => setValues((v) => ({ ...v, provider: e.target.value }))} placeholder="Ej. NETEC" /></label>
-          <label className="md:col-span-5"><span className={labelClass}>Tecnología {values.certificationType === 'TECHNOLOGICAL' ? '*' : ''}</span><select className={fieldClass} value={values.technologyId} disabled={values.certificationType !== 'TECHNOLOGICAL'} onChange={(e) => setValues((v) => ({ ...v, technologyId: e.target.value }))}><option value="">Sin tecnología</option>{technologies.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+          <label className="md:col-span-5"><span className={labelClass}>Tecnología {values.certificationType === 'TECHNOLOGICAL' ? '*' : ''}</span><BBVASearchableSelect value={values.technologyId} onChange={(value) => setValues((v) => ({ ...v, technologyId: value }))} options={[{ value: '', label: 'Sin tecnología' }, ...technologies.map((item) => ({ value: item.id, label: item.name }))]} disabled={values.certificationType !== 'TECHNOLOGICAL'} ariaLabel="Tecnología" /></label>
           <label className="md:col-span-7"><span className={labelClass}>Descripción</span><textarea className={areaClass} value={values.description} maxLength={1000} onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))} /></label>
         </div>
       </section>
 
       <section className={sectionClass}>
-        <div className="grid gap-2 md:grid-cols-12">
+        <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-2"><span className={labelClass}>Vigencia (meses)</span><input className={fieldClass} type="number" min={1} max={240} value={values.validityMonths ?? ''} onChange={(e) => setValues((v) => ({ ...v, validityMonths: e.target.value ? Number(e.target.value) : null }))} placeholder="Sin vencimiento" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Tiempo para completar</span><input className={fieldClass} type="number" min={1} max={240} value={values.initialCompletionMonths ?? ''} onChange={(e) => setValues((v) => ({ ...v, initialCompletionMonths: e.target.value ? Number(e.target.value) : null }))} placeholder="Meses" /></label>
-          <div className="md:col-span-8"><span className={labelClass}>Niveles permitidos</span><div className="flex h-8 items-center gap-3 rounded-md border border-slate-300 bg-slate-50 px-2.5">{CERTIFICATION_LEVELS.map((level) => <label key={level} className="flex items-center gap-1 text-[10px] text-slate-700"><input type="checkbox" className="h-3 w-3 accent-blue-600" checked={values.allowedLevels.includes(level)} onChange={() => toggleLevel(level)} />{CERTIFICATION_LEVEL_LABELS[level]}</label>)}</div></div>
+          <div className="md:col-span-8"><span className={labelClass}>Niveles permitidos</span><div className="grid min-h-9 grid-cols-2 gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 sm:grid-cols-4 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70">{CERTIFICATION_LEVELS.map((level) => <label key={level} className="flex items-center gap-1.5 text-[10px] text-slate-700 [.bbva-dark_&]:text-slate-300"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.allowedLevels.includes(level)} onChange={() => toggleLevel(level)} />{CERTIFICATION_LEVEL_LABELS[level]}</label>)}</div></div>
         </div>
-        <div className="mt-2 grid gap-2 md:grid-cols-12">
+        <div className="mt-3 grid gap-3 md:grid-cols-12">
           <label className="md:col-span-2"><span className={labelClass}>Próxima a vencer (días)</span><input className={fieldClass} type="number" min={1} max={240} value={values.expiringSoonDays ?? ''} disabled={!values.validityMonths} onChange={(e) => setValues((v) => ({ ...v, expiringSoonDays: e.target.value ? Number(e.target.value) : null }))} placeholder="90" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Costo 1er intento</span><input className={fieldClass} type="number" min={0} step="0.01" value={values.firstAttemptCost ?? ''} onChange={(e) => setValues((v) => ({ ...v, firstAttemptCost: e.target.value ? Number(e.target.value) : null }))} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Costo sig. intento</span><input className={fieldClass} type="number" min={0} step="0.01" value={values.subsequentAttemptCost ?? ''} onChange={(e) => setValues((v) => ({ ...v, subsequentAttemptCost: e.target.value ? Number(e.target.value) : null }))} /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Moneda</span><select className={fieldClass} value={values.costCurrency} onChange={(e) => setValues((v) => ({ ...v, costCurrency: e.target.value }))}><option value="">—</option><option value="USD">USD</option><option value="MXN">MXN</option></select></label>
-          <label className="md:col-span-4"><span className={labelClass}>Insumo</span><span className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 text-[10.5px] text-slate-700"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.includesTraining} onChange={(e) => setValues((v) => ({ ...v, includesTraining: e.target.checked }))} />Incluye entrenamiento / curso</span></label>
+          <label className="md:col-span-2"><span className={labelClass}>Moneda</span><BBVASearchableSelect value={values.costCurrency} onChange={(value) => setValues((v) => ({ ...v, costCurrency: value }))} options={[{ value: '', label: '—' }, { value: 'USD', label: 'USD' }, { value: 'MXN', label: 'MXN' }]} ariaLabel="Moneda" /></label>
+          <label className="md:col-span-4"><span className={labelClass}>Insumo</span><span className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.includesTraining} onChange={(e) => setValues((v) => ({ ...v, includesTraining: e.target.checked }))} />Incluye entrenamiento / curso</span></label>
         </div>
-        <div className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 text-[10.5px] text-slate-700"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.recertificationEnabled} onChange={(e) => setValues((v) => ({ ...v, recertificationEnabled: e.target.checked }))} />Recertificación</label>
-          <label className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 text-[10.5px] text-slate-700"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.requiresAttempts} onChange={(e) => setValues((v) => ({ ...v, requiresAttempts: e.target.checked }))} />Controlar intentos</label>
-          <label className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 text-[10.5px] text-slate-700"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.requiresApplicationDate} onChange={(e) => setValues((v) => ({ ...v, requiresApplicationDate: e.target.checked }))} />Fecha de aplicación</label>
-          <label className="flex h-8 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 text-[10.5px] text-slate-700"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.defaultMandatory} onChange={(e) => setValues((v) => ({ ...v, defaultMandatory: e.target.checked }))} />Obligatoria por defecto</label>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.recertificationEnabled} onChange={(e) => setValues((v) => ({ ...v, recertificationEnabled: e.target.checked }))} />Recertificación</label>
+          <label className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.requiresAttempts} onChange={(e) => setValues((v) => ({ ...v, requiresAttempts: e.target.checked }))} />Controlar intentos</label>
+          <label className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.requiresApplicationDate} onChange={(e) => setValues((v) => ({ ...v, requiresApplicationDate: e.target.checked }))} />Fecha de aplicación</label>
+          <label className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" className="h-3.5 w-3.5 accent-blue-600" checked={values.defaultMandatory} onChange={(e) => setValues((v) => ({ ...v, defaultMandatory: e.target.checked }))} />Obligatoria por defecto</label>
         </div>
       </section>
 
-      <div className="flex justify-end gap-2 border-t border-slate-200 pt-3">
-        <button type="button" onClick={onCancel} disabled={saving} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"><X className="h-3.5 w-3.5" />Cancelar</button>
-        <button type="submit" disabled={saving || technologiesQuery.isLoading} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50"><Save className="h-3.5 w-3.5" />{saving ? 'Guardando...' : selected ? 'Guardar cambios' : 'Agregar certificación'}</button>
+      <div className="flex justify-end gap-2 border-t border-slate-200 pt-3 [.bbva-dark_&]:border-slate-800">
+        <button type="button" onClick={onCancel} disabled={saving} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"><X className="h-3.5 w-3.5" />Cancelar</button>
+        <button type="submit" disabled={saving || technologiesQuery.isLoading} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50"><Save className="h-3.5 w-3.5" />{saving ? 'Guardando...' : selected ? 'Guardar cambios' : 'Agregar certificación'}</button>
       </div>
     </form>
   );

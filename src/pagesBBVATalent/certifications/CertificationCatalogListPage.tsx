@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
+import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import {
   useCertificationCatalogList,
@@ -25,7 +26,6 @@ type PendingAction =
   | null;
 
 const route = '/bbva/admin/catalogs/certifications';
-
 
 export const CertificationCatalogListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -82,10 +82,10 @@ export const CertificationCatalogListPage: React.FC = () => {
       {message && <BBVAAlert tone="success" onClose={() => setMessage(null)}>{message}</BBVAAlert>}
       {error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}
 
-      <div className="grid gap-2 md:grid-cols-[minmax(280px,1fr)_190px_145px]">
+      <div className="grid gap-2 md:grid-cols-[minmax(280px,1fr)_220px_180px]">
         <div className="relative"><Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar certificación, certificadora o tecnología" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none focus:border-blue-500" /></div>
-        <select value={type} onChange={(e) => setType(e.target.value as CertificationType | 'ALL')} className="h-8 rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-800 outline-none focus:border-blue-500"><option value="ALL">Todos los tipos</option>{CERTIFICATION_TYPES.map((item) => <option key={item} value={item}>{CERTIFICATION_TYPE_LABELS[item]}</option>)}</select>
-        <select value={status} onChange={(e) => setStatus(e.target.value as CertificationCatalogStatus | 'ALL')} className="h-8 rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-800 outline-none focus:border-blue-500"><option value="ACTIVE">Activas</option><option value="INACTIVE">Inactivas</option><option value="ALL">Todas</option></select>
+        <BBVASearchableSelect value={type} onChange={(value) => setType(value as CertificationType | 'ALL')} options={[{ value: 'ALL', label: 'Todos los tipos' }, ...CERTIFICATION_TYPES.map((item) => ({ value: item, label: CERTIFICATION_TYPE_LABELS[item] }))]} ariaLabel="Filtrar por tipo" />
+        <BBVASearchableSelect value={status} onChange={(value) => setStatus(value as CertificationCatalogStatus | 'ALL')} options={[{ value: 'ACTIVE', label: 'Activas' }, { value: 'INACTIVE', label: 'Inactivas' }, { value: 'ALL', label: 'Todas' }]} ariaLabel="Filtrar por estado" />
       </div>
 
       {query.isLoading ? <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando certificaciones...</div> : query.error ? <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert> : (

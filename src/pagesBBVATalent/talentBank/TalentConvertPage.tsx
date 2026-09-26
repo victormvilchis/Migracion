@@ -2,25 +2,41 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRightLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
+import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useCatalogOptions } from '../hooks/useCatalog';
 import { useConvertTalent, useTalent, useUpdateTalent } from '../hooks/useTalent';
 import type { CatalogOption } from '../types/catalog';
 import type { Talent, TalentPayload } from '../types/talent';
 
-const fieldClass = 'h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
-const labelClass = 'mb-1 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:text-slate-400';
+const fieldClass = 'h-9 w-full rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15';
+const labelClass = 'mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500';
 
-function optionId(options: CatalogOption[], id: string | null, name: string | null): string {
-  if (id && options.some((item) => item.id === id)) return id;
-  const target = (name ?? '').trim().toLocaleUpperCase('es-MX');
-  return options.find((item) => item.name.trim().toLocaleUpperCase('es-MX') === target)?.id ?? '';
+function optionId(options: CatalogOption[], currentId: string | null | undefined, currentName: string | null | undefined): string {
+  if (currentId && options.some((option) => option.id === currentId)) return currentId;
+  const name = (currentName ?? '').trim().toLocaleUpperCase('es-MX');
+  return options.find((option) => option.name.trim().toLocaleUpperCase('es-MX') === name)?.id ?? '';
 }
-function optionName(options: CatalogOption[], id: string): string { return options.find((item) => item.id === id)?.name ?? ''; }
 
-type ConversionValues = { profileCatalogId: string; technologyProfileCatalogId: string; currentTechnologyCatalogId: string; expertise: string; corporateUser: string };
+function optionName(options: CatalogOption[], id: string): string {
+  return options.find((option) => option.id === id)?.name ?? '';
+}
 
-function toPayload(talent: Talent, values: ConversionValues, profiles: CatalogOption[], technologyProfiles: CatalogOption[], technologies: CatalogOption[]): TalentPayload {
+function toOptions(options: CatalogOption[]) {
+  return [{ value: '', label: 'Seleccionar' }, ...options.map((item) => ({ value: item.id, label: item.name }))];
+}
+
+function initialValues(talent: Talent | null | undefined, profiles: CatalogOption[], technologyProfiles: CatalogOption[], technologies: CatalogOption[]) {
+  return {
+    profileCatalogId: optionId(profiles, talent?.profileCatalogId, talent?.profile),
+    technologyProfileCatalogId: optionId(technologyProfiles, talent?.technologyProfileCatalogId, talent?.technologyProfile),
+    currentTechnologyCatalogId: optionId(technologies, talent?.currentTechnologyCatalogId, talent?.currentTechnology),
+    expertise: talent?.expertise ?? '',
+    corporateUser: talent?.corporateUser ?? '',
+  };
+}
+
+function toPayload(talent: Talent, values: ReturnType<typeof initialValues>, profiles: CatalogOption[], technologyProfiles: CatalogOption[], technologies: CatalogOption[]): TalentPayload {
   return {
     talentType: talent.talentType,
     softtekCode: talent.softtekCode ?? '',
@@ -57,26 +73,22 @@ export const TalentConvertPage: React.FC = () => {
   const profiles = useMemo(() => profilesQuery.data?.items ?? [], [profilesQuery.data]);
   const technologyProfiles = useMemo(() => technologyProfilesQuery.data?.items ?? [], [technologyProfilesQuery.data]);
   const technologies = useMemo(() => technologiesQuery.data?.items ?? [], [technologiesQuery.data]);
+  const talent = talentQuery.data?.item ?? null;
+  const [values, setValues] = useState(() => initialValues(talent, [], [], []));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const talent = talentQuery.data?.item;
-  const [values, setValues] = useState<ConversionValues>({ profileCatalogId: '', technologyProfileCatalogId: '', currentTechnologyCatalogId: '', expertise: '', corporateUser: '' });
 
   useEffect(() => {
-    if (!talent) return;
-    setValues({
-      profileCatalogId: optionId(profiles, talent.profileCatalogId, talent.profile),
-      technologyProfileCatalogId: optionId(technologyProfiles, talent.technologyProfileCatalogId, talent.technologyProfile),
-      currentTechnologyCatalogId: optionId(technologies, talent.currentTechnologyCatalogId, talent.currentTechnology),
-      expertise: talent.expertise ?? '', corporateUser: talent.corporateUser ?? '',
-    });
+    setValues(initialValues(talent, profiles, technologyProfiles, technologies));
   }, [profiles, talent, technologies, technologyProfiles]);
 
   const requestConfirmation = () => {
-    if (!values.profileCatalogId) return setError('El Perfil es obligatorio para convertir a colaborador.');
-    if (!values.technologyProfileCatalogId) return setError('El Perfil tecnológico es obligatorio para convertir a colaborador.');
-    if (!values.currentTechnologyCatalogId) return setError('La Tecnología actual es obligatoria para convertir a colaborador.');
-    setError(null); setConfirmOpen(true);
+    if (!values.profileCatalogId || !values.technologyProfileCatalogId || !values.currentTechnologyCatalogId) {
+      setError('Selecciona perfil, perfil tecnológico y tecnología actual antes de continuar.');
+      return;
+    }
+    setError(null);
+    setConfirmOpen(true);
   };
 
   const confirm = async () => {
@@ -86,7 +98,10 @@ export const TalentConvertPage: React.FC = () => {
       await updateMutation.mutateAsync({ id, payload: toPayload(talent, values, profiles, technologyProfiles, technologies) });
       await convertMutation.mutateAsync(id);
       navigate('/bbva/collaborators', { state: { message: 'El talento se convirtió correctamente en colaborador.' } });
-    } catch (conversionError) { setConfirmOpen(false); setError((conversionError as Error).message); }
+    } catch (conversionError) {
+      setConfirmOpen(false);
+      setError((conversionError as Error).message);
+    }
   };
 
   if (talentQuery.isLoading) return <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando talento...</div>;
@@ -96,23 +111,23 @@ export const TalentConvertPage: React.FC = () => {
 
   return (
     <div className="space-y-3 animate-fade-in">
-      <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-xs hover:bg-slate-50"><ArrowLeft className="h-3.5 w-3.5" />Regresar</button>
-      {error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}
-      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="mb-3 grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-[11px] sm:grid-cols-2">
-          <div><span className="font-semibold text-slate-500">Persona</span><div className="mt-1 font-semibold text-slate-900">{talent.fullName}</div><div className="text-[10px] text-slate-500">{talent.email}</div></div>
-          <div><span className="font-semibold text-slate-500">Origen</span><div className="mt-1 text-slate-900">{talent.talentType === 'ACADEMY' ? 'Academia' : talent.talentType === 'PROSPECT' ? 'Prospecto' : 'Baja de BBVA'}</div></div>
+      <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700 shadow-xs hover:bg-slate-50"><ArrowLeft className="h-3.5 w-3.5" />Regresar</button>
+      {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.05)]">
+        <div className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white p-4 text-[11px] sm:grid-cols-2">
+          <div><span className="font-semibold uppercase tracking-[0.04em] text-slate-500">Persona</span><div className="mt-1 font-semibold text-slate-900">{talent.fullName}</div><div className="text-[10px] text-slate-500">{talent.email}</div></div>
+          <div><span className="font-semibold uppercase tracking-[0.04em] text-slate-500">Origen</span><div className="mt-1 text-slate-900">{talent.talentType === 'ACADEMY' ? 'Academia' : talent.talentType === 'PROSPECT' ? 'Prospecto' : 'Baja de BBVA'}</div></div>
         </div>
-        <div className="grid gap-2 md:grid-cols-12">
-          <label className="md:col-span-4"><span className={labelClass}>Perfil *</span><select value={values.profileCatalogId} onChange={(e) => setValues((v) => ({ ...v, profileCatalogId: e.target.value }))} className={fieldClass} disabled={catalogsLoading}><option value="">Seleccionar</option>{profiles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label className="md:col-span-3"><span className={labelClass}>Perfil tecnológico *</span><select value={values.technologyProfileCatalogId} onChange={(e) => setValues((v) => ({ ...v, technologyProfileCatalogId: e.target.value }))} className={fieldClass} disabled={catalogsLoading}><option value="">Seleccionar</option>{technologyProfiles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label className="md:col-span-3"><span className={labelClass}>Tecnología actual *</span><select value={values.currentTechnologyCatalogId} onChange={(e) => setValues((v) => ({ ...v, currentTechnologyCatalogId: e.target.value }))} className={fieldClass} disabled={catalogsLoading}><option value="">Seleccionar</option>{technologies.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-          <label className="md:col-span-2"><span className={labelClass}>Expertise</span><select value={values.expertise} onChange={(e) => setValues((v) => ({ ...v, expertise: e.target.value }))} className={fieldClass}><option value="">—</option><option value="TR">TR</option><option value="JR">JR</option><option value="STD">STD</option><option value="SR">SR</option></select></label>
+        <div className="grid gap-3 md:grid-cols-12">
+          <label className="md:col-span-4"><span className={labelClass}>Perfil *</span><BBVASearchableSelect value={values.profileCatalogId} onChange={(value) => setValues((v) => ({ ...v, profileCatalogId: value }))} options={toOptions(profiles)} disabled={catalogsLoading} ariaLabel="Perfil" /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Perfil tecnológico *</span><BBVASearchableSelect value={values.technologyProfileCatalogId} onChange={(value) => setValues((v) => ({ ...v, technologyProfileCatalogId: value }))} options={toOptions(technologyProfiles)} disabled={catalogsLoading} ariaLabel="Perfil tecnológico" /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Tecnología actual *</span><BBVASearchableSelect value={values.currentTechnologyCatalogId} onChange={(value) => setValues((v) => ({ ...v, currentTechnologyCatalogId: value }))} options={toOptions(technologies)} disabled={catalogsLoading} ariaLabel="Tecnología actual" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Expertise</span><BBVASearchableSelect value={values.expertise} onChange={(value) => setValues((v) => ({ ...v, expertise: value }))} options={[{ value: '', label: '—' }, { value: 'TR', label: 'TR' }, { value: 'JR', label: 'JR' }, { value: 'STD', label: 'STD' }, { value: 'SR', label: 'SR' }]} ariaLabel="Expertise" /></label>
           <label className="md:col-span-4"><span className={labelClass}>Usuario corporativo</span><input value={values.corporateUser} onChange={(e) => setValues((v) => ({ ...v, corporateUser: e.target.value }))} className={fieldClass} /></label>
         </div>
-        <div className="mt-3 flex justify-end gap-2 border-t border-slate-200 pt-3">
-          <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="h-8 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">Cancelar</button>
-          <button type="button" disabled={busy || catalogsLoading} onClick={requestConfirmation} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" />Continuar</button>
+        <div className="mt-4 flex justify-end gap-2 border-t border-slate-200 pt-4">
+          <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="h-9 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">Cancelar</button>
+          <button type="button" disabled={busy || catalogsLoading} onClick={requestConfirmation} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" />Continuar</button>
         </div>
       </div>
       <ConfirmDialog open={confirmOpen} title="Convertir a colaborador" message="Esta persona dejará Talent Bank y será incorporada a Colaboradores conservando su identidad e historial. ¿Deseas continuar?" confirmLabel="Confirmar conversión" tone="danger" busy={busy} onConfirm={() => void confirm()} onCancel={() => setConfirmOpen(false)} />

@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
+import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useCatalogList, useDeleteCatalogItem, useUpdateCatalogStatus } from '../hooks/useCatalog';
 import { catalogConfigs, type CatalogRecord, type CatalogStatus, type CatalogType } from '../types/catalog';
@@ -97,16 +98,12 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
       {message && <BBVAAlert tone="success" onClose={() => setMessage(null)}>{message}</BBVAAlert>}
       {error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}
 
-      <div className="grid gap-2 md:grid-cols-[minmax(260px,1fr)_160px]">
+      <div className="grid gap-2 md:grid-cols-[minmax(260px,1fr)_200px]">
         <div className="relative">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, código o descripción" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
         </div>
-        <select value={status} onChange={(event) => setStatus(event.target.value as CatalogStatus | 'ALL')} className="h-8 rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-800 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" aria-label="Filtrar por estado">
-          <option value="ACTIVE">Activos</option>
-          <option value="INACTIVE">Inactivos</option>
-          <option value="ALL">Todos</option>
-        </select>
+        <BBVASearchableSelect value={status} onChange={(value) => setStatus(value as CatalogStatus | 'ALL')} options={[{ value: 'ACTIVE', label: 'Activos' }, { value: 'INACTIVE', label: 'Inactivos' }, { value: 'ALL', label: 'Todos' }]} ariaLabel="Filtrar por estado" />
       </div>
 
       {query.isLoading ? (

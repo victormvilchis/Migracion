@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Sparkles } from 'lucide-react';
 import { identityDirectoryApi } from '../pagesBBVATalent/api/identityDirectoryApi';
 import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
 import { BBVAAlert } from './BBVAAlert';
@@ -12,7 +12,8 @@ interface ISLookupFieldProps {
   autoFocus?: boolean;
 }
 
-const fieldClass = 'h-8 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
+const fieldClass =
+  'h-9 w-full rounded-xl border border-slate-300 bg-white pl-3 pr-12 text-[11px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
 
 export const ISLookupField: React.FC<ISLookupFieldProps> = ({ value, onChange, onResolved, disabled, autoFocus }) => {
   const [searching, setSearching] = useState(false);
@@ -40,12 +41,17 @@ export const ISLookupField: React.FC<ISLookupFieldProps> = ({ value, onChange, o
   };
 
   return (
-    <div className="min-w-0">
-      {message && <BBVAAlert tone={message.tone} onClose={() => setMessage(null)}>{message.text}</BBVAAlert>}
-      <div className="flex min-w-0 gap-1.5">
+    <div className="min-w-0 space-y-1.5">
+      {message ? (
+        <BBVAAlert tone={message.tone} onClose={() => setMessage(null)}>
+          {message.text}
+        </BBVAAlert>
+      ) : null}
+
+      <div className="relative min-w-0">
         <input
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => onChange(event.target.value.toUpperCase())}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault();
@@ -59,15 +65,16 @@ export const ISLookupField: React.FC<ISLookupFieldProps> = ({ value, onChange, o
           autoFocus={autoFocus}
           aria-label="IS"
         />
+
         <button
           type="button"
           onClick={() => void lookup()}
           disabled={disabled || searching}
-          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-slate-300 bg-white px-2.5 text-[10px] font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"
-          title="Buscar IS en el directorio corporativo configurado"
+          className="absolute right-1.5 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-800 [.bbva-dark_&]:text-slate-300 [.bbva-dark_&]:hover:bg-slate-700"
+          title="Buscar IS"
+          aria-label={searching ? 'Buscando IS' : 'Buscar IS'}
         >
-          <Search className="h-3.5 w-3.5" />
-          {searching ? 'Buscando...' : 'Buscar IS'}
+          {searching ? <Sparkles className="h-3.5 w-3.5 animate-pulse" /> : <Search className="h-3.5 w-3.5" />}
         </button>
       </div>
     </div>

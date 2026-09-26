@@ -15,27 +15,31 @@ interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
-const tones: Record<ConfirmDialogTone, { rail: string; icon: string; button: string; Icon: typeof AlertTriangle }> = {
+const tones: Record<ConfirmDialogTone, { surface: string; iconWrap: string; icon: string; button: string; Icon: typeof AlertTriangle }> = {
   danger: {
-    rail: 'bg-rose-50 [.bbva-dark_&]:bg-rose-500/10',
+    surface: 'from-rose-50 to-white [.bbva-dark_&]:from-rose-500/10 [.bbva-dark_&]:to-slate-900',
+    iconWrap: 'border-rose-200 bg-rose-50 [.bbva-dark_&]:border-rose-500/20 [.bbva-dark_&]:bg-rose-500/10',
     icon: 'text-rose-600 [.bbva-dark_&]:text-rose-300',
     button: 'bg-rose-600 hover:bg-rose-500 focus-visible:ring-rose-500',
     Icon: AlertTriangle,
   },
   warning: {
-    rail: 'bg-amber-50 [.bbva-dark_&]:bg-amber-500/10',
+    surface: 'from-amber-50 to-white [.bbva-dark_&]:from-amber-500/10 [.bbva-dark_&]:to-slate-900',
+    iconWrap: 'border-amber-200 bg-amber-50 [.bbva-dark_&]:border-amber-500/20 [.bbva-dark_&]:bg-amber-500/10',
     icon: 'text-amber-600 [.bbva-dark_&]:text-amber-300',
     button: 'bg-amber-600 hover:bg-amber-500 focus-visible:ring-amber-500',
     Icon: AlertTriangle,
   },
   success: {
-    rail: 'bg-emerald-50 [.bbva-dark_&]:bg-emerald-500/10',
+    surface: 'from-emerald-50 to-white [.bbva-dark_&]:from-emerald-500/10 [.bbva-dark_&]:to-slate-900',
+    iconWrap: 'border-emerald-200 bg-emerald-50 [.bbva-dark_&]:border-emerald-500/20 [.bbva-dark_&]:bg-emerald-500/10',
     icon: 'text-emerald-600 [.bbva-dark_&]:text-emerald-300',
     button: 'bg-emerald-600 hover:bg-emerald-500 focus-visible:ring-emerald-500',
     Icon: CheckCircle2,
   },
   primary: {
-    rail: 'bg-blue-50 [.bbva-dark_&]:bg-blue-500/10',
+    surface: 'from-blue-50 to-white [.bbva-dark_&]:from-blue-500/10 [.bbva-dark_&]:to-slate-900',
+    iconWrap: 'border-blue-200 bg-blue-50 [.bbva-dark_&]:border-blue-500/20 [.bbva-dark_&]:bg-blue-500/10',
     icon: 'text-blue-600 [.bbva-dark_&]:text-blue-300',
     button: 'bg-blue-600 hover:bg-blue-500 focus-visible:ring-blue-500',
     Icon: Info,
@@ -105,7 +109,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[1600] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[1600] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-[3px]"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !busy) onCancel();
       }}
@@ -116,48 +120,53 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="relative w-full max-w-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900"
+        className="relative w-full max-w-[720px] overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.32)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900"
       >
-        <div className="grid grid-cols-[64px_minmax(0,1fr)] sm:grid-cols-[72px_minmax(0,1fr)]">
-          <div className={`flex min-h-[176px] items-start justify-center px-3 pt-6 ${style.rail}`} aria-hidden="true">
-            <Icon className={`h-7 w-7 ${style.icon}`} strokeWidth={2} />
+        <div className={`absolute inset-0 bg-gradient-to-br ${style.surface}`} aria-hidden="true" />
+        <div className="relative p-5 sm:p-6">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-50 [.bbva-dark_&]:hover:bg-slate-800 [.bbva-dark_&]:hover:text-slate-100"
+            aria-label="Cerrar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border shadow-sm ${style.iconWrap}`} aria-hidden="true">
+              <Icon className={`h-7 w-7 ${style.icon}`} strokeWidth={2} />
+            </div>
+
+            <div className="min-w-0 flex-1 pr-8">
+              <h3 id={titleId} className="text-[22px] font-semibold leading-7 text-slate-950 [.bbva-dark_&]:text-slate-100">
+                {title}
+              </h3>
+              <p id={descriptionId} className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500 [.bbva-dark_&]:text-slate-300">
+                {message}
+              </p>
+            </div>
           </div>
 
-          <div className="min-w-0 px-5 pb-5 pt-5 sm:px-6 sm:pb-6">
+          <div className="mt-7 flex flex-wrap justify-end gap-3 border-t border-slate-200/80 pt-5 [.bbva-dark_&]:border-slate-700/80">
             <button
+              ref={cancelRef}
               type="button"
               onClick={onCancel}
               disabled={busy}
-              className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 [.bbva-dark_&]:hover:bg-slate-800 [.bbva-dark_&]:hover:text-slate-100"
-              aria-label="Cerrar"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50 [.bbva-dark_&]:border-slate-600 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"
             >
-              <X className="h-5 w-5" />
+              Cancelar
             </button>
-
-            <div className="pr-9">
-              <h3 id={titleId} className="text-[19px] font-semibold leading-6 text-slate-950 [.bbva-dark_&]:text-slate-100">{title}</h3>
-              <p id={descriptionId} className="mt-3 text-[14px] leading-6 text-slate-500 [.bbva-dark_&]:text-slate-300">{message}</p>
-            </div>
-
-            <div className="mt-6 flex flex-wrap justify-end gap-2.5">
-              <button
-                ref={cancelRef}
-                type="button"
-                onClick={onCancel}
-                disabled={busy}
-                className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50 [.bbva-dark_&]:border-slate-600 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={busy}
-                className={`inline-flex h-10 min-w-[132px] items-center justify-center rounded-lg px-5 text-[13px] font-semibold text-white shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${style.button}`}
-              >
-                {busy ? 'Procesando...' : confirmLabel}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={busy}
+              className={`inline-flex h-11 min-w-[156px] items-center justify-center rounded-xl px-5 text-[13px] font-semibold text-white shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${style.button}`}
+            >
+              {busy ? 'Procesando...' : confirmLabel}
+            </button>
           </div>
         </div>
       </div>
