@@ -44,3 +44,6 @@ coverage/
 data/
 mssql-data/
 azurite-data/
+
+# Local compiled artifacts
+.output/

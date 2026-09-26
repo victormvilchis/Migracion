@@ -132,14 +132,14 @@ export const bbvaNavigation: BBVANavGroup[] = [
         id: 'catalogs',
         label: 'Catálogos',
         modules: [
-          { id: 'categories', label: 'Categorías', path: '/bbva/admin/catalogs/categories', status: 'planned' },
-          { id: 'technologies', label: 'Tecnologías', path: '/bbva/admin/catalogs/technologies', status: 'planned' },
-          { id: 'profiles', label: 'Perfiles', path: '/bbva/admin/catalogs/profiles', status: 'planned' },
+          { id: 'categories', label: 'Categorías', path: '/bbva/admin/catalogs/categories', status: 'ready' },
+          { id: 'technologies', label: 'Tecnologías', path: '/bbva/admin/catalogs/technologies', status: 'ready' },
+          { id: 'profiles', label: 'Perfiles', path: '/bbva/admin/catalogs/profiles', status: 'ready' },
           {
             id: 'technology-profiles',
             label: 'Perfiles tecnológicos',
             path: '/bbva/admin/catalogs/technology-profiles',
-            status: 'planned',
+            status: 'ready',
           },
           {
             id: 'certification-catalog',

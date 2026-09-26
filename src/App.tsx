@@ -16,6 +16,9 @@ const CollaboratorsPage = React.lazy(() => import('./pagesBBVATalent/collaborato
 const CollaboratorDetailPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorDetailPage').then((m) => ({ default: m.CollaboratorDetailPage })));
 const CollaboratorEditorPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorEditorPage').then((m) => ({ default: m.CollaboratorEditorPage })));
 const CollaboratorImportPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorImportPage').then((m) => ({ default: m.CollaboratorImportPage })));
+const CatalogListPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogListPage').then((m) => ({ default: m.CatalogListPage })));
+const CatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogEditorPage').then((m) => ({ default: m.CatalogEditorPage })));
+const CatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogDetailPage').then((m) => ({ default: m.CatalogDetailPage })));
 const BBVAPlaceholderPage = React.lazy(() => import('./pagesBBVATalent/BBVAPlaceholderPage'));
 
 const queryClient = new QueryClient({
@@ -62,6 +65,27 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/collaborators/import" element={modulePage(<CollaboratorImportPage />)} />
               <Route path="/bbva/collaborators/:id/edit" element={modulePage(<CollaboratorEditorPage />)} />
               <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage />)} />
+
+              <Route path="/bbva/admin/catalogs/categories" element={modulePage(<CatalogListPage type="categories" />)} />
+              <Route path="/bbva/admin/catalogs/categories/new" element={modulePage(<CatalogEditorPage type="categories" />)} />
+              <Route path="/bbva/admin/catalogs/categories/:id/edit" element={modulePage(<CatalogEditorPage type="categories" />)} />
+              <Route path="/bbva/admin/catalogs/categories/:id" element={modulePage(<CatalogDetailPage type="categories" />)} />
+
+              <Route path="/bbva/admin/catalogs/technologies" element={modulePage(<CatalogListPage type="technologies" />)} />
+              <Route path="/bbva/admin/catalogs/technologies/new" element={modulePage(<CatalogEditorPage type="technologies" />)} />
+              <Route path="/bbva/admin/catalogs/technologies/:id/edit" element={modulePage(<CatalogEditorPage type="technologies" />)} />
+              <Route path="/bbva/admin/catalogs/technologies/:id" element={modulePage(<CatalogDetailPage type="technologies" />)} />
+
+              <Route path="/bbva/admin/catalogs/profiles" element={modulePage(<CatalogListPage type="profiles" />)} />
+              <Route path="/bbva/admin/catalogs/profiles/new" element={modulePage(<CatalogEditorPage type="profiles" />)} />
+              <Route path="/bbva/admin/catalogs/profiles/:id/edit" element={modulePage(<CatalogEditorPage type="profiles" />)} />
+              <Route path="/bbva/admin/catalogs/profiles/:id" element={modulePage(<CatalogDetailPage type="profiles" />)} />
+
+              <Route path="/bbva/admin/catalogs/technology-profiles" element={modulePage(<CatalogListPage type="technology-profiles" />)} />
+              <Route path="/bbva/admin/catalogs/technology-profiles/new" element={modulePage(<CatalogEditorPage type="technology-profiles" />)} />
+              <Route path="/bbva/admin/catalogs/technology-profiles/:id/edit" element={modulePage(<CatalogEditorPage type="technology-profiles" />)} />
+              <Route path="/bbva/admin/catalogs/technology-profiles/:id" element={modulePage(<CatalogDetailPage type="technology-profiles" />)} />
+
               <Route path="/bbva/*" element={modulePage(<BBVAPlaceholderPage />)} />
             </Routes>
           </div>
