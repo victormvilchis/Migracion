@@ -53,6 +53,17 @@ export function useUpdateTalentStage() {
   });
 }
 
+export function useConvertTalent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => talentApi.convert(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['talent'] });
+      queryClient.invalidateQueries({ queryKey: ['collaborators'] });
+    },
+  });
+}
+
 export function useDeleteTalent() {
   const queryClient = useQueryClient();
   return useMutation({

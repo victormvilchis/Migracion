@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Database, Bot, Layers, UsersRound } from 'lucide-react';
+import { LayoutDashboard, Database, Bot, Layers, UsersRound, UserRoundCheck } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const Sidebar: React.FC = () => {
@@ -10,6 +10,12 @@ export const Sidebar: React.FC = () => {
       label: 'Talent Bank',
       icon: UsersRound,
       description: 'Academias, prospectos y bajas',
+    },
+    {
+      to: '/collaborators',
+      label: 'Colaboradores',
+      icon: UserRoundCheck,
+      description: 'Activos, métricas y certificaciones',
     },
   ];
 

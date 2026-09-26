@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Download, Eye, FileText, GraduationCap, Pencil, Plus, Search, Trash2, UserRoundCheck, UsersRound } from 'lucide-react';
+import { Download, Eye, FileText, GraduationCap, Pencil, Plus, Search, Trash2, UserRoundCheck, UsersRound, ArrowRightLeft } from 'lucide-react';
 import { Card } from '../../../components/common/Card';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { TalentStageBadge } from '../components/TalentStageBadge';
@@ -165,8 +165,9 @@ export const TalentPage: React.FC = () => {
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <Link to={`/talent/${item.id}`} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-slate-700 hover:bg-slate-100"><Eye className="h-3.5 w-3.5" />Ver</Link>
-                        <Link to={`/talent/${item.id}/edit`} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-blue-400 hover:bg-blue-500/10"><Pencil className="h-3.5 w-3.5" />Editar</Link>
-                        <button onClick={() => setDeleteTarget(item)} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-rose-400 hover:bg-rose-500/10"><Trash2 className="h-3.5 w-3.5" />Eliminar</button>
+                        <Link to={`/talent/${item.id}/edit`} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-blue-600 hover:bg-blue-50"><Pencil className="h-3.5 w-3.5" />Editar</Link>
+                        <Link to={`/talent/${item.id}/convert`} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-emerald-700 hover:bg-emerald-50"><ArrowRightLeft className="h-3.5 w-3.5" />Convertir</Link>
+                        <button onClick={() => setDeleteTarget(item)} className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-rose-600 hover:bg-rose-50"><Trash2 className="h-3.5 w-3.5" />Eliminar</button>
                       </div>
                     </td>
                   </tr>

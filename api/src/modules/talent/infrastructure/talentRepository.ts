@@ -242,6 +242,119 @@ export class TalentRepository {
     }
   }
 
+
+  async convertToCollaborator(id: string, actorEmail: string): Promise<{ collaboratorId: string; talent: TalentRecord } | null> {
+    const current = await this.findById(id);
+    if (!current) return null;
+
+    const pool = await getDbConnection();
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      const existing = await new sql.Request(transaction)
+        .input('personId', sql.UniqueIdentifier, current.personId)
+        .query(`
+          SELECT TOP 1 CAST(Id AS NVARCHAR(36)) AS id
+          FROM dbo.Collaborator
+          WHERE PersonId=@personId;
+        `);
+
+      let collaboratorId: string;
+      if (existing.recordset[0]?.id) {
+        collaboratorId = String(existing.recordset[0].id);
+        await new sql.Request(transaction)
+          .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
+          .input('startDate', sql.Date, current.platformStartDate || current.entryDate || null)
+          .input('endDate', sql.Date, current.platformEndDate || null)
+          .input('actorEmail', sql.NVarChar(255), actorEmail)
+          .query(`
+            UPDATE dbo.Collaborator
+            SET Status=N'ACTIVE',
+                StartDate=COALESCE(@startDate, StartDate),
+                EndDate=@endDate,
+                UpdatedAt=SYSUTCDATETIME(),
+                UpdatedByEmail=@actorEmail
+            WHERE Id=@collaboratorId;
+          `);
+      } else {
+        const created = await new sql.Request(transaction)
+          .input('personId', sql.UniqueIdentifier, current.personId)
+          .input('startDate', sql.Date, current.platformStartDate || current.entryDate || null)
+          .input('endDate', sql.Date, current.platformEndDate || null)
+          .input('actorEmail', sql.NVarChar(255), actorEmail)
+          .query(`
+            INSERT INTO dbo.Collaborator (
+              PersonId, Status, StartDate, EndDate, CreatedByEmail, UpdatedByEmail
+            )
+            OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
+            VALUES (
+              @personId, N'ACTIVE', @startDate, @endDate, @actorEmail, @actorEmail
+            );
+          `);
+        collaboratorId = String(created.recordset[0].id);
+      }
+
+      await new sql.Request(transaction)
+        .input('id', sql.UniqueIdentifier, id)
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
+        .query(`
+          UPDATE dbo.TalentBankEntry
+          SET Stage=N'CONVERTED',
+              Active=0,
+              ConvertedAt=SYSUTCDATETIME(),
+              UpdatedAt=SYSUTCDATETIME(),
+              UpdatedByEmail=@actorEmail
+          WHERE Id=@id;
+        `);
+
+      await new sql.Request(transaction)
+        .input('entryId', sql.UniqueIdentifier, id)
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
+        .query(`
+          INSERT INTO dbo.TalentHistory (
+            TalentBankEntryId, EventType, Description, CreatedByEmail
+          )
+          VALUES (
+            @entryId,
+            N'CONVERTED',
+            N'El talento se convirtió correctamente en colaborador.',
+            @actorEmail
+          );
+        `);
+
+      await new sql.Request(transaction)
+        .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
+        .query(`
+          INSERT INTO dbo.CollaboratorHistory (
+            CollaboratorId, EventType, Description, CreatedByEmail
+          )
+          VALUES (
+            @collaboratorId,
+            N'CREATED_FROM_TALENT',
+            N'El colaborador fue incorporado desde Talent Bank.',
+            @actorEmail
+          );
+        `);
+
+      await transaction.commit();
+
+      return {
+        collaboratorId,
+        talent: {
+          ...current,
+          stage: 'CONVERTED',
+          active: false,
+          convertedAt: new Date().toISOString(),
+        },
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
   async delete(id: string): Promise<boolean> {
     const current = await this.findById(id);
     if (!current) return false;

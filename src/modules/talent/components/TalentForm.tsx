@@ -22,9 +22,9 @@ function defaultStage(type: TalentType) {
   return type === 'ACADEMY' ? 'ACADEMY' : 'REGISTERED';
 }
 
-function toFormValues(talent?: Talent | null): TalentFormValues {
+function toFormValues(talent?: Talent | null, initialType: TalentType = 'ACADEMY'): TalentFormValues {
   return {
-    talentType: talent?.talentType ?? 'ACADEMY',
+    talentType: talent?.talentType ?? initialType,
     softtekCode: talent?.softtekCode ?? '',
     corporateUser: talent?.corporateUser ?? '',
     email: talent?.email ?? '',
@@ -34,7 +34,7 @@ function toFormValues(talent?: Talent | null): TalentFormValues {
     technologyProfile: talent?.technologyProfile ?? '',
     currentTechnology: talent?.currentTechnology ?? '',
     expertise: talent?.expertise ?? '',
-    stage: talent?.stage ?? 'ACADEMY',
+    stage: talent?.stage ?? defaultStage(initialType),
     active: talent?.active ?? true,
     platformStartDate: talent?.platformStartDate ?? '',
     platformEndDate: talent?.platformEndDate ?? '',
@@ -46,6 +46,7 @@ function toFormValues(talent?: Talent | null): TalentFormValues {
 
 interface TalentFormProps {
   selected?: Talent | null;
+  initialTalentType?: TalentType;
   currentCv?: TalentCvMetadata | null;
   saving?: boolean;
   onSubmit: (payload: TalentPayload, cvFile: File | null) => void;
@@ -59,6 +60,7 @@ const labelClass = 'mb-1.5 block text-[11px] font-medium text-slate-500';
 
 export const TalentForm: React.FC<TalentFormProps> = ({
   selected,
+  initialTalentType = 'ACADEMY',
   currentCv,
   saving,
   onSubmit,
@@ -68,21 +70,15 @@ export const TalentForm: React.FC<TalentFormProps> = ({
 }) => {
   const [formError, setFormError] = useState<string | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
-  const { register, handleSubmit, reset, watch, setValue } = useForm<TalentFormValues>({ defaultValues: toFormValues(selected) });
+  const { register, handleSubmit, reset, watch } = useForm<TalentFormValues>({ defaultValues: toFormValues(selected, initialTalentType) });
   const talentType = watch('talentType');
 
   useEffect(() => {
-    reset(toFormValues(selected));
+    reset(toFormValues(selected, initialTalentType));
     setCvFile(null);
     setFormError(null);
-  }, [selected, reset]);
+  }, [initialTalentType, selected, reset]);
 
-  const changeType = (type: TalentType) => {
-    if (selected) return;
-    setValue('talentType', type);
-    setValue('stage', defaultStage(type));
-    setFormError(null);
-  };
 
   const submit = (values: TalentFormValues) => {
     const parsed = talentSchema.safeParse(values);
@@ -115,26 +111,10 @@ export const TalentForm: React.FC<TalentFormProps> = ({
       <section>
         <div className="mb-3">
           <h3 className="text-sm font-semibold text-slate-900">Tipo de talento</h3>
-          <p className="mt-1 text-xs text-slate-500">La selección define la información requerida para el registro.</p>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(['ACADEMY', 'PROSPECT'] as const).map((type) => (
-            <button
-              key={type}
-              type="button"
-              disabled={Boolean(selected)}
-              onClick={() => changeType(type)}
-              className={`rounded-xl border p-4 text-left transition ${talentType === type ? 'border-blue-500/60 bg-blue-500/10' : 'border-slate-200 bg-slate-50 hover:border-slate-300'} disabled:cursor-default`}
-            >
-              <div className="text-sm font-semibold text-slate-950">{TALENT_TYPE_LABELS[type]}</div>
-              <div className="mt-1 text-xs leading-5 text-slate-500">
-                {type === 'ACADEMY' ? 'Formulario simplificado para integrantes de academia.' : 'Información profesional completa previa a incorporación.'}
-              </div>
-            </button>
-          ))}
+          <p className="mt-1 text-xs text-slate-500">{TALENT_TYPE_LABELS[talentType]}</p>
         </div>
         {selected?.talentType === 'BBVA_EXIT' && (
-          <div className="mt-3 rounded-lg border border-orange-500/20 bg-orange-500/10 px-3 py-2 text-xs text-orange-800">
+          <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-xs text-orange-800">
             Registro proveniente de una baja de BBVA. Conserva el formulario profesional completo.
           </div>
         )}

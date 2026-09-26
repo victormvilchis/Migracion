@@ -116,6 +116,21 @@ export async function talentCvHandler(request: HttpRequest, context: InvocationC
   }
 }
 
+
+export async function talentConvertHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+  try {
+    const id = request.params.id;
+    if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
+    const user = getCurrentUser(request);
+    const result = await service.convertToCollaborator(id, user.email);
+    return result
+      ? { status: 200, jsonBody: { collaboratorId: result.collaboratorId, message: 'El talento se convirtió correctamente en colaborador.' } }
+      : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
+  } catch (error) {
+    return errorResponse(error, context);
+  }
+}
+
 app.http('talentCollection', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
@@ -149,4 +164,12 @@ app.http('talentCv', {
   authLevel: 'anonymous',
   route: 'talent/{id}/cv',
   handler: talentCvHandler,
+});
+
+
+app.http('talentConvert', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  route: 'talent/{id}/convert',
+  handler: talentConvertHandler,
 });

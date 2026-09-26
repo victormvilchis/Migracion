@@ -9,6 +9,8 @@ import { SampleAiPage } from './pages/SampleAiPage';
 import { TalentPage } from './modules/talent/pages/TalentPage';
 import { TalentEditorPage } from './modules/talent/pages/TalentEditorPage';
 import { TalentDetailPage } from './modules/talent/pages/TalentDetailPage';
+import { TalentConvertPage } from './modules/talent/pages/TalentConvertPage';
+import { CollaboratorsPage } from './modules/collaborators/pages/CollaboratorsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,7 +48,9 @@ export const App: React.FC = () => {
                   <Route path="/talent" element={<TalentPage />} />
                   <Route path="/talent/new" element={<TalentEditorPage />} />
                   <Route path="/talent/:id/edit" element={<TalentEditorPage />} />
+                  <Route path="/talent/:id/convert" element={<TalentConvertPage />} />
                   <Route path="/talent/:id" element={<TalentDetailPage />} />
+                  <Route path="/collaborators" element={<CollaboratorsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>

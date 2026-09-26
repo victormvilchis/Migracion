@@ -124,7 +124,13 @@ function normalizeCv(payload: any): TalentCvInput {
 export class TalentService {
   list(): Promise<TalentRecord[]> { return repository.list(); }
   get(id: string): Promise<TalentRecord | null> { return repository.findById(id); }
-  create(payload: any, actorEmail: string): Promise<TalentRecord> { return repository.create(normalizePayload(payload), actorEmail); }
+  create(payload: any, actorEmail: string): Promise<TalentRecord> {
+    const normalized = normalizePayload(payload);
+    if (normalized.talentType === 'BBVA_EXIT') {
+      throw new Error('La Baja de BBVA no puede registrarse manualmente; se genera desde Colaboradores.');
+    }
+    return repository.create(normalized, actorEmail);
+  }
   update(id: string, payload: any, actorEmail: string): Promise<TalentRecord | null> { return repository.update(id, normalizePayload(payload), actorEmail); }
 
   updateStage(id: string, stageValue: unknown, actorEmail: string): Promise<TalentRecord | null> {
@@ -134,6 +140,14 @@ export class TalentService {
     return repository.updateStage(id, stage, actorEmail);
   }
 
+  async convertToCollaborator(id: string, actorEmail: string) {
+    const current = await repository.findById(id);
+    if (!current) return null;
+    if (!current.profile) throw new Error('El Perfil es obligatorio para realizar la conversión.');
+    if (!current.technologyProfile) throw new Error('El Perfil tecnológico es obligatorio para realizar la conversión.');
+    if (!current.currentTechnology) throw new Error('La Tecnología actual es obligatoria para realizar la conversión.');
+    return repository.convertToCollaborator(id, actorEmail);
+  }
   delete(id: string): Promise<boolean> { return repository.delete(id); }
   history(id: string): Promise<TalentHistoryRecord[]> { return repository.listHistory(id); }
   saveCv(id: string, payload: any, actorEmail: string) { return repository.saveCv(id, normalizeCv(payload), actorEmail); }

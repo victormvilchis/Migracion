@@ -31,6 +31,8 @@ export const talentApi = {
       method: 'PATCH',
       body: JSON.stringify({ stage }),
     }),
+  convert: (id: string) =>
+    fetchApi<{ collaboratorId: string; message: string }>(`/talent/${id}/convert`, { method: 'POST' }),
   remove: (id: string) =>
     fetchApi<{ deleted: boolean }>(`/talent/${id}`, { method: 'DELETE' }),
   history: (id: string) =>
