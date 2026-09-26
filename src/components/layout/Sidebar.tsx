@@ -1,21 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Database, Bot, Layers, UsersRound, UserRoundCheck } from 'lucide-react';
+import { LayoutDashboard, Database, Bot, Layers, Building2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const Sidebar: React.FC = () => {
   const businessItems = [
     {
-      to: '/talent',
-      label: 'Talent Bank',
-      icon: UsersRound,
-      description: 'Academias, prospectos y bajas',
-    },
-    {
-      to: '/collaborators',
-      label: 'Colaboradores',
-      icon: UserRoundCheck,
-      description: 'Activos, métricas y certificaciones',
+      to: '/bbva/talent-bank',
+      label: 'BBVA Talent Management',
+      icon: Building2,
+      description: 'Acceso al módulo BBVA',
     },
   ];
 

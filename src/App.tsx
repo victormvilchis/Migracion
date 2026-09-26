@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { BBVALayout } from './componentsBBVATalent/BBVALayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { SampleCrudPage } from './pages/SampleCrudPage';
 import { SampleAiPage } from './pages/SampleAiPage';
-import { TalentPage } from './modules/talent/pages/TalentPage';
-import { TalentEditorPage } from './modules/talent/pages/TalentEditorPage';
-import { TalentDetailPage } from './modules/talent/pages/TalentDetailPage';
-import { TalentConvertPage } from './modules/talent/pages/TalentConvertPage';
-import { CollaboratorsPage } from './modules/collaborators/pages/CollaboratorsPage';
+
+const TalentPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentBankPage').then((m) => ({ default: m.TalentPage })));
+const TalentEditorPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentEditorPage').then((m) => ({ default: m.TalentEditorPage })));
+const TalentDetailPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentDetailPage').then((m) => ({ default: m.TalentDetailPage })));
+const TalentConvertPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentConvertPage').then((m) => ({ default: m.TalentConvertPage })));
+const CollaboratorsPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorsPage').then((m) => ({ default: m.CollaboratorsPage })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,42 +23,73 @@ const queryClient = new QueryClient({
   },
 });
 
+const modulePage = (page: React.ReactNode) => (
+  <React.Suspense fallback={<div className="p-8 text-sm text-slate-500">Cargando módulo BBVA...</div>}>
+    {page}
+  </React.Suspense>
+);
+
+interface RoutedAppProps {
+  userKey: number;
+  onUserChanged: () => void;
+}
+
+const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
+  const location = useLocation();
+  const isBbvaRoute = location.pathname.startsWith('/bbva/');
+
+  if (isBbvaRoute) {
+    return (
+      <BBVALayout>
+        <div key={userKey}>
+          <Routes>
+            <Route path="/bbva/talent-bank" element={modulePage(<TalentPage />)} />
+            <Route path="/bbva/talent-bank/new" element={modulePage(<TalentEditorPage />)} />
+            <Route path="/bbva/talent-bank/:id/edit" element={modulePage(<TalentEditorPage />)} />
+            <Route path="/bbva/talent-bank/:id/convert" element={modulePage(<TalentConvertPage />)} />
+            <Route path="/bbva/talent-bank/:id" element={modulePage(<TalentDetailPage />)} />
+            <Route path="/bbva/collaborators" element={modulePage(<CollaboratorsPage />)} />
+            <Route path="/bbva/*" element={<Navigate to="/bbva/talent-bank" replace />} />
+          </Routes>
+        </div>
+      </BBVALayout>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col bg-slate-50 selection:bg-blue-600 selection:text-white">
+      <Header onUserChanged={onUserChanged} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 sm:p-8">
+          <div key={userKey} className="mx-auto max-w-7xl">
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/crud" element={<SampleCrudPage />} />
+              <Route path="/ai" element={<SampleAiPage />} />
+              <Route path="/talent/*" element={<Navigate to="/bbva/talent-bank" replace />} />
+              <Route path="/collaborators/*" element={<Navigate to="/bbva/collaborators" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
+
 export const App: React.FC = () => {
   const [userKey, setUserKey] = useState(0);
 
   const handleUserChanged = () => {
-    // Forzar re-ejecución de queries cuando el usuario simulado cambia
-    setUserKey((prev) => prev + 1);
-    queryClient.invalidateQueries();
+    setUserKey((previous) => previous + 1);
+    void queryClient.invalidateQueries();
   };
 
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-blue-600 selection:text-white">
-          <Header onUserChanged={handleUserChanged} />
-
-          <div className="flex flex-1 overflow-hidden">
-            <Sidebar />
-
-            <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50">
-              <div key={userKey} className="max-w-7xl mx-auto">
-                <Routes>
-                  <Route path="/" element={<DashboardPage />} />
-                  <Route path="/crud" element={<SampleCrudPage />} />
-                  <Route path="/ai" element={<SampleAiPage />} />
-                  <Route path="/talent" element={<TalentPage />} />
-                  <Route path="/talent/new" element={<TalentEditorPage />} />
-                  <Route path="/talent/:id/edit" element={<TalentEditorPage />} />
-                  <Route path="/talent/:id/convert" element={<TalentConvertPage />} />
-                  <Route path="/talent/:id" element={<TalentDetailPage />} />
-                  <Route path="/collaborators" element={<CollaboratorsPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </div>
-            </main>
-          </div>
-        </div>
+        <RoutedApp userKey={userKey} onUserChanged={handleUserChanged} />
       </BrowserRouter>
     </QueryClientProvider>
   );

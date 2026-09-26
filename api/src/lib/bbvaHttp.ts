@@ -1,0 +1,16 @@
+import type { HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+
+export async function readBbvaJson(request: HttpRequest): Promise<any> {
+  try { return await request.json(); }
+  catch { throw new Error('El cuerpo de la solicitud debe ser JSON válido.'); }
+}
+
+export function bbvaErrorResponse(error: unknown, context: InvocationContext, scope: 'TalentBank' | 'Collaborators'): HttpResponseInit {
+  const value = error as { message?: string; number?: number };
+  const message = value?.message || String(error);
+  context.error(`[BBVA:${scope}] Error:`, message);
+  const duplicate = value?.number === 2601 || value?.number === 2627 || /duplicate|unique|duplicad/i.test(message);
+  if (duplicate) return { status: 409, jsonBody: { error: 'Ya existe una persona con el mismo correo, Código Softtek o Usuario corporativo.' } };
+  if (/obligatorio|inválid|formato|permitid|vencimiento|conversión/i.test(message)) return { status: 400, jsonBody: { error: message } };
+  return { status: 500, jsonBody: { error: `No fue posible completar la operación de ${scope === 'TalentBank' ? 'Talent Bank' : 'Colaboradores'}.`, details: message } };
+}
