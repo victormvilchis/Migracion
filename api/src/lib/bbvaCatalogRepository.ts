@@ -33,7 +33,6 @@ function selectColumns(definition: BbvaCatalogDefinition): string {
   return `
     CAST(c.Id AS NVARCHAR(36)) AS id,
     c.Name AS name,
-    c.Code AS code,
     c.Description AS description,
     c.Seniority AS seniority,
     c.Status AS status,
@@ -57,7 +56,7 @@ export class BbvaCatalogRepository {
     const offset = page * size;
 
     const where: string[] = [];
-    if (search) where.push(`(c.Name LIKE @search OR ISNULL(c.Code, N'') LIKE @search OR ISNULL(c.Description, N'') LIKE @search OR ISNULL(c.Seniority, N'') LIKE @search)`);
+    if (search) where.push(`(c.Name LIKE @search OR ISNULL(c.Description, N'') LIKE @search OR ISNULL(c.Seniority, N'') LIKE @search)`);
     if (status !== 'ALL') where.push('c.Status = @status');
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
@@ -92,7 +91,7 @@ export class BbvaCatalogRepository {
   async listOptions(definition: BbvaCatalogDefinition): Promise<BbvaCatalogOption[]> {
     const pool = await getDbConnection();
     const result = await pool.request().query(`
-      SELECT CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Code AS code, Seniority AS seniority
+      SELECT CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Seniority AS seniority
       FROM ${definition.tableName}
       WHERE Status=N'ACTIVE'
       ORDER BY Name ASC, Id ASC;
@@ -113,7 +112,7 @@ export class BbvaCatalogRepository {
   async findActiveOptionById(definition: BbvaCatalogDefinition, id: string): Promise<BbvaCatalogOption | null> {
     const pool = await getDbConnection();
     const result = await pool.request().input('id', sql.UniqueIdentifier, id).query(`
-      SELECT CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Code AS code, Seniority AS seniority
+      SELECT CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Seniority AS seniority
       FROM ${definition.tableName}
       WHERE Id=@id AND Status=N'ACTIVE';
     `);
@@ -123,7 +122,7 @@ export class BbvaCatalogRepository {
   async findActiveOptionByName(definition: BbvaCatalogDefinition, name: string): Promise<BbvaCatalogOption | null> {
     const pool = await getDbConnection();
     const result = await pool.request().input('name', sql.NVarChar(180), name).query(`
-      SELECT TOP 1 CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Code AS code, Seniority AS seniority
+      SELECT TOP 1 CAST(Id AS NVARCHAR(36)) AS id, Name AS name, Seniority AS seniority
       FROM ${definition.tableName}
       WHERE Status=N'ACTIVE' AND UPPER(LTRIM(RTRIM(Name)))=UPPER(LTRIM(RTRIM(@name)));
     `);
@@ -134,14 +133,13 @@ export class BbvaCatalogRepository {
     const pool = await getDbConnection();
     const result = await pool.request()
       .input('name', sql.NVarChar(180), input.name)
-      .input('code', sql.NVarChar(80), definition.supportsCode ? (input.code || null) : null)
       .input('description', sql.NVarChar(500), input.description || null)
       .input('seniority', sql.NVarChar(40), definition.supportsSeniority ? (input.seniority || null) : null)
       .input('actorEmail', sql.NVarChar(255), actorEmail)
       .query(`
-        INSERT INTO ${definition.tableName} (Name, Code, Description, Seniority, Status, CreatedByEmail, UpdatedByEmail)
+        INSERT INTO ${definition.tableName} (Name, Description, Seniority, Status, CreatedByEmail, UpdatedByEmail)
         OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
-        VALUES (@name, @code, @description, @seniority, N'ACTIVE', @actorEmail, @actorEmail);
+        VALUES (@name, @description, @seniority, N'ACTIVE', @actorEmail, @actorEmail);
       `);
     const id = String(result.recordset[0].id);
     const created = await this.findById(definition, id);
@@ -154,13 +152,12 @@ export class BbvaCatalogRepository {
     const result = await pool.request()
       .input('id', sql.UniqueIdentifier, id)
       .input('name', sql.NVarChar(180), input.name)
-      .input('code', sql.NVarChar(80), definition.supportsCode ? (input.code || null) : null)
       .input('description', sql.NVarChar(500), input.description || null)
       .input('seniority', sql.NVarChar(40), definition.supportsSeniority ? (input.seniority || null) : null)
       .input('actorEmail', sql.NVarChar(255), actorEmail)
       .query(`
         UPDATE ${definition.tableName}
-        SET Name=@name, Code=@code, Description=@description, Seniority=@seniority,
+        SET Name=@name, Description=@description, Seniority=@seniority,
             UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
         WHERE Id=@id;
         SELECT @@ROWCOUNT AS affected;

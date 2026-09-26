@@ -6,6 +6,7 @@ import type { CatalogOption } from '../pagesBBVATalent/types/catalog';
 import type { Collaborator, CollaboratorPayload } from '../pagesBBVATalent/types/collaborator';
 import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
 import { BBVASearchableSelect, type BBVASearchableSelectOption } from './BBVASearchableSelect';
+import { BBVADatePicker } from './BBVADatePicker';
 import { ISLookupField } from './ISLookupField';
 
 const fieldClass = 'h-9 w-full rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
@@ -68,6 +69,9 @@ export const CollaboratorForm: React.FC<{ selected?: Collaborator | null; saving
   const technologyProfileCatalogId = watch('technologyProfileCatalogId');
   const currentTechnologyCatalogId = watch('currentTechnologyCatalogId');
   const expertise = watch('expertise');
+  const startDate = watch('startDate');
+  const endDate = watch('endDate');
+  const hireDate = watch('hireDate');
 
   const hydrateFromDirectory = (record: IdentityDirectoryRecord) => {
     if (record.corporateUser) setValue('corporateUser', record.corporateUser, { shouldDirty: true, shouldValidate: true });
@@ -83,6 +87,9 @@ export const CollaboratorForm: React.FC<{ selected?: Collaborator | null; saving
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-3">
+      <input type="hidden" {...register('startDate')} />
+      <input type="hidden" {...register('endDate')} />
+      <input type="hidden" {...register('hireDate')} />
       <section className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Identificación</h3>
         <div className="grid gap-3 md:grid-cols-12">
@@ -115,8 +122,8 @@ export const CollaboratorForm: React.FC<{ selected?: Collaborator | null; saving
             <input type="hidden" {...register('currentTechnology')} />
           </label>
           <label className="md:col-span-2">
-            <span className={labelClass}>Expertise</span>
-            <BBVASearchableSelect value={expertise ?? ''} onChange={(value) => setValue('expertise', value, { shouldDirty: true, shouldValidate: true })} options={expertiseOptions} ariaLabel="Expertise" />
+            <span className={labelClass}>Nivel de experiencia</span>
+            <BBVASearchableSelect value={expertise ?? ''} onChange={(value) => setValue('expertise', value, { shouldDirty: true, shouldValidate: true })} options={expertiseOptions} ariaLabel="Nivel de experiencia" />
             <input type="hidden" {...register('expertise')} />
           </label>
         </div>
@@ -124,9 +131,9 @@ export const CollaboratorForm: React.FC<{ selected?: Collaborator | null; saving
       <section className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Fechas</h3>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-3"><span className={labelClass}>Fecha de alta</span><input {...register('startDate')} type="date" className={fieldClass} /></label>
-          <label className="md:col-span-3"><span className={labelClass}>Vencimiento</span><input {...register('endDate')} type="date" className={fieldClass} /></label>
-          <label className="md:col-span-3"><span className={labelClass}>Fecha de contratación</span><input {...register('hireDate')} type="date" className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Fecha de alta</span><BBVADatePicker value={startDate} onChange={(value) => setValue('startDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Fecha de alta" /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Vencimiento</span><BBVADatePicker value={endDate} onChange={(value) => setValue('endDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Vencimiento" /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Fecha de contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Fecha de contratación" /></label>
         </div>
       </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75"><label><span className={labelClass}>Observaciones</span><textarea {...register('notes')} rows={4} className={areaClass} /></label></section>

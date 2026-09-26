@@ -34,7 +34,7 @@ const queryClient = new QueryClient({
 });
 
 const modulePage = (page: React.ReactNode) => (
-  <React.Suspense fallback={<div className="p-4 text-xs text-slate-500">Cargando mÃ³dulo...</div>}>
+  <React.Suspense fallback={<div className="p-4 text-xs text-slate-500">Cargando módulo...</div>}>
     {page}
   </React.Suspense>
 );
@@ -50,7 +50,7 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900 selection:bg-blue-600 selection:text-white">
-      {/* Header BFS corporativo/global: obligatorio en todos los mÃ³dulos. */}
+      {/* Header BFS corporativo/global: obligatorio en todos los módulos. */}
       <Header onUserChanged={onUserChanged} />
 
       {isBbvaRoute ? (

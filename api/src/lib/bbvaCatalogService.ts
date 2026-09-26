@@ -52,22 +52,19 @@ export class BbvaCatalogService {
   private validate(definition: BbvaCatalogDefinition, payload: unknown): BbvaCatalogInput {
     const value = (payload ?? {}) as Record<string, unknown>;
     const name = String(value.name ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
-    const code = String(value.code ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
     const description = String(value.description ?? '').trim();
     const seniority = String(value.seniority ?? '').trim().replace(/\s+/g, ' ').toUpperCase();
 
     if (!name) throw new Error(`El nombre de ${definition.singularLabel} es obligatorio.`);
     if (name.length > 180) throw new Error('El nombre no puede exceder 180 caracteres.');
-    if (code.length > 80) throw new Error('El código no puede exceder 80 caracteres.');
     if (description.length > 500) throw new Error('La descripción no puede exceder 500 caracteres.');
-    if (seniority.length > 40) throw new Error('El seniority no puede exceder 40 caracteres.');
+    if (seniority.length > 40) throw new Error('El nivel no puede exceder 40 caracteres.');
     if (definition.supportsSeniority && seniority && !['TR', 'JR', 'STD', 'SR'].includes(seniority)) {
-      throw new Error('El seniority debe ser TR, JR, STD o SR.');
+      throw new Error('El nivel debe ser TR, JR, STD o SR.');
     }
 
     return {
       name,
-      code: definition.supportsCode ? (code || null) : null,
       description: description || null,
       seniority: definition.supportsSeniority ? (seniority || null) : null,
     };

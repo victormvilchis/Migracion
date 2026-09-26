@@ -17,6 +17,7 @@ import {
 import { formatBytes } from '../pagesBBVATalent/lib/talentDisplay';
 import { validateCvFile } from '../pagesBBVATalent/lib/talentCv';
 import { BBVAAlert } from './BBVAAlert';
+import { BBVADatePicker } from './BBVADatePicker';
 import { BBVASearchableSelect, type BBVASearchableSelectOption } from './BBVASearchableSelect';
 import { ISLookupField } from './ISLookupField';
 import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
@@ -88,6 +89,10 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
   const currentTechnologyCatalogId = watch('currentTechnologyCatalogId');
   const expertise = watch('expertise');
   const stage = watch('stage');
+  const platformStartDate = watch('platformStartDate');
+  const platformEndDate = watch('platformEndDate');
+  const hireDate = watch('hireDate');
+  const entryDate = watch('entryDate');
   const fullForm = talentType !== 'ACADEMY';
   const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading;
 
@@ -146,6 +151,10 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
       <input type="hidden" {...register('currentTechnologyCatalogId')} />
       <input type="hidden" {...register('expertise')} />
       <input type="hidden" {...register('stage')} />
+      <input type="hidden" {...register('platformStartDate')} />
+      <input type="hidden" {...register('platformEndDate')} />
+      <input type="hidden" {...register('hireDate')} />
+      <input type="hidden" {...register('entryDate')} />
 
       {selected?.talentType === 'BBVA_EXIT' ? <BBVAAlert tone="info">Registro proveniente de una baja de BBVA. Conserva el formulario profesional completo.</BBVAAlert> : null}
       {formError ? <BBVAAlert tone="error" onClose={() => setFormError(null)}>{formError}</BBVAAlert> : null}
@@ -183,8 +192,8 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
           </label>
           {fullForm ? (
             <label className="md:col-span-2">
-              <span className={labelClass}>Expertise</span>
-              <BBVASearchableSelect value={expertise ?? ''} onChange={(value) => setValue('expertise', value, { shouldDirty: true, shouldValidate: true })} options={[{ value: '', label: '—' }, ...EXPERTISE_LEVELS.map((level) => ({ value: level, label: level }))]} ariaLabel="Expertise" />
+              <span className={labelClass}>Nivel de experiencia</span>
+              <BBVASearchableSelect value={expertise ?? ''} onChange={(value) => setValue('expertise', value, { shouldDirty: true, shouldValidate: true })} options={[{ value: '', label: '—' }, ...EXPERTISE_LEVELS.map((level) => ({ value: level, label: level }))]} ariaLabel="Nivel de experiencia" />
             </label>
           ) : null}
         </div>
@@ -193,10 +202,10 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
       <section className={sectionClass}>
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Fechas y estado</h3>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-2"><span className={labelClass}>Inicio vigencia</span><input {...register('platformStartDate')} type="date" className={fieldClass} /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Vencimiento</span><input {...register('platformEndDate')} type="date" className={fieldClass} /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Contratación</span><input {...register('hireDate')} type="date" className={fieldClass} /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Alta Talent Bank</span><input {...register('entryDate')} type="date" className={fieldClass} /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Inicio vigencia</span><BBVADatePicker value={platformStartDate} onChange={(value) => setValue('platformStartDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Inicio de vigencia" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Vencimiento</span><BBVADatePicker value={platformEndDate} onChange={(value) => setValue('platformEndDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Vencimiento" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Fecha de contratación" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Alta Banco de talento</span><BBVADatePicker value={entryDate} onChange={(value) => setValue('entryDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Fecha de alta en Banco de talento" /></label>
           <label className="md:col-span-2">
             <span className={labelClass}>Etapa</span>
             <BBVASearchableSelect value={stage ?? ''} onChange={(value) => setValue('stage', value as TalentFormValues['stage'], { shouldDirty: true, shouldValidate: true })} options={TALENT_STAGES.filter((item) => item !== 'CONVERTED').map((item) => ({ value: item, label: TALENT_STAGE_LABELS[item] }))} ariaLabel="Etapa" />

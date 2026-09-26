@@ -6,7 +6,6 @@ export interface BbvaCatalogDefinition {
   singularLabel: string;
   pluralLabel: string;
   tableName: string;
-  supportsCode: boolean;
   supportsSeniority: boolean;
   usageColumn?: 'CurrentTechnology' | 'Profile' | 'TechnologyProfile';
   usageIdColumn?: 'CurrentTechnologyCatalogId' | 'ProfileCatalogId' | 'TechnologyProfileCatalogId';
@@ -15,7 +14,6 @@ export interface BbvaCatalogDefinition {
 
 export interface BbvaCatalogInput {
   name: string;
-  code?: string | null;
   description?: string | null;
   seniority?: string | null;
 }
@@ -23,7 +21,6 @@ export interface BbvaCatalogInput {
 export interface BbvaCatalogRecord {
   id: string;
   name: string;
-  code: string | null;
   description: string | null;
   seniority: string | null;
   status: BbvaCatalogStatus;
@@ -37,7 +34,6 @@ export interface BbvaCatalogRecord {
 export interface BbvaCatalogOption {
   id: string;
   name: string;
-  code: string | null;
   seniority: string | null;
 }
 
@@ -64,7 +60,6 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
     singularLabel: 'categoría',
     pluralLabel: 'Categorías',
     tableName: 'bbva.CatalogCategory',
-    supportsCode: false,
     supportsSeniority: false,
   },
   technologies: {
@@ -72,7 +67,6 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
     singularLabel: 'tecnología',
     pluralLabel: 'Tecnologías',
     tableName: 'bbva.CatalogTechnology',
-    supportsCode: true,
     supportsSeniority: false,
     usageColumn: 'CurrentTechnology',
     usageIdColumn: 'CurrentTechnologyCatalogId',
@@ -83,18 +77,15 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
     singularLabel: 'perfil',
     pluralLabel: 'Perfiles',
     tableName: 'bbva.CatalogProfile',
-    supportsCode: true,
     supportsSeniority: true,
     usageColumn: 'Profile',
     usageIdColumn: 'ProfileCatalogId',
-    extraUsageExpressions: ['(SELECT COUNT_BIG(1) FROM bbva.CertificationProfileRule cpr WHERE cpr.ProfileId=c.Id)'],
   },
   'technology-profiles': {
     type: 'technology-profiles',
     singularLabel: 'perfil tecnológico',
     pluralLabel: 'Perfiles tecnológicos',
     tableName: 'bbva.CatalogTechnologyProfile',
-    supportsCode: false,
     supportsSeniority: false,
     usageColumn: 'TechnologyProfile',
     usageIdColumn: 'TechnologyProfileCatalogId',

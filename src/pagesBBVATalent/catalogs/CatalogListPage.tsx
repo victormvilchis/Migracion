@@ -101,7 +101,7 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
       <div className="grid gap-2 md:grid-cols-[minmax(260px,1fr)_200px]">
         <div className="relative">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, código o descripción" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre o descripción" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
         </div>
         <BBVASearchableSelect value={status} onChange={(value) => setStatus(value as CatalogStatus | 'ALL')} options={[{ value: 'ACTIVE', label: 'Activos' }, { value: 'INACTIVE', label: 'Inactivos' }, { value: 'ALL', label: 'Todos' }]} ariaLabel="Filtrar por estado" />
       </div>
@@ -128,7 +128,7 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
                   <tr key={item.id} className="h-[39px] transition hover:bg-slate-50 [.bbva-dark_&]:hover:bg-slate-800/60">
                     <td className="px-2 py-1.5">
                       <div className="truncate font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{item.name}</div>
-                      {(item.code || item.seniority || item.description) && <div className="truncate text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">{[item.code, item.seniority, item.description].filter(Boolean).join(' · ')}</div>}
+                      {(item.seniority || item.description) && <div className="truncate text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">{[item.seniority, item.description].filter(Boolean).join(' · ')}</div>}
                     </td>
                     <td className="px-2 py-1.5 text-center font-semibold tabular-nums text-slate-700 [.bbva-dark_&]:text-slate-300">{item.usageCount}</td>
                     <td className="px-2 py-1.5 whitespace-nowrap text-slate-600 [.bbva-dark_&]:text-slate-300">{formatDateTime(item.updatedAt)}</td>

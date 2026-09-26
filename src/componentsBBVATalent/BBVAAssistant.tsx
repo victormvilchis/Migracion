@@ -41,7 +41,7 @@ export const BBVAAssistant: React.FC = () => {
           <Bot className="h-4 w-4" />
           <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-white bg-emerald-400 [.bbva-dark_&]:border-[#0b1728]" />
         </span>
-        <span>BBVA Intelligence</span>
+        <span>Inteligencia BBVA</span>
         <Sparkles className="h-3.5 w-3.5 text-blue-500 [.bbva-dark_&]:text-cyan-300" />
       </button>
 
@@ -63,9 +63,9 @@ export const BBVAAssistant: React.FC = () => {
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <h2 className="truncate text-sm font-bold">BBVA Intelligence</h2>
+                      <h2 className="truncate text-sm font-bold">Inteligencia BBVA</h2>
                       <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700 [.bbva-dark_&]:border-violet-400/20 [.bbva-dark_&]:bg-violet-400/10 [.bbva-dark_&]:text-violet-200">
-                        Preview
+                        Vista previa
                       </span>
                     </div>
                     <p className="mt-0.5 truncate text-[11px] text-slate-500 [.bbva-dark_&]:text-slate-400">
@@ -94,7 +94,7 @@ export const BBVAAssistant: React.FC = () => {
                   ¿En qué te ayudo dentro de {contextLabel}?
                 </h3>
                 <p className="mt-2 text-xs leading-5 text-slate-600 [.bbva-dark_&]:text-slate-300">
-                  La interfaz ya está preparada para consultar datos, explicar resultados, detectar pendientes y asistir flujos del workspace. La conexión al servicio de IA se habilitará en una siguiente entrega.
+                  La interfaz ya está preparada para consultar datos, explicar resultados, detectar pendientes y asistir flujos del espacio de trabajo. La conexión al servicio de IA se habilitará en una siguiente entrega.
                 </p>
               </div>
 

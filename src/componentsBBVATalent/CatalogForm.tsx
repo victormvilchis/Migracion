@@ -12,14 +12,12 @@ interface CatalogFormProps {
 
 export const CatalogForm: React.FC<CatalogFormProps> = ({ config, selected, saving, onSubmit, onCancel }) => {
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [seniority, setSeniority] = useState('');
   const [validation, setValidation] = useState<string | null>(null);
 
   useEffect(() => {
     setName(selected?.name ?? '');
-    setCode(selected?.code ?? '');
     setDescription(selected?.description ?? '');
     setSeniority(selected?.seniority ?? '');
     setValidation(null);
@@ -38,7 +36,6 @@ export const CatalogForm: React.FC<CatalogFormProps> = ({ config, selected, savi
     setValidation(null);
     onSubmit({
       name: normalizedName,
-      code: config.supportsCode ? (code.trim() || null) : null,
       description: description.trim() || null,
       seniority: config.supportsSeniority ? (seniority.trim() || null) : null,
     });
@@ -49,23 +46,17 @@ export const CatalogForm: React.FC<CatalogFormProps> = ({ config, selected, savi
       {validation && <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700 [.bbva-dark_&]:border-rose-500/25 [.bbva-dark_&]:bg-rose-500/10 [.bbva-dark_&]:text-rose-200">{validation}</div>}
 
       <div className="grid gap-3 md:grid-cols-2">
-        <label className={config.supportsCode ? '' : 'md:col-span-2'}>
+        <label className={config.supportsSeniority ? '' : 'md:col-span-2'}>
           <span className={labelClass}>Nombre <span className="text-rose-500">*</span></span>
           <input className={inputClass} value={name} onChange={(event) => setName(event.target.value)} maxLength={180} placeholder={config.namePlaceholder} autoFocus />
         </label>
-        {config.supportsCode && (
-          <label>
-            <span className={labelClass}>Código <span className="font-normal normal-case tracking-normal text-slate-400">(opcional)</span></span>
-            <input className={inputClass} value={code} onChange={(event) => setCode(event.target.value)} maxLength={80} placeholder={config.codePlaceholder} />
-          </label>
-        )}
         {config.supportsSeniority && (
           <label>
-            <span className={labelClass}>Seniority de referencia <span className="font-normal normal-case tracking-normal text-slate-400">(opcional)</span></span>
-            <BBVASearchableSelect value={seniority} onChange={setSeniority} options={[{ value: '', label: 'Sin definir' }, { value: 'JR', label: 'JR' }, { value: 'STD', label: 'STD' }, { value: 'SR', label: 'SR' }]} ariaLabel="Seniority de referencia" />
+            <span className={labelClass}>Nivel de referencia <span className="font-normal normal-case tracking-normal text-slate-400">(opcional)</span></span>
+            <BBVASearchableSelect value={seniority} onChange={setSeniority} options={[{ value: '', label: 'Sin definir' }, { value: 'TR', label: 'TR' }, { value: 'JR', label: 'JR' }, { value: 'STD', label: 'STD' }, { value: 'SR', label: 'SR' }]} ariaLabel="Nivel de referencia" />
           </label>
         )}
-        <label className={config.supportsSeniority ? '' : 'md:col-span-2'}>
+        <label className="md:col-span-2">
           <span className={labelClass}>Descripción <span className="font-normal normal-case tracking-normal text-slate-400">(opcional)</span></span>
           <textarea className="min-h-[96px] w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-[11px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={500} placeholder={config.descriptionPlaceholder} />
         </label>

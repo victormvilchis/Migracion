@@ -35,7 +35,7 @@ export const DashboardPage: React.FC = () => {
       <div className="border-b border-slate-200 pb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium mb-3">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Starter Boilerplate Desacoplado</span>
+          <span>Plantilla base desacoplada</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-950 tracking-tight">
           Bienvenido al Entorno BaseBFS
@@ -66,7 +66,7 @@ export const DashboardPage: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <ServiceStatusBadge
-            label="Azure Functions (Backend)"
+            label="Azure Functions (servicios)"
             status={isLoading ? 'loading' : isError ? 'error' : 'running'}
             subtitle="http://localhost:7071 (Node.js 22 v4)"
           />
@@ -86,7 +86,7 @@ export const DashboardPage: React.FC = () => {
             }
           />
           <ServiceStatusBadge
-            label={aiProvider === 'openai-compatible-gateway' ? 'AI Gateway (OpenAI Comp.)' : 'Azure OpenAI / Gateway'}
+            label={aiProvider === 'openai-compatible-gateway' ? 'Gateway de IA (compatible con OpenAI)' : 'Azure OpenAI / gateway'}
             status={aiConfigured ? 'connected' : aiMockMode ? 'mock' : 'disconnected'}
             subtitle={
               aiConfigured
@@ -196,7 +196,7 @@ export const DashboardPage: React.FC = () => {
                 <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
               </div>
               <p className="text-xs text-slate-500 mt-1.5 pl-6.5">
-                Demuestra llamadas a Azure OpenAI mediante Azure Functions, gestión de tokens, prompts del sistema y fallback transparente a mock.
+                Demuestra llamadas a Azure OpenAI mediante Azure Functions, gestión de tokens, prompts del sistema y alternativa transparente en modo simulado.
               </p>
             </Link>
 

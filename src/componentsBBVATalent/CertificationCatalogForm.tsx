@@ -27,7 +27,6 @@ const labelClass = 'mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[
 const sectionClass = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75';
 
 const initialPayload = (selected?: CertificationCatalogRecord | null): CertificationCatalogPayload => ({
-  code: selected?.code ?? '',
   name: selected?.name ?? '',
   description: selected?.description ?? '',
   certificationType: selected?.certificationType ?? 'TECHNOLOGICAL',
@@ -47,7 +46,6 @@ const initialPayload = (selected?: CertificationCatalogRecord | null): Certifica
   requirementGroup: selected?.requirementGroup ?? '',
   requirementGroupMinimum: selected?.requirementGroupMinimum ?? null,
   allowedLevels: selected?.allowedLevels ?? ['JR', 'STD', 'SR'],
-  profileRules: selected?.profileRules.map((rule) => ({ profileId: rule.profileId, mandatory: rule.mandatory })) ?? [],
 });
 
 export const CertificationCatalogForm: React.FC<Props> = ({ selected, saving, onSubmit, onCancel }) => {
@@ -92,7 +90,6 @@ export const CertificationCatalogForm: React.FC<Props> = ({ selected, saving, on
     setValidation(null);
     onSubmit({
       ...values,
-      code: values.code.trim().toUpperCase(),
       name: values.name.trim(),
       provider: values.provider.trim(),
       description: values.description.trim(),

@@ -11,18 +11,7 @@ export const CERTIFICATION_LEVELS = ['JR', 'STD', 'SR', 'GENERIC'] as const;
 export type CertificationLevel = (typeof CERTIFICATION_LEVELS)[number];
 export type CertificationCatalogStatus = 'ACTIVE' | 'INACTIVE';
 
-export interface CertificationProfileRuleInput {
-  profileId: string;
-  mandatory: boolean;
-}
-
-export interface CertificationProfileRule extends CertificationProfileRuleInput {
-  profileName: string;
-  profileSeniority: string | null;
-}
-
 export interface CertificationCatalogInput {
-  code: string;
   name: string;
   description: string | null;
   certificationType: CertificationType;
@@ -42,12 +31,10 @@ export interface CertificationCatalogInput {
   requirementGroup: string | null;
   requirementGroupMinimum: number | null;
   allowedLevels: CertificationLevel[];
-  profileRules: CertificationProfileRuleInput[];
 }
 
 export interface CertificationCatalogRecord {
   id: string;
-  code: string;
   name: string;
   description: string | null;
   certificationType: CertificationType;
@@ -69,8 +56,6 @@ export interface CertificationCatalogRecord {
   requirementGroupMinimum: number | null;
   status: CertificationCatalogStatus;
   allowedLevels: CertificationLevel[];
-  profileRules: CertificationProfileRule[];
-  profileCount: number;
   usageCount: number;
   createdAt: string;
   updatedAt: string;
@@ -78,9 +63,7 @@ export interface CertificationCatalogRecord {
   updatedByEmail: string;
 }
 
-export interface CertificationCatalogListItem extends Omit<CertificationCatalogRecord, 'profileRules'> {
-  profileRules: [];
-}
+export type CertificationCatalogListItem = CertificationCatalogRecord;
 
 export interface CertificationCatalogListParams {
   search?: string;
@@ -102,7 +85,6 @@ export interface CertificationCatalogPage {
 
 export interface CertificationCatalogOption {
   id: string;
-  code: string;
   name: string;
   certificationType: CertificationType;
   technologyId: string | null;

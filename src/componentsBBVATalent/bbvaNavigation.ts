@@ -35,7 +35,7 @@ export interface BBVANavGroup {
  * Navegación oficial BBVA Workspace.
  *
  * Orden:
- * Dashboard > Talent > Certificaciones > Reportes > Estudio > Administración.
+ * Panel > Talento > Certificaciones > Reportes > Estudio > Administración.
  *
  * Reglas:
  * - Una entrada por módulo funcional; las operaciones viven dentro de la vista.
@@ -50,17 +50,17 @@ export interface BBVANavGroup {
 export const bbvaNavigation: BBVANavGroup[] = [
   {
     id: 'dashboard',
-    label: 'Dashboard',
+    label: 'Panel',
     icon: Gauge,
     path: '/bbva/dashboard',
   },
   {
     id: 'talent',
-    label: 'Talent',
+    label: 'Talento',
     icon: UsersRound,
     modules: [
       { id: 'collaborators', label: 'Colaboradores', path: '/bbva/collaborators', status: 'ready' },
-      { id: 'talent-bank', label: 'Talent Bank', path: '/bbva/talent-bank', status: 'ready' },
+      { id: 'talent-bank', label: 'Banco de talento', path: '/bbva/talent-bank', status: 'ready' },
     ],
   },
   {
@@ -79,7 +79,7 @@ export const bbvaNavigation: BBVANavGroup[] = [
         id: 'certifications-metrics',
         label: 'Métricas',
         path: '/bbva/certifications/metrics',
-        description: 'Cumplimiento, estatus y tendencias en una sola vista.',
+        description: 'Cumplimiento, estado y tendencias en una sola vista.',
         status: 'planned',
       },
     ],
@@ -89,7 +89,7 @@ export const bbvaNavigation: BBVANavGroup[] = [
     label: 'Reportes',
     icon: BarChart3,
     modules: [
-      { id: 'reports-talent', label: 'Talent', path: '/bbva/reports/talent', status: 'planned' },
+      { id: 'reports-talent', label: 'Talento', path: '/bbva/reports/talent', status: 'planned' },
       { id: 'reports-collaborators', label: 'Colaboradores', path: '/bbva/reports/collaborators', status: 'planned' },
       { id: 'reports-evaluations', label: 'Evaluaciones', path: '/bbva/reports/evaluations', status: 'planned' },
       { id: 'reports-certifications', label: 'Certificaciones', path: '/bbva/reports/certifications', status: 'planned' },
@@ -114,7 +114,7 @@ export const bbvaNavigation: BBVANavGroup[] = [
         label: 'Evaluaciones',
         modules: [
           { id: 'evaluations-list', label: 'Evaluaciones', path: '/bbva/study/evaluations', status: 'planned' },
-          { id: 'paths', label: 'Paths', path: '/bbva/study/paths', status: 'planned' },
+          { id: 'paths', label: 'Rutas', path: '/bbva/study/paths', status: 'planned' },
         ],
       },
     ],

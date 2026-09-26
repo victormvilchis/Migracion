@@ -4,7 +4,6 @@ export type CatalogStatus = 'ACTIVE' | 'INACTIVE';
 export interface CatalogRecord {
   id: string;
   name: string;
-  code: string | null;
   description: string | null;
   seniority: string | null;
   status: CatalogStatus;
@@ -18,13 +17,11 @@ export interface CatalogRecord {
 export interface CatalogOption {
   id: string;
   name: string;
-  code: string | null;
   seniority: string | null;
 }
 
 export interface CatalogPayload {
   name: string;
-  code?: string | null;
   description?: string | null;
   seniority?: string | null;
 }
@@ -44,28 +41,26 @@ export interface CatalogConfig {
   singularArticle: 'la' | 'el';
   plural: string;
   route: string;
-  supportsCode: boolean;
   supportsSeniority: boolean;
   namePlaceholder: string;
-  codePlaceholder?: string;
   descriptionPlaceholder: string;
 }
 
 export const catalogConfigs: Record<CatalogType, CatalogConfig> = {
   categories: {
     type: 'categories', singular: 'categoría', singularArticle: 'la', plural: 'Categorías', route: '/bbva/admin/catalogs/categories',
-    supportsCode: false, supportsSeniority: false, namePlaceholder: 'Ej. Desarrollo Seguro', descriptionPlaceholder: 'Descripción breve de la categoría',
+    supportsSeniority: false, namePlaceholder: 'Ej. Desarrollo Seguro', descriptionPlaceholder: 'Descripción breve de la categoría',
   },
   technologies: {
     type: 'technologies', singular: 'tecnología', singularArticle: 'la', plural: 'Tecnologías', route: '/bbva/admin/catalogs/technologies',
-    supportsCode: true, supportsSeniority: false, namePlaceholder: 'Ej. APX', codePlaceholder: 'Ej. APX', descriptionPlaceholder: 'Descripción breve de la tecnología',
+    supportsSeniority: false, namePlaceholder: 'Ej. APX', descriptionPlaceholder: 'Descripción breve de la tecnología',
   },
   profiles: {
     type: 'profiles', singular: 'perfil', singularArticle: 'el', plural: 'Perfiles', route: '/bbva/admin/catalogs/profiles',
-    supportsCode: true, supportsSeniority: true, namePlaceholder: 'Ej. ANALISTA PROGRAMADOR SR ESPECIAL', codePlaceholder: 'Código opcional', descriptionPlaceholder: 'Descripción breve del perfil',
+    supportsSeniority: true, namePlaceholder: 'Ej. ANALISTA PROGRAMADOR SR ESPECIAL', descriptionPlaceholder: 'Descripción breve del perfil',
   },
   'technology-profiles': {
     type: 'technology-profiles', singular: 'perfil tecnológico', singularArticle: 'el', plural: 'Perfiles tecnológicos', route: '/bbva/admin/catalogs/technology-profiles',
-    supportsCode: false, supportsSeniority: false, namePlaceholder: 'Ej. DESARROLLADOR', descriptionPlaceholder: 'Descripción breve del perfil tecnológico',
+    supportsSeniority: false, namePlaceholder: 'Ej. DESARROLLADOR', descriptionPlaceholder: 'Descripción breve del perfil tecnológico',
   },
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { Cpu, ShieldCheck, User } from 'lucide-react';
 import { DEV_USERS, getEffectiveUserEmail, setEffectiveUserEmail } from '../../devConfig';
-import { User, ShieldCheck, Cpu } from 'lucide-react';
+import { SearchableSelect } from '../common/SearchableSelect';
 
 interface HeaderProps {
   onUserChanged?: () => void;
@@ -9,58 +10,53 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ onUserChanged }) => {
   const [currentUser, setCurrentUser] = useState(getEffectiveUserEmail());
 
-  const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newUser = e.target.value;
+  const handleUserChange = (newUser: string) => {
     setEffectiveUserEmail(newUser);
     setCurrentUser(newUser);
-    if (onUserChanged) onUserChanged();
+    onUserChanged?.();
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 bg-white/95 backdrop-blur px-6 flex items-center justify-between sticky top-0 z-20">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-6 backdrop-blur">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center font-bold text-white shadow-md shadow-blue-500/20">
-          <Cpu className="w-5 h-5 text-white" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 font-bold text-white shadow-md shadow-blue-500/20">
+          <Cpu className="h-5 w-5 text-white" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold text-slate-950 tracking-tight">
-              Base<span className="text-blue-500">BFS</span> Platform
+            <h1 className="text-base font-bold tracking-tight text-slate-950">
+              Plataforma Base<span className="text-blue-500">BFS</span>
             </h1>
-            <span className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-1.5 py-0.5 rounded font-mono">
-              v1.0-starter
+            <span className="rounded border border-blue-500/20 bg-blue-500/10 px-1.5 py-0.5 font-mono text-[10px] text-blue-500">
+              v1.0-inicial
             </span>
           </div>
-          <p className="text-[11px] text-slate-500">Plantilla de Desarrollo Local & Paridad con bfs_US</p>
+          <p className="text-[11px] text-slate-500">Plantilla de desarrollo local y paridad con bfs_US</p>
         </div>
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Selector de Usuario Local Simulado */}
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs">
-          <User className="w-3.5 h-3.5 text-blue-400" />
-          <span className="text-slate-500 hidden sm:inline">Usuario Local:</span>
-          <select
-            value={currentUser}
-            onChange={handleUserChange}
-            className="bg-transparent text-slate-900 font-medium focus:outline-none cursor-pointer"
-          >
-            <option value={DEV_USERS.FRANCISCO} className="bg-white text-slate-900">
-              Francisco Barrera (Admin)
-            </option>
-            <option value={DEV_USERS.DEVELOPER} className="bg-white text-slate-900">
-              Equipo Desarrollador (Dev)
-            </option>
-            <option value={DEV_USERS.GUEST} className="bg-white text-slate-900">
-              Usuario Invitado (Guest)
-            </option>
-          </select>
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs">
+          <User className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+          <span className="hidden text-slate-500 sm:inline">Usuario local:</span>
+          <div className="w-[220px] max-w-[30vw]">
+            <SearchableSelect
+              value={currentUser}
+              onChange={handleUserChange}
+              options={[
+                { value: DEV_USERS.FRANCISCO, label: 'Francisco Barrera (Administrador)' },
+                { value: DEV_USERS.DEVELOPER, label: 'Equipo de desarrollo' },
+                { value: DEV_USERS.GUEST, label: 'Usuario invitado' },
+              ]}
+              ariaLabel="Usuario local"
+              searchPlaceholder="Buscar usuario"
+            />
+          </div>
         </div>
 
-        {/* Indicador de entorno */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Local Mode (Zero Cloud DB)</span>
+        <div className="hidden items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-600 md:flex">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          <span>Modo local (base de datos sin nube)</span>
         </div>
       </div>
     </header>

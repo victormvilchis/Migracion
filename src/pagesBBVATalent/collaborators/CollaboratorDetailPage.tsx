@@ -4,9 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { useCollaborator } from '../hooks/useCollaborators';
 
-function value(value?: string | null) { return value?.trim() || 'N/A'; }
+function value(value?: string | null) { return value?.trim() || 'No disponible'; }
 function dateValue(raw?: string | null) {
-  if (!raw) return 'N/A';
+  if (!raw) return 'No disponible';
   const date = new Date(`${raw}T00:00:00`);
   return Number.isNaN(date.getTime()) ? raw : date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
@@ -22,7 +22,7 @@ export const CollaboratorDetailPage: React.FC = () => {
 
   const rows = [
     ['Nombre completo', item.fullName], ['Correo electrónico', item.email], ['IS', item.softtekCode], ['Usuario corporativo', item.corporateUser],
-    ['Perfil', item.profile], ['Perfil tecnológico', item.technologyProfile], ['Tecnología actual', item.currentTechnology], ['Expertise', item.expertise],
+    ['Perfil', item.profile], ['Perfil tecnológico', item.technologyProfile], ['Tecnología actual', item.currentTechnology], ['Nivel de experiencia', item.expertise],
     ['Fecha de alta', dateValue(item.startDate)], ['Vencimiento', dateValue(item.endDate)], ['Fecha de contratación', dateValue(item.hireDate)], ['Estado', item.status === 'ACTIVE' ? 'Activo' : 'Inactivo'],
   ];
 

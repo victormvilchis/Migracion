@@ -37,7 +37,7 @@ export const BBVAContextBar: React.FC<BBVAContextBarProps> = ({ collapsed, onTog
         <ToggleIcon className="h-4 w-4" />
       </button>
 
-      <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-slate-400 [.bbva-dark_&]:text-slate-500" aria-label="Breadcrumb">
+      <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-slate-400 [.bbva-dark_&]:text-slate-500" aria-label="Ruta de navegación">
         {parts.map((part, index) => (
           <React.Fragment key={`${part}-${index}`}>
             {index > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-300 [.bbva-dark_&]:text-slate-700" />}

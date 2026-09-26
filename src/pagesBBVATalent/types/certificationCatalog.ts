@@ -7,30 +7,17 @@ export type CertificationCatalogStatus = 'ACTIVE' | 'INACTIVE';
 export const CERTIFICATION_TYPE_LABELS: Record<CertificationType, string> = {
   TECHNOLOGICAL: 'Tecnológica',
   METHODOLOGICAL: 'Metodológica',
-  DEVELOPMENT_SECURITY: 'Desarrollo Seguro',
-  NORMATIVE_TESTING: 'Normativa & Testing',
+  DEVELOPMENT_SECURITY: 'Desarrollo seguro',
+  NORMATIVE_TESTING: 'Normativa y pruebas',
   COMPLIANCE: 'Cumplimiento',
 };
 
 export const CERTIFICATION_LEVEL_LABELS: Record<CertificationLevel, string> = {
-  JR: 'Junior', STD: 'Standard', SR: 'Senior', GENERIC: 'Genérico',
+  JR: 'Junior', STD: 'Estándar', SR: 'Senior', GENERIC: 'Genérico',
 };
-
-export interface CertificationProfileRule {
-  profileId: string;
-  profileName: string;
-  profileSeniority: string | null;
-  mandatory: boolean;
-}
-
-export interface CertificationProfileRulePayload {
-  profileId: string;
-  mandatory: boolean;
-}
 
 export interface CertificationCatalogRecord {
   id: string;
-  code: string;
   name: string;
   description: string | null;
   certificationType: CertificationType;
@@ -52,8 +39,6 @@ export interface CertificationCatalogRecord {
   requirementGroupMinimum: number | null;
   status: CertificationCatalogStatus;
   allowedLevels: CertificationLevel[];
-  profileRules: CertificationProfileRule[];
-  profileCount: number;
   usageCount: number;
   createdAt: string;
   updatedAt: string;
@@ -62,7 +47,6 @@ export interface CertificationCatalogRecord {
 }
 
 export interface CertificationCatalogPayload {
-  code: string;
   name: string;
   description: string;
   certificationType: CertificationType;
@@ -82,7 +66,6 @@ export interface CertificationCatalogPayload {
   requirementGroup: string;
   requirementGroupMinimum: number | null;
   allowedLevels: CertificationLevel[];
-  profileRules: CertificationProfileRulePayload[];
 }
 
 export interface CertificationCatalogPageResponse {
@@ -96,7 +79,6 @@ export interface CertificationCatalogPageResponse {
 
 export interface CertificationCatalogOption {
   id: string;
-  code: string;
   name: string;
   certificationType: CertificationType;
   technologyId: string | null;

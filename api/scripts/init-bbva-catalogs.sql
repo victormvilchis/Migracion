@@ -14,7 +14,6 @@ BEGIN TRY
     CREATE TABLE bbva.CatalogCategory (
       Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_CatalogCategory PRIMARY KEY DEFAULT NEWID(),
       Name NVARCHAR(180) NOT NULL,
-      Code NVARCHAR(80) NULL,
       Description NVARCHAR(500) NULL,
       Seniority NVARCHAR(40) NULL,
       Status NVARCHAR(16) NOT NULL CONSTRAINT DF_BBVA_CatalogCategory_Status DEFAULT N'ACTIVE',
@@ -31,7 +30,6 @@ BEGIN TRY
     CREATE TABLE bbva.CatalogTechnology (
       Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_CatalogTechnology PRIMARY KEY DEFAULT NEWID(),
       Name NVARCHAR(180) NOT NULL,
-      Code NVARCHAR(80) NULL,
       Description NVARCHAR(500) NULL,
       Seniority NVARCHAR(40) NULL,
       Status NVARCHAR(16) NOT NULL CONSTRAINT DF_BBVA_CatalogTechnology_Status DEFAULT N'ACTIVE',
@@ -48,7 +46,6 @@ BEGIN TRY
     CREATE TABLE bbva.CatalogProfile (
       Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_CatalogProfile PRIMARY KEY DEFAULT NEWID(),
       Name NVARCHAR(180) NOT NULL,
-      Code NVARCHAR(80) NULL,
       Description NVARCHAR(500) NULL,
       Seniority NVARCHAR(40) NULL,
       Status NVARCHAR(16) NOT NULL CONSTRAINT DF_BBVA_CatalogProfile_Status DEFAULT N'ACTIVE',
@@ -65,7 +62,6 @@ BEGIN TRY
     CREATE TABLE bbva.CatalogTechnologyProfile (
       Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_CatalogTechnologyProfile PRIMARY KEY DEFAULT NEWID(),
       Name NVARCHAR(180) NOT NULL,
-      Code NVARCHAR(80) NULL,
       Description NVARCHAR(500) NULL,
       Seniority NVARCHAR(40) NULL,
       Status NVARCHAR(16) NOT NULL CONSTRAINT DF_BBVA_CatalogTechnologyProfile_Status DEFAULT N'ACTIVE',
@@ -84,15 +80,11 @@ BEGIN TRY
 
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_CatalogTechnology_Name' AND object_id=OBJECT_ID(N'bbva.CatalogTechnology'))
     CREATE UNIQUE INDEX UX_BBVA_CatalogTechnology_Name ON bbva.CatalogTechnology(Name);
-  IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_CatalogTechnology_Code' AND object_id=OBJECT_ID(N'bbva.CatalogTechnology'))
-    CREATE UNIQUE INDEX UX_BBVA_CatalogTechnology_Code ON bbva.CatalogTechnology(Code) WHERE Code IS NOT NULL;
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BBVA_CatalogTechnology_Status_Name' AND object_id=OBJECT_ID(N'bbva.CatalogTechnology'))
     CREATE INDEX IX_BBVA_CatalogTechnology_Status_Name ON bbva.CatalogTechnology(Status, Name) INCLUDE (UpdatedAt);
 
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_CatalogProfile_Name' AND object_id=OBJECT_ID(N'bbva.CatalogProfile'))
     CREATE UNIQUE INDEX UX_BBVA_CatalogProfile_Name ON bbva.CatalogProfile(Name);
-  IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_CatalogProfile_Code' AND object_id=OBJECT_ID(N'bbva.CatalogProfile'))
-    CREATE UNIQUE INDEX UX_BBVA_CatalogProfile_Code ON bbva.CatalogProfile(Code) WHERE Code IS NOT NULL;
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BBVA_CatalogProfile_Status_Name' AND object_id=OBJECT_ID(N'bbva.CatalogProfile'))
     CREATE INDEX IX_BBVA_CatalogProfile_Status_Name ON bbva.CatalogProfile(Status, Name) INCLUDE (UpdatedAt, Seniority);
 

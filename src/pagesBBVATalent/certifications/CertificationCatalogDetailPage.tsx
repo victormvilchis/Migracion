@@ -23,20 +23,20 @@ export const CertificationCatalogDetailPage: React.FC = () => {
     <section className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-6">
       <div className={`${fieldClass} lg:col-span-2`}><div className={labelClass}>Certificación</div><div className={valueClass}>{item.name}</div></div>
       <div className={fieldClass}><div className={labelClass}>Tipo</div><div className={valueClass}>{CERTIFICATION_TYPE_LABELS[item.certificationType]}</div></div>
-      <div className={fieldClass}><div className={labelClass}>Certificadora</div><div className={valueClass}>{item.provider || 'N/A'}</div></div>
-      <div className={fieldClass}><div className={labelClass}>Tecnología</div><div className={valueClass}>{item.technologyName || 'N/A'}</div></div>
+      <div className={fieldClass}><div className={labelClass}>Certificadora</div><div className={valueClass}>{item.provider || 'No disponible'}</div></div>
+      <div className={fieldClass}><div className={labelClass}>Tecnología</div><div className={valueClass}>{item.technologyName || 'No disponible'}</div></div>
       <div className={fieldClass}><div className={labelClass}>Estado</div><div className={valueClass}>{item.status === 'ACTIVE' ? 'Activa' : 'Inactiva'}</div></div>
       <div className={fieldClass}><div className={labelClass}>Vigencia</div><div className={valueClass}>{item.validityMonths ? `${item.validityMonths} meses` : 'Sin vencimiento'}</div></div>
-      <div className={fieldClass}><div className={labelClass}>Tiempo para completar</div><div className={valueClass}>{item.initialCompletionMonths ? `${item.initialCompletionMonths} meses` : 'N/A'}</div></div>
-      <div className={fieldClass}><div className={labelClass}>Próxima a vencer</div><div className={valueClass}>{item.expiringSoonDays ? `${item.expiringSoonDays} días antes` : 'N/A'}</div></div>
+      <div className={fieldClass}><div className={labelClass}>Tiempo para completar</div><div className={valueClass}>{item.initialCompletionMonths ? `${item.initialCompletionMonths} meses` : 'No disponible'}</div></div>
+      <div className={fieldClass}><div className={labelClass}>Próxima a vencer</div><div className={valueClass}>{item.expiringSoonDays ? `${item.expiringSoonDays} días antes` : 'No disponible'}</div></div>
       <div className={fieldClass}><div className={labelClass}>Recertificación</div><div className={valueClass}>{item.recertificationEnabled ? 'Sí' : 'No'}</div></div>
       <div className={fieldClass}><div className={labelClass}>Obligatoria por defecto</div><div className={valueClass}>{item.defaultMandatory ? 'Sí' : 'No'}</div></div>
       <div className={fieldClass}><div className={labelClass}>Intentos</div><div className={valueClass}>{item.requiresAttempts ? 'Controlados' : 'No aplica'}</div></div>
       <div className={fieldClass}><div className={labelClass}>Fecha aplicación</div><div className={valueClass}>{item.requiresApplicationDate ? 'Requerida' : 'No aplica'}</div></div>
-      <div className={fieldClass}><div className={labelClass}>Costo primer intento</div><div className={valueClass}>{item.firstAttemptCost !== null ? `${item.costCurrency ?? ''} ${item.firstAttemptCost.toFixed(2)}`.trim() : 'N/A'}</div></div>
-      <div className={fieldClass}><div className={labelClass}>Costo intentos posteriores</div><div className={valueClass}>{item.subsequentAttemptCost !== null ? `${item.costCurrency ?? ''} ${item.subsequentAttemptCost.toFixed(2)}`.trim() : 'N/A'}</div></div>
+      <div className={fieldClass}><div className={labelClass}>Costo primer intento</div><div className={valueClass}>{item.firstAttemptCost !== null ? `${item.costCurrency ?? ''} ${item.firstAttemptCost.toFixed(2)}`.trim() : 'No disponible'}</div></div>
+      <div className={fieldClass}><div className={labelClass}>Costo intentos posteriores</div><div className={valueClass}>{item.subsequentAttemptCost !== null ? `${item.costCurrency ?? ''} ${item.subsequentAttemptCost.toFixed(2)}`.trim() : 'No disponible'}</div></div>
       <div className={fieldClass}><div className={labelClass}>Incluye entrenamiento</div><div className={valueClass}>{item.includesTraining ? 'Sí' : 'No'}</div></div>
-      <div className={`${fieldClass} lg:col-span-2`}><div className={labelClass}>Niveles</div><div className={valueClass}>{item.allowedLevels.map((level) => CERTIFICATION_LEVEL_LABELS[level]).join(', ') || 'N/A'}</div></div>
+      <div className={`${fieldClass} lg:col-span-2`}><div className={labelClass}>Niveles</div><div className={valueClass}>{item.allowedLevels.map((level) => CERTIFICATION_LEVEL_LABELS[level]).join(', ') || 'No disponible'}</div></div>
       <div className={`${fieldClass} sm:col-span-2 lg:col-span-6`}><div className={labelClass}>Descripción</div><div className={`${valueClass} whitespace-pre-wrap`}>{item.description || 'Sin descripción.'}</div></div>
     </section>
 

@@ -2,14 +2,12 @@ import sql from 'mssql';
 import { getDbConnection } from './db.js';
 import type {
   CertificationCatalogInput,
-  CertificationCatalogListItem,
   CertificationCatalogListParams,
   CertificationCatalogOption,
   CertificationCatalogPage,
   CertificationCatalogRecord,
   CertificationCatalogStatus,
   CertificationLevel,
-  CertificationProfileRule,
 } from './bbvaCertificationCatalogDomain.js';
 
 const SORT_MAP = {
@@ -23,7 +21,6 @@ const SORT_MAP = {
 
 interface BaseRow {
   id: string;
-  code: string;
   name: string;
   description: string | null;
   certificationType: CertificationCatalogRecord['certificationType'];
@@ -45,7 +42,6 @@ interface BaseRow {
   requirementGroupMinimum: number | null;
   status: CertificationCatalogStatus;
   allowedLevelsCsv: string | null;
-  profileCount: number;
   usageCount: number;
   createdAt: string;
   updatedAt: string;
@@ -56,7 +52,6 @@ interface BaseRow {
 const BASE_SELECT = `
   SELECT
     CAST(c.Id AS NVARCHAR(36)) AS id,
-    c.Code AS code,
     c.Name AS name,
     c.Description AS description,
     c.CertificationType AS certificationType,
@@ -79,7 +74,6 @@ const BASE_SELECT = `
     c.Status AS status,
     (SELECT STRING_AGG(l.LevelCode, N',') WITHIN GROUP (ORDER BY l.LevelCode)
       FROM bbva.CertificationAllowedLevel l WHERE l.CertificationId=c.Id) AS allowedLevelsCsv,
-    CAST((SELECT COUNT(1) FROM bbva.CertificationProfileRule r WHERE r.CertificationId=c.Id) AS INT) AS profileCount,
     CAST(0 AS INT) AS usageCount,
     CONVERT(VARCHAR(33), c.CreatedAt, 127) AS createdAt,
     CONVERT(VARCHAR(33), c.UpdatedAt, 127) AS updatedAt,
@@ -89,12 +83,11 @@ const BASE_SELECT = `
   LEFT JOIN bbva.CatalogTechnology t ON t.Id=c.TechnologyId
 `;
 
-function toBaseRecord(row: BaseRow): Omit<CertificationCatalogRecord, 'profileRules'> {
+function toBaseRecord(row: BaseRow): CertificationCatalogRecord {
   const allowedLevels = (row.allowedLevelsCsv ? row.allowedLevelsCsv.split(',') : []) as CertificationLevel[];
   return {
     ...row,
     allowedLevels,
-    profileCount: Number(row.profileCount ?? 0),
     usageCount: Number(row.usageCount ?? 0),
     validityMonths: row.validityMonths === null ? null : Number(row.validityMonths),
     initialCompletionMonths: row.initialCompletionMonths === null ? null : Number(row.initialCompletionMonths),
@@ -118,7 +111,7 @@ export class BbvaCertificationCatalogRepository {
     const direction = params.direction === 'desc' ? 'DESC' : 'ASC';
 
     const where: string[] = [];
-    if (search) where.push(`(c.Name LIKE @search OR c.Code LIKE @search OR ISNULL(c.Provider,N'') LIKE @search OR ISNULL(t.Name,N'') LIKE @search)`);
+    if (search) where.push(`(c.Name LIKE @search OR ISNULL(c.Provider,N'') LIKE @search OR ISNULL(t.Name,N'') LIKE @search OR ISNULL(c.Description,N'') LIKE @search)`);
     if (status !== 'ALL') where.push('c.Status=@status');
     if (certificationType !== 'ALL') where.push('c.CertificationType=@certificationType');
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
@@ -139,7 +132,7 @@ export class BbvaCertificationCatalogRepository {
       .query(`${BASE_SELECT} ${whereSql} ORDER BY ${sort} ${direction}, c.Id ASC OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;`);
 
     return {
-      items: (result.recordset as BaseRow[]).map((row) => ({ ...toBaseRecord(row), profileRules: [] } as CertificationCatalogListItem)),
+      items: (result.recordset as BaseRow[]).map(toBaseRecord),
       page,
       size,
       total,
@@ -150,7 +143,7 @@ export class BbvaCertificationCatalogRepository {
   async options(): Promise<CertificationCatalogOption[]> {
     const pool = await getDbConnection();
     const result = await pool.request().query(`
-      SELECT CAST(c.Id AS NVARCHAR(36)) AS id, c.Code AS code, c.Name AS name,
+      SELECT CAST(c.Id AS NVARCHAR(36)) AS id, c.Name AS name,
              c.CertificationType AS certificationType,
              CAST(c.TechnologyId AS NVARCHAR(36)) AS technologyId, t.Name AS technologyName,
              c.ValidityMonths AS validityMonths, c.InitialCompletionMonths AS initialCompletionMonths, c.ExpiringSoonDays AS expiringSoonDays,
@@ -167,17 +160,7 @@ export class BbvaCertificationCatalogRepository {
     const pool = await getDbConnection();
     const result = await pool.request().input('id', sql.UniqueIdentifier, id).query(`${BASE_SELECT} WHERE c.Id=@id;`);
     const row = result.recordset[0] as BaseRow | undefined;
-    if (!row) return null;
-
-    const rulesResult = await pool.request().input('id', sql.UniqueIdentifier, id).query(`
-      SELECT CAST(r.ProfileId AS NVARCHAR(36)) AS profileId, p.Name AS profileName, p.Seniority AS profileSeniority, r.IsMandatory AS mandatory
-      FROM bbva.CertificationProfileRule r
-      INNER JOIN bbva.CatalogProfile p ON p.Id=r.ProfileId
-      WHERE r.CertificationId=@id
-      ORDER BY p.Name ASC;
-    `);
-
-    return { ...toBaseRecord(row), profileRules: rulesResult.recordset as CertificationProfileRule[] };
+    return row ? toBaseRecord(row) : null;
   }
 
   async create(input: CertificationCatalogInput, actorEmail: string): Promise<CertificationCatalogRecord> {
@@ -188,8 +171,7 @@ export class BbvaCertificationCatalogRepository {
       const id = crypto.randomUUID();
       await this.writeRecord(new sql.Request(transaction), id, input, actorEmail, true);
       await this.replaceLevels(transaction, id, input.allowedLevels);
-      await this.replaceProfileRules(transaction, id, input.profileRules);
-      await this.writeHistory(transaction, id, input.code, 'CREATED', 'La certificación fue creada.', actorEmail);
+      await this.writeHistory(transaction, id, 'CREATED', 'La certificación fue creada.', actorEmail);
       await transaction.commit();
       const created = await this.findById(id);
       if (!created) throw new Error('No fue posible recuperar la certificación creada.');
@@ -209,8 +191,7 @@ export class BbvaCertificationCatalogRepository {
     try {
       await this.writeRecord(new sql.Request(transaction), id, input, actorEmail, false);
       await this.replaceLevels(transaction, id, input.allowedLevels);
-      await this.replaceProfileRules(transaction, id, input.profileRules);
-      await this.writeHistory(transaction, id, input.code, 'UPDATED', 'La configuración de la certificación fue actualizada.', actorEmail);
+      await this.writeHistory(transaction, id, 'UPDATED', 'La configuración de la certificación fue actualizada.', actorEmail);
       await transaction.commit();
       return this.findById(id);
     } catch (error) {
@@ -231,7 +212,7 @@ export class BbvaCertificationCatalogRepository {
         .input('status', sql.NVarChar(16), status)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`UPDATE bbva.CertificationCatalog SET Status=@status, UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail WHERE Id=@id;`);
-      await this.writeHistory(transaction, id, current.code, status === 'ACTIVE' ? 'ACTIVATED' : 'INACTIVATED', status === 'ACTIVE' ? 'La certificación fue activada.' : 'La certificación fue inactivada.', actorEmail);
+      await this.writeHistory(transaction, id, status === 'ACTIVE' ? 'ACTIVATED' : 'INACTIVATED', status === 'ACTIVE' ? 'La certificación fue activada.' : 'La certificación fue inactivada.', actorEmail);
       await transaction.commit();
       return this.findById(id);
     } catch (error) {
@@ -252,8 +233,8 @@ export class BbvaCertificationCatalogRepository {
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
-      await this.writeHistory(transaction, id, current.code, 'DELETED', 'La certificación fue eliminada del catálogo.', actorEmail);
-      await new sql.Request(transaction).input('id', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.CertificationProfileRule WHERE CertificationId=@id; DELETE FROM bbva.CertificationAllowedLevel WHERE CertificationId=@id; DELETE FROM bbva.CertificationCatalog WHERE Id=@id;`);
+      await this.writeHistory(transaction, id, 'DELETED', 'La certificación fue eliminada del catálogo.', actorEmail);
+      await new sql.Request(transaction).input('id', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.CertificationAllowedLevel WHERE CertificationId=@id; DELETE FROM bbva.CertificationCatalog WHERE Id=@id;`);
       await transaction.commit();
       return true;
     } catch (error) {
@@ -268,22 +249,9 @@ export class BbvaCertificationCatalogRepository {
     return Boolean(result.recordset[0]?.ok);
   }
 
-  async activeProfilesExist(ids: string[]): Promise<boolean> {
-    if (!ids.length) return true;
-    const pool = await getDbConnection();
-    const request = pool.request();
-    const placeholders = ids.map((id, index) => {
-      request.input(`profile${index}`, sql.UniqueIdentifier, id);
-      return `@profile${index}`;
-    });
-    const result = await request.query(`SELECT COUNT(1) AS total FROM bbva.CatalogProfile WHERE Status=N'ACTIVE' AND Id IN (${placeholders.join(',')});`);
-    return Number(result.recordset[0]?.total ?? 0) === new Set(ids).size;
-  }
-
   private async writeRecord(request: sql.Request, id: string, input: CertificationCatalogInput, actorEmail: string, create: boolean): Promise<void> {
     request
       .input('id', sql.UniqueIdentifier, id)
-      .input('code', sql.NVarChar(80), input.code)
       .input('name', sql.NVarChar(180), input.name)
       .input('description', sql.NVarChar(1000), input.description)
       .input('certificationType', sql.NVarChar(40), input.certificationType)
@@ -307,11 +275,11 @@ export class BbvaCertificationCatalogRepository {
     if (create) {
       await request.query(`
         INSERT INTO bbva.CertificationCatalog (
-          Id,Code,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionMonths,ExpiringSoonDays,FirstAttemptCost,SubsequentAttemptCost,CostCurrency,IncludesTraining,
+          Id,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionMonths,ExpiringSoonDays,FirstAttemptCost,SubsequentAttemptCost,CostCurrency,IncludesTraining,
           RecertificationEnabled,RequiresAttempts,RequiresApplicationDate,DefaultMandatory,RequirementGroup,RequirementGroupMinimum,
           Status,CreatedByEmail,UpdatedByEmail
         ) VALUES (
-          @id,@code,@name,@description,@certificationType,@provider,@technologyId,@validityMonths,@initialCompletionMonths,@expiringSoonDays,@firstAttemptCost,@subsequentAttemptCost,@costCurrency,@includesTraining,
+          @id,@name,@description,@certificationType,@provider,@technologyId,@validityMonths,@initialCompletionMonths,@expiringSoonDays,@firstAttemptCost,@subsequentAttemptCost,@costCurrency,@includesTraining,
           @recertificationEnabled,@requiresAttempts,@requiresApplicationDate,@defaultMandatory,@requirementGroup,@requirementGroupMinimum,
           N'ACTIVE',@actorEmail,@actorEmail
         );
@@ -319,7 +287,7 @@ export class BbvaCertificationCatalogRepository {
     } else {
       await request.query(`
         UPDATE bbva.CertificationCatalog SET
-          Code=@code,Name=@name,Description=@description,CertificationType=@certificationType,Provider=@provider,TechnologyId=@technologyId,
+          Name=@name,Description=@description,CertificationType=@certificationType,Provider=@provider,TechnologyId=@technologyId,
           ValidityMonths=@validityMonths,InitialCompletionMonths=@initialCompletionMonths,ExpiringSoonDays=@expiringSoonDays,
           FirstAttemptCost=@firstAttemptCost,SubsequentAttemptCost=@subsequentAttemptCost,CostCurrency=@costCurrency,IncludesTraining=@includesTraining,RecertificationEnabled=@recertificationEnabled,
           RequiresAttempts=@requiresAttempts,RequiresApplicationDate=@requiresApplicationDate,DefaultMandatory=@defaultMandatory,
@@ -340,31 +308,18 @@ export class BbvaCertificationCatalogRepository {
     }
   }
 
-  private async replaceProfileRules(transaction: sql.Transaction, id: string, rules: CertificationCatalogInput['profileRules']): Promise<void> {
-    await new sql.Request(transaction).input('id', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.CertificationProfileRule WHERE CertificationId=@id;`);
-    for (const rule of rules) {
-      await new sql.Request(transaction)
-        .input('certificationId', sql.UniqueIdentifier, id)
-        .input('profileId', sql.UniqueIdentifier, rule.profileId)
-        .input('mandatory', sql.Bit, rule.mandatory)
-        .query(`INSERT INTO bbva.CertificationProfileRule (CertificationId,ProfileId,IsMandatory) VALUES (@certificationId,@profileId,@mandatory);`);
-    }
-  }
   private async writeHistory(
     transaction: sql.Transaction,
     certificationId: string,
-    code: string,
     eventType: string,
     description: string,
     actorEmail: string,
   ): Promise<void> {
     await new sql.Request(transaction)
       .input('certificationId', sql.UniqueIdentifier, certificationId)
-      .input('code', sql.NVarChar(80), code)
       .input('eventType', sql.NVarChar(40), eventType)
       .input('description', sql.NVarChar(500), description)
       .input('actorEmail', sql.NVarChar(255), actorEmail)
-      .query(`INSERT INTO bbva.CertificationCatalogHistory (CertificationId,CertificationCode,EventType,Description,CreatedByEmail) VALUES (@certificationId,@code,@eventType,@description,@actorEmail);`);
+      .query(`INSERT INTO bbva.CertificationCatalogHistory (CertificationId,EventType,Description,CreatedByEmail) VALUES (@certificationId,@eventType,@description,@actorEmail);`);
   }
-
 }

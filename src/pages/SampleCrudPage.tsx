@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchApi } from '../lib/api';
 import { Card } from '../components/common/Card';
+import { SearchableSelect } from '../components/common/SearchableSelect';
 import { 
   Database, 
   Plus, 
@@ -80,7 +81,7 @@ export const SampleCrudPage: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Ejemplo de arquitectura conectando Frontend (React Query) con Backend (Azure Functions) y Base de Datos (SQL Server).
+            Ejemplo de arquitectura conectando interfaz (React Query), servicios (Azure Functions) y base de datos (SQL Server).
           </p>
         </div>
 
@@ -143,30 +144,34 @@ export const SampleCrudPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-slate-500 font-medium mb-1">Categoría</label>
-                <select
+                <SearchableSelect
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-950 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="Frontend">Frontend</option>
-                  <option value="Backend">Backend</option>
-                  <option value="AI">AI</option>
-                  <option value="DevOps">DevOps</option>
-                  <option value="General">General</option>
-                </select>
+                  onChange={setCategory}
+                  options={[
+                    { value: 'Frontend', label: 'Interfaz' },
+                    { value: 'Backend', label: 'Servicios' },
+                    { value: 'AI', label: 'Inteligencia artificial' },
+                    { value: 'DevOps', label: 'DevOps' },
+                    { value: 'General', label: 'General' },
+                  ]}
+                  ariaLabel="Categoría"
+                  searchPlaceholder="Buscar categoría"
+                />
               </div>
 
               <div>
                 <label className="block text-slate-500 font-medium mb-1">Estado</label>
-                <select
+                <SearchableSelect
                   value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-950 focus:outline-none focus:border-blue-500"
-                >
-                  <option value="Activo">Activo</option>
-                  <option value="En Progreso">En Progreso</option>
-                  <option value="Completado">Completado</option>
-                </select>
+                  onChange={setStatus}
+                  options={[
+                    { value: 'Activo', label: 'Activo' },
+                    { value: 'En Progreso', label: 'En progreso' },
+                    { value: 'Completado', label: 'Completado' },
+                  ]}
+                  ariaLabel="Estado"
+                  searchPlaceholder="Buscar estado"
+                />
               </div>
             </div>
 

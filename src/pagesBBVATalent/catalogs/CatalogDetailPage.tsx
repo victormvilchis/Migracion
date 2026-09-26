@@ -32,8 +32,7 @@ export const CatalogDetailPage: React.FC<{ type: CatalogType }> = ({ type }) => 
       </div>
       <div className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:grid-cols-2 lg:grid-cols-4 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75 [.bbva-dark_&]:shadow-none">
         <div className={`${fieldClass} lg:col-span-2`}><div className={labelClass}>Nombre</div><div className={valueClass}>{item.name}</div></div>
-        {config.supportsCode && <div className={fieldClass}><div className={labelClass}>Código</div><div className={valueClass}>{item.code || 'N/A'}</div></div>}
-        {config.supportsSeniority && <div className={fieldClass}><div className={labelClass}>Seniority</div><div className={valueClass}>{item.seniority || 'N/A'}</div></div>}
+        {config.supportsSeniority && <div className={fieldClass}><div className={labelClass}>Nivel</div><div className={valueClass}>{item.seniority || 'No disponible'}</div></div>}
         <div className={fieldClass}><div className={labelClass}>Estado</div><div className={valueClass}>{item.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}</div></div>
         <div className={fieldClass}><div className={labelClass}>Cantidad de usos</div><div className={valueClass}>{item.usageCount}</div></div>
         <div className={fieldClass}><div className={labelClass}>Última actualización</div><div className={valueClass}>{formatDateTime(item.updatedAt)}</div></div>

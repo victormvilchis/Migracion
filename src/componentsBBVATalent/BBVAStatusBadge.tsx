@@ -6,7 +6,7 @@ export const certificationStatusLabel: Record<CertificationStatus, string> = {
   OK: 'En regla',
   EXPIRING: 'Próxima a vencer',
   EXPIRED: 'Vencida',
-  NA: 'N/A',
+  NA: 'No aplica',
 };
 
 const styles: Record<CertificationStatus, string> = {

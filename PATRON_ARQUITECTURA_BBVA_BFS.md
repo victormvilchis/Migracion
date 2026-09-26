@@ -136,7 +136,7 @@ Los catálogos `Categorías`, `Tecnologías`, `Perfiles` y `Perfiles tecnológic
 Cada catálogo conserva el mismo contrato:
 
 - Listado compacto con columnas: `Nombre`, `Cantidad de usos`, `Actualización`, `Estado`, `Acciones`.
-- Búsqueda por nombre, código o descripción.
+- Búsqueda por nombre o descripción.
 - Filtro de estado con `Activos` como valor predeterminado.
 - Paginación de servidor 10/25/50/100 y ordenamiento estable.
 - Acción primaria dinámica: `Agregar categoría`, `Agregar tecnología`, `Agregar perfil` o `Agregar perfil tecnológico`.
@@ -151,9 +151,11 @@ Cada catálogo conserva el mismo contrato:
 Campos específicos:
 
 - Categoría: nombre y descripción.
-- Tecnología: nombre, código opcional y descripción.
-- Perfil: nombre, código opcional, seniority de referencia y descripción.
+- Tecnología: nombre y descripción.
+- Perfil: nombre, nivel de referencia y descripción.
 - Perfil tecnológico: nombre y descripción.
+
+**Regla de persistencia:** los catálogos BBVA no utilizan un campo funcional `Código`. No debe existir en formularios, contratos HTTP, dominio, repositorios ni columnas SQL. El identificador técnico es `Id` (UUID) y el nombre es la clave funcional visible.
 
 Este patrón será reutilizable para nuevos catálogos sin crear dependencias en el shell global de BaseBFS.
 
@@ -175,14 +177,41 @@ Este patrón será reutilizable para nuevos catálogos sin crear dependencias en
 
 ## Catálogo de certificaciones — superficie operativa
 
-- `Código` deja de ser un dato capturable o visible. Se mantiene únicamente como identificador técnico interno para compatibilidad con la persistencia existente y se genera en backend al crear una certificación.
-- La tabla operativa no muestra `Configuración` ni `Perfiles`; muestra Certificación, Tipo, Tecnología/Certificadora, Estado y Acciones.
+- `Código` no forma parte del modelo funcional ni técnico del catálogo. No se captura, no se devuelve por API y no se persiste en `bbva.CertificationCatalog`.
+- La tabla operativa muestra Certificación, Tipo, Tecnología/Certificadora, Estado y Acciones.
 - El formulario no muestra `Grupo de requisito`, `Mínimo del grupo` ni `Perfiles aplicables`.
-- Al editar registros previamente configurados se preservan internamente las reglas históricas que ya existían, evitando pérdida silenciosa de información por el cambio de superficie operativa.
+- La aplicabilidad se modela mediante configuración de niveles permitidos; no se mantienen relaciones ocultas por perfil que alteren artificialmente el conteo de usos.
+- La auditoría referencia la certificación mediante `CertificationId`; no replica un código textual.
 
 ## Integridad — Cantidad de usos
 
-- `Cantidad de usos` debe representar todas las referencias relacionales conocidas que impiden el borrado, no solamente las referencias desde `bbva.Person`.
-- Para `Perfiles`, el conteo incorpora también `bbva.CertificationProfileRule`.
-- Para `Tecnologías`, el conteo incorpora también `bbva.CertificationCatalog`.
-- El borrado continúa bloqueado con `409 Conflict` cuando el conteo real es mayor que cero. Así, la interfaz no debe mostrar `0` mientras exista una dependencia que impida la eliminación.
+- `Cantidad de usos` representa referencias de dominio reales al registro del catálogo.
+- Para `Perfiles`, se cuentan personas que referencian el perfil por FK y, de forma transitoria, registros históricos por nombre únicamente cuando no existe FK asociada.
+- Para `Perfiles tecnológicos`, se aplica el mismo criterio sobre personas.
+- Para `Tecnologías`, además de personas, se cuentan certificaciones que referencian realmente la tecnología mediante `TechnologyId`.
+- Configuraciones auxiliares eliminadas de la superficie funcional no deben inflar `Cantidad de usos` ni bloquear un borrado con un uso inexistente para el usuario.
+- El borrado continúa bloqueado con `409 Conflict` únicamente cuando existe una referencia real que debe conservarse.
+
+## Patrón transversal — selectores con búsqueda
+
+- Todo selector visible del sistema utiliza el componente compartido `SearchableSelect`; no se utilizan `<select>` nativos en nuevas superficies.
+- El control cerrado muestra únicamente valor/placeholder y chevron. **No lleva icono de lupa.**
+- La lupa se reserva a campos cuya acción semántica es una búsqueda explícita, por ejemplo el lookup de **IS**.
+- Cuando un selector se abre, puede ofrecer búsqueda textual dentro del panel para listas largas, sin superponer iconos sobre el placeholder.
+- El mismo patrón se utiliza en formularios, filtros, controles de paginación y selectores del shell cuando aplique.
+
+## Patrón transversal — fechas y calendarios
+
+- No se utilizan inputs nativos `type="date"` en las superficies BBVA.
+- Las fechas utilizan el componente compartido `DatePicker` de `src/components/common/`, construido sobre `react-day-picker` y localizado en español. `BBVADatePicker` es únicamente un alias de compatibilidad dentro del módulo.
+- Debe permitir navegación clara por día, semana, mes y año, incluyendo selección rápida de mes/año, semana iniciando en lunes, acceso a hoy y limpieza cuando el campo sea opcional.
+- El contrato de datos conserva ISO `YYYY-MM-DD`; el usuario visualiza fechas en formato local `dd/mm/aaaa`.
+- El componente debe ser reutilizado por cualquier módulo presente o futuro que capture fechas.
+
+## Patrón transversal — idioma y microcopy
+
+- Toda la interfaz visible se presenta en español, salvo el nombre de producto **BBVA Workspace**, que se conserva exactamente así.
+- Nombres técnicos de productos/proveedores (SQL Server, Azure OpenAI, bfs_US, etc.) no se traducen cuando son nombres propios.
+- No se incorporan frases promocionales, auto-descripciones del diseño ni mensajes como “experiencia moderna”, “inteligente”, “futurista” o similares dentro de pantallas operativas.
+- El microcopy debe ser funcional, breve y orientado a la tarea: indicar qué capturar, qué ocurrirá o cómo corregir un error.
+- Todos los archivos fuente y scripts SQL deben mantenerse en UTF-8; los textos con acentos se almacenan en SQL Server como `NVARCHAR`/literales `N'...'` para evitar caracteres `?` o mojibake.

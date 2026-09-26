@@ -100,7 +100,7 @@ export const TalentPage: React.FC = () => {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75 [.bbva-dark_&]:text-slate-400">Cargando Talent Bank...</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75 [.bbva-dark_&]:text-slate-400">Cargando Banco de talento...</div>
       ) : listQuery.error ? (
         <BBVAAlert tone="error">{(listQuery.error as Error).message}</BBVAAlert>
       ) : (
@@ -125,7 +125,7 @@ export const TalentPage: React.FC = () => {
                     <td className="px-2 py-1.5 text-slate-700 [.bbva-dark_&]:text-slate-300"><div className="line-clamp-2 leading-[1.15]">{roleDisplay(item)}</div></td>
                     <td className="px-2 py-1.5 text-slate-700 [.bbva-dark_&]:text-slate-300">{technologyDisplay(item)}</td>
                     <td className="px-2 py-1.5">
-                      {item.cv ? <button type="button" onClick={() => void openCv(item, false)} className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium text-blue-600 hover:bg-blue-50 [.bbva-dark_&]:text-blue-300 [.bbva-dark_&]:hover:bg-blue-500/10"><FileText className="h-3 w-3" /> Ver</button> : <span className="text-slate-400">N/A</span>}
+                      {item.cv ? <button type="button" onClick={() => void openCv(item, false)} className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[10px] font-medium text-blue-600 hover:bg-blue-50 [.bbva-dark_&]:text-blue-300 [.bbva-dark_&]:hover:bg-blue-500/10"><FileText className="h-3 w-3" /> Ver</button> : <span className="text-slate-400">No disponible</span>}
                     </td>
                     <td className="px-2 py-1.5 text-right">
                       <BBVAActionMenu items={[

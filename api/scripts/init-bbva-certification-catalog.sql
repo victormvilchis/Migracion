@@ -94,7 +94,6 @@ BEGIN TRY
   BEGIN
     CREATE TABLE bbva.CertificationCatalog (
       Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_CertificationCatalog PRIMARY KEY DEFAULT NEWID(),
-      Code NVARCHAR(80) NOT NULL,
       Name NVARCHAR(180) NOT NULL,
       Description NVARCHAR(1000) NULL,
       CertificationType NVARCHAR(40) NOT NULL,
@@ -148,24 +147,12 @@ BEGIN TRY
     );
   END;
 
-  IF OBJECT_ID(N'bbva.CertificationProfileRule', N'U') IS NULL
-  BEGIN
-    CREATE TABLE bbva.CertificationProfileRule (
-      CertificationId UNIQUEIDENTIFIER NOT NULL,
-      ProfileId UNIQUEIDENTIFIER NOT NULL,
-      IsMandatory BIT NOT NULL CONSTRAINT DF_BBVA_CertificationProfileRule_Mandatory DEFAULT 0,
-      CONSTRAINT PK_BBVA_CertificationProfileRule PRIMARY KEY (CertificationId, ProfileId),
-      CONSTRAINT FK_BBVA_CertificationProfileRule_Certification FOREIGN KEY (CertificationId) REFERENCES bbva.CertificationCatalog(Id),
-      CONSTRAINT FK_BBVA_CertificationProfileRule_Profile FOREIGN KEY (ProfileId) REFERENCES bbva.CatalogProfile(Id)
-    );
-  END;
 
   IF OBJECT_ID(N'bbva.CertificationCatalogHistory', N'U') IS NULL
   BEGIN
     CREATE TABLE bbva.CertificationCatalogHistory (
       Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_CertificationCatalogHistory PRIMARY KEY DEFAULT NEWID(),
       CertificationId UNIQUEIDENTIFIER NULL,
-      CertificationCode NVARCHAR(80) NOT NULL,
       EventType NVARCHAR(40) NOT NULL,
       Description NVARCHAR(500) NOT NULL,
       CreatedAt DATETIME2(3) NOT NULL CONSTRAINT DF_BBVA_CertificationCatalogHistory_CreatedAt DEFAULT SYSUTCDATETIME(),
@@ -173,14 +160,10 @@ BEGIN TRY
     );
   END;
 
-  IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_CertificationCatalog_Code' AND object_id=OBJECT_ID(N'bbva.CertificationCatalog'))
-    CREATE UNIQUE INDEX UX_BBVA_CertificationCatalog_Code ON bbva.CertificationCatalog(Code);
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_CertificationCatalog_Name' AND object_id=OBJECT_ID(N'bbva.CertificationCatalog'))
     CREATE UNIQUE INDEX UX_BBVA_CertificationCatalog_Name ON bbva.CertificationCatalog(Name);
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BBVA_CertificationCatalog_Status_Type' AND object_id=OBJECT_ID(N'bbva.CertificationCatalog'))
     CREATE INDEX IX_BBVA_CertificationCatalog_Status_Type ON bbva.CertificationCatalog(Status, CertificationType, Name) INCLUDE (ValidityMonths,InitialCompletionMonths,TechnologyId);
-  IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BBVA_CertificationProfileRule_Profile' AND object_id=OBJECT_ID(N'bbva.CertificationProfileRule'))
-    CREATE INDEX IX_BBVA_CertificationProfileRule_Profile ON bbva.CertificationProfileRule(ProfileId, CertificationId);
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BBVA_CertificationCatalogHistory_Certification' AND object_id=OBJECT_ID(N'bbva.CertificationCatalogHistory'))
     CREATE INDEX IX_BBVA_CertificationCatalogHistory_Certification ON bbva.CertificationCatalogHistory(CertificationId, CreatedAt DESC);
 
@@ -199,16 +182,16 @@ BEGIN TRY
     UpdatedByEmail = CASE WHEN Seniority IS NULL THEN @SeedActor ELSE UpdatedByEmail END
   WHERE Seniority IS NULL;
 
-  DECLARE @TechnologySeeds TABLE (Name NVARCHAR(180), Code NVARCHAR(80));
-  INSERT INTO @TechnologySeeds (Name,Code) VALUES
-    (N'HOST',N'HOST'), (N'IPC ETL',N'IPC_ETL'), (N'JAVA',N'JAVA'), (N'MICROSTRATEGY',N'MICROSTRATEGY'),
-    (N'ORACLE',N'ORACLE'), (N'SAS',N'SAS'), (N'CELLS',N'CELLS'), (N'DATIO',N'DATIO'), (N'HTML',N'HTML'),
-    (N'INTELIGENCIA ARTIFICIAL',N'IA'), (N'LRBA',N'LRBA'), (N'NACAR',N'NACAR'), (N'ANDROID',N'ANDROID'),
-    (N'SALESFORCE',N'SALESFORCE'), (N'API MARKET',N'API_MARKET'), (N'APX',N'APX'), (N'ISTQB',N'ISTQB'),
-    (N'API CHANNELS',N'API_CHANNELS'), (N'ASO',N'ASO'), (N'IOS',N'IOS');
+  DECLARE @TechnologySeeds TABLE (Name NVARCHAR(180));
+  INSERT INTO @TechnologySeeds (Name) VALUES
+    (N'HOST'), (N'IPC ETL'), (N'JAVA'), (N'MICROSTRATEGY'),
+    (N'ORACLE'), (N'SAS'), (N'CELLS'), (N'DATIO'), (N'HTML'),
+    (N'INTELIGENCIA ARTIFICIAL'), (N'LRBA'), (N'NACAR'), (N'ANDROID'),
+    (N'SALESFORCE'), (N'API MARKET'), (N'APX'), (N'ISTQB'),
+    (N'API CHANNELS'), (N'ASO'), (N'IOS');
 
-  INSERT INTO bbva.CatalogTechnology (Name,Code,Description,CreatedByEmail,UpdatedByEmail)
-    SELECT s.Name,s.Code,N'Tecnología habilitada para configuración de certificaciones.',@SeedActor,@SeedActor
+  INSERT INTO bbva.CatalogTechnology (Name,Description,CreatedByEmail,UpdatedByEmail)
+    SELECT s.Name,N'Tecnología habilitada para configuración de certificaciones.',@SeedActor,@SeedActor
     FROM @TechnologySeeds s
     WHERE NOT EXISTS (SELECT 1 FROM bbva.CatalogTechnology t WHERE UPPER(t.Name)=UPPER(s.Name));
 
@@ -217,102 +200,89 @@ BEGIN TRY
      se utiliza como fuente para certificadora y niveles permitidos.
      ---------------------------------------------------------------------- */
   DECLARE @CertificationSeeds TABLE (
-    Code NVARCHAR(80), Name NVARCHAR(180), CertificationType NVARCHAR(40), Provider NVARCHAR(120), TechnologyName NVARCHAR(180),
+    Name NVARCHAR(180), CertificationType NVARCHAR(40), Provider NVARCHAR(120), TechnologyName NVARCHAR(180),
     ValidityMonths INT NULL, CompletionMonths INT NULL, Recert BIT, Attempts BIT, ApplicationDate BIT, Mandatory BIT,
     RequirementGroup NVARCHAR(80) NULL, RequirementGroupMinimum INT NULL, Levels NVARCHAR(100), Description NVARCHAR(1000)
   );
 
   INSERT INTO @CertificationSeeds VALUES
-    (N'TECH_BI_HOST_SR',N'BI HOST SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'HOST',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI Host.'),
-    (N'TECH_BI_IPC_ETL_SR',N'BI IPC ETL SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'IPC ETL',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI IPC ETL.'),
-    (N'TECH_BI_JAVA_SR',N'BI JAVA SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'JAVA',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI Java.'),
-    (N'TECH_BI_MICROSTRATEGY_SR',N'BI MICROSTRATEGY SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'MICROSTRATEGY',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI MicroStrategy.'),
-    (N'TECH_BI_ORACLE_SR',N'BI ORACLE SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'ORACLE',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI Oracle.'),
-    (N'TECH_BI_SAS_SR',N'BI SAS SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'SAS',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI SAS.'),
-    (N'TECH_CELLS',N'CELLS',N'TECHNOLOGICAL',N'MAINWARE',N'CELLS',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Cells.'),
-    (N'TECH_DATIO',N'DATIO',N'TECHNOLOGICAL',N'MAINWARE',N'DATIO',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Datio.'),
-    (N'TECH_HTML',N'HTML',N'TECHNOLOGICAL',N'MAINWARE',N'HTML',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica HTML.'),
-    (N'TECH_AI',N'INTELIGENCIA ARTIFICIAL',N'TECHNOLOGICAL',N'MAINWARE',N'INTELIGENCIA ARTIFICIAL',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica de Inteligencia Artificial.'),
-    (N'TECH_JAVA_8',N'JAVA 8',N'TECHNOLOGICAL',N'MAINWARE',N'JAVA',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Java 8.'),
-    (N'TECH_JAVA',N'JAVA',N'TECHNOLOGICAL',N'MAINWARE',N'JAVA',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Java.'),
-    (N'TECH_LRBA',N'LRBA',N'TECHNOLOGICAL',N'MAINWARE',N'LRBA',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica LRBA.'),
-    (N'TECH_NACAR_LIGERO',N'NACAR LIGERO',N'TECHNOLOGICAL',N'MAINWARE',N'NACAR',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Nacar Ligero.'),
-    (N'TECH_ORACLE',N'ORACLE',N'TECHNOLOGICAL',N'MAINWARE',N'ORACLE',24,NULL,1,1,1,1,NULL,NULL,N'STD,SR',N'Certificación tecnológica Oracle.'),
-    (N'TECH_ANDROID',N'ANDROID',N'TECHNOLOGICAL',N'NETEC',N'ANDROID',24,NULL,1,1,1,1,NULL,NULL,N'GENERIC',N'Certificación tecnológica Android.'),
-    (N'TECH_SALESFORCE',N'SALESFORCE',N'TECHNOLOGICAL',N'NETEC',N'SALESFORCE',24,NULL,1,1,1,1,NULL,NULL,N'GENERIC',N'Certificación tecnológica Salesforce.'),
-    (N'TECH_API_MARKET',N'API MARKET',N'TECHNOLOGICAL',N'NETEC',N'API MARKET',24,NULL,1,1,1,1,NULL,NULL,N'GENERIC',N'Certificación tecnológica API Market.'),
-    (N'TECH_JAVA_APX',N'JAVA - APX',N'TECHNOLOGICAL',N'NETEC',N'APX',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Java - APX.'),
-    (N'TECH_ISTQB',N'ISTQB',N'TECHNOLOGICAL',N'NETEC',N'ISTQB',24,NULL,1,1,1,1,NULL,NULL,N'STD,SR',N'Certificación tecnológica ISTQB.'),
-    (N'TECH_API_CHANNEL',N'API CHANNEL',N'TECHNOLOGICAL',N'NETEC',N'API CHANNELS',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica API Channel.'),
-    (N'TECH_ASO_DEVELOPMENT',N'ASO DESARROLLO',N'TECHNOLOGICAL',N'NETEC',N'ASO',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,GENERIC',N'Certificación tecnológica ASO Desarrollo.'),
-    (N'TECH_ASO_DESIGN',N'ASO DISEÑO',N'TECHNOLOGICAL',N'NETEC',N'ASO',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD',N'Certificación tecnológica ASO Diseño.'),
-    (N'DEVELOPMENT_SECURITY',N'DESARROLLO SEGURO',N'DEVELOPMENT_SECURITY',N'NETEC',NULL,12,NULL,1,1,1,1,NULL,NULL,N'GENERIC',N'Certificación de seguridad con recertificación anual.'),
-    (N'METH_SAFE_PRACTITIONER',N'SAFE PRACTITIONER',N'METHODOLOGICAL',N'SCALED AGILE',NULL,NULL,NULL,0,1,1,1,N'METHODOLOGICAL',1,N'GENERIC',N'Certificación metodológica de conocimiento ágil; certificación única.'),
-    (N'METH_SCRUM_DEVELOPER',N'SCRUM DEVELOPER',N'METHODOLOGICAL',N'SCRUM INSTITUTE',NULL,NULL,NULL,0,1,1,1,N'METHODOLOGICAL',1,N'GENERIC',N'Certificación metodológica de conocimiento ágil; certificación única.');
+    (N'BI HOST SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'HOST',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI Host.'),
+    (N'BI IPC ETL SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'IPC ETL',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI IPC ETL.'),
+    (N'BI JAVA SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'JAVA',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI Java.'),
+    (N'BI MICROSTRATEGY SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'MICROSTRATEGY',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI MicroStrategy.'),
+    (N'BI ORACLE SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'ORACLE',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI Oracle.'),
+    (N'BI SAS SENIOR',N'TECHNOLOGICAL',N'MAINWARE',N'SAS',24,NULL,1,1,1,1,NULL,NULL,N'SR',N'Certificación tecnológica de BI SAS.'),
+    (N'CELLS',N'TECHNOLOGICAL',N'MAINWARE',N'CELLS',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Cells.'),
+    (N'DATIO',N'TECHNOLOGICAL',N'MAINWARE',N'DATIO',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Datio.'),
+    (N'HTML',N'TECHNOLOGICAL',N'MAINWARE',N'HTML',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica HTML.'),
+    (N'INTELIGENCIA ARTIFICIAL',N'TECHNOLOGICAL',N'MAINWARE',N'INTELIGENCIA ARTIFICIAL',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica de Inteligencia Artificial.'),
+    (N'JAVA 8',N'TECHNOLOGICAL',N'MAINWARE',N'JAVA',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Java 8.'),
+    (N'JAVA',N'TECHNOLOGICAL',N'MAINWARE',N'JAVA',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Java.'),
+    (N'LRBA',N'TECHNOLOGICAL',N'MAINWARE',N'LRBA',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica LRBA.'),
+    (N'NACAR LIGERO',N'TECHNOLOGICAL',N'MAINWARE',N'NACAR',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Nacar Ligero.'),
+    (N'ORACLE',N'TECHNOLOGICAL',N'MAINWARE',N'ORACLE',24,NULL,1,1,1,1,NULL,NULL,N'STD,SR',N'Certificación tecnológica Oracle.'),
+    (N'ANDROID',N'TECHNOLOGICAL',N'NETEC',N'ANDROID',24,NULL,1,1,1,1,NULL,NULL,N'GENERIC',N'Certificación tecnológica Android.'),
+    (N'SALESFORCE',N'TECHNOLOGICAL',N'NETEC',N'SALESFORCE',24,NULL,1,1,1,1,NULL,NULL,N'GENERIC',N'Certificación tecnológica Salesforce.'),
+    (N'API MARKET',N'TECHNOLOGICAL',N'NETEC',N'API MARKET',24,NULL,1,1,1,1,NULL,NULL,N'GENERIC',N'Certificación tecnológica API Market.'),
+    (N'JAVA - APX',N'TECHNOLOGICAL',N'NETEC',N'APX',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica Java - APX.'),
+    (N'ISTQB',N'TECHNOLOGICAL',N'NETEC',N'ISTQB',24,NULL,1,1,1,1,NULL,NULL,N'STD,SR',N'Certificación tecnológica ISTQB.'),
+    (N'API CHANNEL',N'TECHNOLOGICAL',N'NETEC',N'API CHANNELS',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,SR',N'Certificación tecnológica API Channel.'),
+    (N'ASO DESARROLLO',N'TECHNOLOGICAL',N'NETEC',N'ASO',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD,GENERIC',N'Certificación tecnológica ASO Desarrollo.'),
+    (N'ASO DISEÑO',N'TECHNOLOGICAL',N'NETEC',N'ASO',24,NULL,1,1,1,1,NULL,NULL,N'JR,STD',N'Certificación tecnológica ASO Diseño.'),
+    (N'DESARROLLO SEGURO',N'DEVELOPMENT_SECURITY',N'NETEC',NULL,12,NULL,1,1,1,1,NULL,NULL,N'GENERIC',N'Certificación de seguridad con recertificación anual.'),
+    (N'SAFE PRACTITIONER',N'METHODOLOGICAL',N'SCALED AGILE',NULL,NULL,NULL,0,1,1,1,N'METHODOLOGICAL',1,N'GENERIC',N'Certificación metodológica de conocimiento ágil; certificación única.'),
+    (N'SCRUM DEVELOPER',N'METHODOLOGICAL',N'SCRUM INSTITUTE',NULL,NULL,NULL,0,1,1,1,N'METHODOLOGICAL',1,N'GENERIC',N'Certificación metodológica de conocimiento ágil; certificación única.');
 
   INSERT INTO bbva.CertificationCatalog (
-    Code,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionMonths,
+    Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionMonths,
     RecertificationEnabled,RequiresAttempts,RequiresApplicationDate,DefaultMandatory,RequirementGroup,RequirementGroupMinimum,
     Status,CreatedByEmail,UpdatedByEmail
   )
-  SELECT s.Code,s.Name,s.Description,s.CertificationType,s.Provider,t.Id,s.ValidityMonths,s.CompletionMonths,
+  SELECT s.Name,s.Description,s.CertificationType,s.Provider,t.Id,s.ValidityMonths,s.CompletionMonths,
          s.Recert,s.Attempts,s.ApplicationDate,s.Mandatory,s.RequirementGroup,s.RequirementGroupMinimum,
          N'ACTIVE',@SeedActor,@SeedActor
   FROM @CertificationSeeds s
   LEFT JOIN bbva.CatalogTechnology t ON s.TechnologyName IS NOT NULL AND UPPER(t.Name)=UPPER(s.TechnologyName)
-  WHERE NOT EXISTS (SELECT 1 FROM bbva.CertificationCatalog c WHERE c.Code=s.Code);
+  WHERE NOT EXISTS (SELECT 1 FROM bbva.CertificationCatalog c WHERE UPPER(c.Name)=UPPER(s.Name));
 
   /* Configuración económica y de alertamiento incorporada desde la fuente operativa. */
   UPDATE c SET FirstAttemptCost=53.00,SubsequentAttemptCost=47.00,CostCurrency=N'USD'
-  FROM bbva.CertificationCatalog c INNER JOIN @CertificationSeeds s ON s.Code=c.Code
+  FROM bbva.CertificationCatalog c INNER JOIN @CertificationSeeds s ON UPPER(s.Name)=UPPER(c.Name)
   WHERE c.Provider=N'NETEC' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
 
   UPDATE c SET FirstAttemptCost=1800.00,SubsequentAttemptCost=1800.00,CostCurrency=N'MXN'
-  FROM bbva.CertificationCatalog c INNER JOIN @CertificationSeeds s ON s.Code=c.Code
+  FROM bbva.CertificationCatalog c INNER JOIN @CertificationSeeds s ON UPPER(s.Name)=UPPER(c.Name)
   WHERE c.Provider=N'MAINWARE' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
 
   UPDATE c SET FirstAttemptCost=120.00,SubsequentAttemptCost=120.00,CostCurrency=N'USD',IncludesTraining=1
   FROM bbva.CertificationCatalog c
-  WHERE c.Code=N'METH_SAFE_PRACTITIONER' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
+  WHERE c.Name=N'SAFE PRACTITIONER' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
 
   UPDATE c SET FirstAttemptCost=49.00,SubsequentAttemptCost=49.00,CostCurrency=N'USD',IncludesTraining=0
   FROM bbva.CertificationCatalog c
-  WHERE c.Code=N'METH_SCRUM_DEVELOPER' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
+  WHERE c.Name=N'SCRUM DEVELOPER' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
 
   /* Niveles permitidos de la matriz. */
   INSERT INTO bbva.CertificationAllowedLevel (CertificationId,LevelCode)
   SELECT c.Id, LTRIM(RTRIM(ss.value))
   FROM @CertificationSeeds s
-  INNER JOIN bbva.CertificationCatalog c ON c.Code=s.Code
+  INNER JOIN bbva.CertificationCatalog c ON UPPER(c.Name)=UPPER(s.Name)
   CROSS APPLY STRING_SPLIT(s.Levels,N',') ss
   WHERE NOT EXISTS (
     SELECT 1 FROM bbva.CertificationAllowedLevel l
     WHERE l.CertificationId=c.Id AND l.LevelCode=LTRIM(RTRIM(ss.value))
   );
 
-  /* Reglas de aplicabilidad por perfil. GENERIC aplica a todos los perfiles activos;
-     JR/STD/SR se vinculan por seniority del catálogo de perfiles. */
-  INSERT INTO bbva.CertificationProfileRule (CertificationId,ProfileId,IsMandatory)
-  SELECT DISTINCT c.Id,p.Id,
-         c.DefaultMandatory
-  FROM bbva.CertificationCatalog c
-  INNER JOIN bbva.CertificationAllowedLevel l ON l.CertificationId=c.Id
-  INNER JOIN bbva.CatalogProfile p ON p.Status=N'ACTIVE' AND (
-       l.LevelCode=N'GENERIC' OR UPPER(ISNULL(p.Seniority,N''))=l.LevelCode
-  )
-  WHERE NOT EXISTS (
-    SELECT 1 FROM bbva.CertificationProfileRule r WHERE r.CertificationId=c.Id AND r.ProfileId=p.Id
-  );
 
-  /* Auditoría de la ingesta inicial, una sola vez por código. */
-  INSERT INTO bbva.CertificationCatalogHistory (CertificationId,CertificationCode,EventType,Description,CreatedByEmail)
-  SELECT c.Id,c.Code,N'SEEDED',N'Registro incorporado mediante la configuración inicial del catálogo.',@SeedActor
+  /* Auditoría de la ingesta inicial, una sola vez por certificación. */
+  INSERT INTO bbva.CertificationCatalogHistory (CertificationId,EventType,Description,CreatedByEmail)
+  SELECT c.Id,N'SEEDED',N'Registro incorporado mediante la configuración inicial del catálogo.',@SeedActor
   FROM bbva.CertificationCatalog c
-  INNER JOIN @CertificationSeeds s ON s.Code=c.Code
-  WHERE NOT EXISTS (SELECT 1 FROM bbva.CertificationCatalogHistory h WHERE h.CertificationCode=c.Code AND h.EventType=N'SEEDED');
+  INNER JOIN @CertificationSeeds s ON UPPER(s.Name)=UPPER(c.Name)
+  WHERE NOT EXISTS (SELECT 1 FROM bbva.CertificationCatalogHistory h WHERE h.CertificationId=c.Id AND h.EventType=N'SEEDED');
 
   COMMIT TRANSACTION;
-  PRINT N'Catálogo de certificaciones BBVA, reglas y referencias a catálogos configurados correctamente.';
+  PRINT N'Catálogo de certificaciones BBVA y referencias a catálogos configurados correctamente.';
 END TRY
 BEGIN CATCH
   IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;

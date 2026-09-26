@@ -64,7 +64,7 @@ async function normalizePayload(payload: any): Promise<TalentInput> {
   const catalogs = await resolveProfessionalCatalogReferences(payload ?? {});
 
   if (talentType === 'ACADEMY') {
-    if (!softtekCode) throw new Error('El Código Softtek es obligatorio para Academia.');
+    if (!softtekCode) throw new Error('El IS es obligatorio para Academia.');
     if (!catalogs.profileCatalogId) throw new Error('El perfil es obligatorio para Academia y debe seleccionarse del catálogo.');
     if (!catalogs.currentTechnologyCatalogId) throw new Error('La tecnología es obligatoria para Academia y debe seleccionarse del catálogo.');
   } else {

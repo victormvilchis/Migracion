@@ -13,16 +13,16 @@ import type { Collaborator } from '../types/collaborator';
 
 function roleDisplay(profile?: string | null, technologyProfile?: string | null) {
   const values = [profile, technologyProfile].filter(Boolean);
-  return values.length ? values.join(' - ') : 'N/A';
+  return values.length ? values.join(' - ') : 'No disponible';
 }
 
 function technologyDisplay(technology?: string | null, expertise?: string | null) {
-  if (!technology) return 'N/A';
+  if (!technology) return 'No disponible';
   return expertise ? `${technology} - ${expertise}` : technology;
 }
 
 function formatDate(value?: string | null) {
-  if (!value) return 'N/A';
+  if (!value) return 'No disponible';
   const date = new Date(`${value}T00:00:00`);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
@@ -103,7 +103,7 @@ export const CollaboratorsPage: React.FC = () => {
         </div>
         <BBVASearchableSelect value={roleFilter} onChange={setRoleFilter} options={[{ value: 'ALL', label: 'Todos los roles' }, ...roleOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Filtrar por rol" />
         <BBVASearchableSelect value={technologyFilter} onChange={setTechnologyFilter} options={[{ value: 'ALL', label: 'Todas las tecnologías' }, ...technologyOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Filtrar por tecnología" />
-        <BBVASearchableSelect value={statusFilter} onChange={(value) => setStatusFilter(value as 'ALL' | CertificationStatus)} options={[{ value: 'ALL', label: 'Todos los estatus' }, ...(['OK', 'EXPIRING', 'EXPIRED', 'NA'] as CertificationStatus[]).map((status) => ({ value: status, label: certificationStatusLabel[status] }))]} ariaLabel="Filtrar por estatus de certificación" />
+        <BBVASearchableSelect value={statusFilter} onChange={(value) => setStatusFilter(value as 'ALL' | CertificationStatus)} options={[{ value: 'ALL', label: 'Todos los estados' }, ...(['OK', 'EXPIRING', 'EXPIRED', 'NA'] as CertificationStatus[]).map((status) => ({ value: status, label: certificationStatusLabel[status] }))]} ariaLabel="Filtrar por estado de certificación" />
       </div>
 
       {query.isLoading ? (
@@ -121,7 +121,7 @@ export const CollaboratorsPage: React.FC = () => {
                   <th className="w-[15%] px-2 py-1.5">Tecnología actual</th>
                   <th className="w-[9%] px-2 py-1.5">Fecha de alta</th>
                   <th className="w-[8%] px-2 py-1.5">Vencimiento</th>
-                  <th className="w-[9%] px-2 py-1.5">Status certificación</th>
+                  <th className="w-[9%] px-2 py-1.5">Estado de certificación</th>
                   <th className="w-[5%] px-2 py-1.5 text-right">Acciones</th>
                 </tr>
               </thead>

@@ -96,11 +96,11 @@ export const SampleAiPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Bot className="w-5 h-5 text-indigo-400" />
             <h2 className="text-xl sm:text-2xl font-bold text-slate-950">
-              Asistente AI (OpenAI Gateway / Azure OpenAI)
+              Asistente IA (gateway OpenAI / Azure OpenAI)
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Endpoint <code className="text-indigo-400 font-mono text-xs">/api/ai/chat</code> con soporte para Gateway compatible con OpenAI, Azure OpenAI y Mock.
+            Endpoint <code className="text-indigo-400 font-mono text-xs">/api/ai/chat</code> con soporte para Gateway compatible con OpenAI, Azure OpenAI y modo simulado.
           </p>
         </div>
 
@@ -168,11 +168,11 @@ export const SampleAiPage: React.FC = () => {
 
                   {!isUser && (
                     <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-200 text-[10px] text-slate-500 flex-wrap">
-                      <span>{msg.model || 'AI Model'}</span>
+                      <span>{msg.model || 'Modelo de IA'}</span>
                       {isGateway && (
                         <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.2 rounded font-mono flex items-center gap-1">
                           <Network className="w-3 h-3" />
-                          OpenAI Gateway
+                          Gateway OpenAI
                         </span>
                       )}
                       {isAzure && (
@@ -182,7 +182,7 @@ export const SampleAiPage: React.FC = () => {
                       )}
                       {msg.isMock && (
                         <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.2 rounded font-mono">
-                          Simulado / Mock
+                          Modo simulado
                         </span>
                       )}
                     </div>

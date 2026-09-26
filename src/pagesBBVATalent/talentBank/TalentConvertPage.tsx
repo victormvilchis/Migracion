@@ -122,7 +122,7 @@ export const TalentConvertPage: React.FC = () => {
           <label className="md:col-span-4"><span className={labelClass}>Perfil *</span><BBVASearchableSelect value={values.profileCatalogId} onChange={(value) => setValues((v) => ({ ...v, profileCatalogId: value }))} options={toOptions(profiles)} disabled={catalogsLoading} ariaLabel="Perfil" /></label>
           <label className="md:col-span-3"><span className={labelClass}>Perfil tecnológico *</span><BBVASearchableSelect value={values.technologyProfileCatalogId} onChange={(value) => setValues((v) => ({ ...v, technologyProfileCatalogId: value }))} options={toOptions(technologyProfiles)} disabled={catalogsLoading} ariaLabel="Perfil tecnológico" /></label>
           <label className="md:col-span-3"><span className={labelClass}>Tecnología actual *</span><BBVASearchableSelect value={values.currentTechnologyCatalogId} onChange={(value) => setValues((v) => ({ ...v, currentTechnologyCatalogId: value }))} options={toOptions(technologies)} disabled={catalogsLoading} ariaLabel="Tecnología actual" /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Expertise</span><BBVASearchableSelect value={values.expertise} onChange={(value) => setValues((v) => ({ ...v, expertise: value }))} options={[{ value: '', label: '—' }, { value: 'TR', label: 'TR' }, { value: 'JR', label: 'JR' }, { value: 'STD', label: 'STD' }, { value: 'SR', label: 'SR' }]} ariaLabel="Expertise" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Nivel de experiencia</span><BBVASearchableSelect value={values.expertise} onChange={(value) => setValues((v) => ({ ...v, expertise: value }))} options={[{ value: '', label: '—' }, { value: 'TR', label: 'TR' }, { value: 'JR', label: 'JR' }, { value: 'STD', label: 'STD' }, { value: 'SR', label: 'SR' }]} ariaLabel="Nivel de experiencia" /></label>
           <label className="md:col-span-4"><span className={labelClass}>Usuario corporativo</span><input value={values.corporateUser} onChange={(e) => setValues((v) => ({ ...v, corporateUser: e.target.value }))} className={fieldClass} /></label>
         </div>
         <div className="mt-4 flex justify-end gap-2 border-t border-slate-200 pt-4">
@@ -130,7 +130,7 @@ export const TalentConvertPage: React.FC = () => {
           <button type="button" disabled={busy || catalogsLoading} onClick={requestConfirmation} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" />Continuar</button>
         </div>
       </div>
-      <ConfirmDialog open={confirmOpen} title="Convertir a colaborador" message="Esta persona dejará Talent Bank y será incorporada a Colaboradores conservando su identidad e historial. ¿Deseas continuar?" confirmLabel="Confirmar conversión" tone="danger" busy={busy} onConfirm={() => void confirm()} onCancel={() => setConfirmOpen(false)} />
+      <ConfirmDialog open={confirmOpen} title="Convertir a colaborador" message="Esta persona dejará Banco de talento y será incorporada a Colaboradores conservando su identidad e historial. ¿Deseas continuar?" confirmLabel="Confirmar conversión" tone="danger" busy={busy} onConfirm={() => void confirm()} onCancel={() => setConfirmOpen(false)} />
     </div>
   );
 };

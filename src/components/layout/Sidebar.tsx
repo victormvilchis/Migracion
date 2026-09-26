@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Database, Bot, Layers, Building2 } from 'lucide-react';
+import { Bot, Building2, Database, Layers, LayoutDashboard } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export const Sidebar: React.FC = () => {
@@ -16,7 +16,7 @@ export const Sidebar: React.FC = () => {
   const navItems = [
     {
       to: '/',
-      label: 'Panel Principal',
+      label: 'Panel principal',
       icon: LayoutDashboard,
       description: 'Estado de servicios y bienvenida',
     },
@@ -24,23 +24,21 @@ export const Sidebar: React.FC = () => {
       to: '/crud',
       label: 'Gestión SQL (CRUD)',
       icon: Database,
-      description: 'Prueba de SQL Server local',
+      description: 'Prueba local de SQL Server',
     },
     {
       to: '/ai',
-      label: 'Asistente AI',
+      label: 'Asistente IA',
       icon: Bot,
-      description: 'Azure OpenAI & Simulación',
+      description: 'Azure OpenAI y simulación',
     },
   ];
 
   return (
-    <aside className="w-64 border-r border-slate-200 bg-white flex flex-col justify-between p-4 shrink-0 min-h-[calc(100vh-4rem)]">
+    <aside className="flex min-h-[calc(100vh-4rem)] w-64 shrink-0 flex-col justify-between border-r border-slate-200 bg-white p-4">
       <div className="space-y-6">
         <div>
-          <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
-            Módulos Base
-          </p>
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Módulos base</p>
           <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
@@ -48,19 +46,17 @@ export const Sidebar: React.FC = () => {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                      isActive
-                        ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                    )
-                  }
+                  className={({ isActive }) => cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                    isActive
+                      ? 'border border-blue-500/30 bg-blue-600/15 text-blue-500 shadow-sm'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+                  )}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className="h-4 w-4 shrink-0" />
                   <div className="flex flex-col text-left">
                     <span>{item.label}</span>
-                    <span className="text-[10px] text-slate-500 font-normal">{item.description}</span>
+                    <span className="text-[10px] font-normal text-slate-500">{item.description}</span>
                   </div>
                 </NavLink>
               );
@@ -68,10 +64,8 @@ export const Sidebar: React.FC = () => {
           </nav>
         </div>
 
-        <div className="pt-4 border-t border-slate-200">
-          <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
-            Negocio
-          </p>
+        <div className="border-t border-slate-200 pt-4">
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Negocio</p>
           <nav className="space-y-1">
             {businessItems.map((item) => {
               const Icon = item.icon;
@@ -79,19 +73,17 @@ export const Sidebar: React.FC = () => {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-                      isActive
-                        ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                    )
-                  }
+                  className={({ isActive }) => cn(
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                    isActive
+                      ? 'border border-blue-500/30 bg-blue-600/15 text-blue-500 shadow-sm'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900',
+                  )}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className="h-4 w-4 shrink-0" />
                   <div className="flex flex-col text-left">
                     <span>{item.label}</span>
-                    <span className="text-[10px] text-slate-500 font-normal">{item.description}</span>
+                    <span className="text-[10px] font-normal text-slate-500">{item.description}</span>
                   </div>
                 </NavLink>
               );
@@ -99,31 +91,27 @@ export const Sidebar: React.FC = () => {
           </nav>
         </div>
 
-        <div className="pt-4 border-t border-slate-200">
-          <p className="px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-2">
-            Arquitectura Softtek
-          </p>
-          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 text-xs space-y-2">
-            <div className="flex items-center gap-2 text-slate-700 font-medium">
-              <Layers className="w-4 h-4 text-indigo-400" />
-              <span>Contrato de Stack</span>
+        <div className="border-t border-slate-200 pt-4">
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">Arquitectura Softtek</p>
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
+            <div className="flex items-center gap-2 font-medium text-slate-700">
+              <Layers className="h-4 w-4 text-indigo-500" />
+              <span>Contrato tecnológico</span>
             </div>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Diseñado para construir módulos independientes y moverlos a <code className="text-blue-400">bfs_US</code> sin cambios estructurales.
+            <p className="text-[11px] leading-relaxed text-slate-500">
+              Integración modular compatible con <code className="text-blue-500">bfs_US</code>.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="p-3 rounded-lg bg-white border border-slate-200 text-xs space-y-2">
+      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-xs">
         <div className="flex items-center justify-between text-slate-500">
           <span className="font-mono text-[11px]">Node v22.22.2</span>
-          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
-            Verified
-          </span>
+          <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] text-emerald-600">Verificado</span>
         </div>
         <p className="text-[10px] text-slate-500">
-          Revisa <strong className="text-slate-500">GUIA_INTEGRACION_BFS_US.md</strong> para el flujo de entrega a producción.
+          Revisa <strong className="text-slate-600">GUIA_INTEGRACION_BFS_US.md</strong> para el flujo de entrega a producción.
         </p>
       </div>
     </aside>
