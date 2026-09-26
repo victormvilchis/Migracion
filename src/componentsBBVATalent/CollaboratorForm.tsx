@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { useCatalogOptions } from '../pagesBBVATalent/hooks/useCatalog';
 import type { CatalogOption } from '../pagesBBVATalent/types/catalog';
 import type { Collaborator, CollaboratorPayload } from '../pagesBBVATalent/types/collaborator';
+import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
+import { ISLookupField } from './ISLookupField';
 
 const fieldClass = 'h-8 w-full rounded-md border border-slate-300 bg-white px-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
 const areaClass = 'w-full rounded-md border border-slate-300 bg-white px-2.5 py-2 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
@@ -36,7 +38,7 @@ export const CollaboratorForm: React.FC<{ selected?: Collaborator | null; saving
   const profiles = useMemo(() => profilesQuery.data?.items ?? [], [profilesQuery.data]);
   const technologyProfiles = useMemo(() => technologyProfilesQuery.data?.items ?? [], [technologyProfilesQuery.data]);
   const technologies = useMemo(() => technologiesQuery.data?.items ?? [], [technologiesQuery.data]);
-  const { register, handleSubmit, reset } = useForm<CollaboratorPayload>({ defaultValues: values(selected, [], [], []) });
+  const { register, handleSubmit, reset, setValue, watch } = useForm<CollaboratorPayload>({ defaultValues: values(selected, [], [], []) });
 
   useEffect(() => reset(values(selected, profiles, technologyProfiles, technologies)), [profiles, reset, selected, technologies, technologyProfiles]);
 
@@ -48,15 +50,28 @@ export const CollaboratorForm: React.FC<{ selected?: Collaborator | null; saving
   });
 
   const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading;
+  const isValue = watch('softtekCode');
+
+  const hydrateFromDirectory = (record: IdentityDirectoryRecord) => {
+    if (record.corporateUser) setValue('corporateUser', record.corporateUser, { shouldDirty: true, shouldValidate: true });
+    if (record.email) setValue('email', record.email, { shouldDirty: true, shouldValidate: true });
+    if (record.firstName) setValue('firstName', record.firstName, { shouldDirty: true, shouldValidate: true });
+    if (record.lastName) setValue('lastName', record.lastName, { shouldDirty: true, shouldValidate: true });
+    if (record.expertise) setValue('expertise', record.expertise, { shouldDirty: true, shouldValidate: true });
+    if (record.hireDate) setValue('hireDate', record.hireDate, { shouldDirty: true, shouldValidate: true });
+    if (record.profile) setValue('profileCatalogId', optionId(profiles, null, record.profile), { shouldDirty: true, shouldValidate: true });
+    if (record.technologyProfile) setValue('technologyProfileCatalogId', optionId(technologyProfiles, null, record.technologyProfile), { shouldDirty: true, shouldValidate: true });
+    if (record.currentTechnology) setValue('currentTechnologyCatalogId', optionId(technologies, null, record.currentTechnology), { shouldDirty: true, shouldValidate: true });
+  };
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-3">
       <section className="space-y-2">
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Identificación</h3>
         <div className="grid gap-2 md:grid-cols-12">
-          <label className="md:col-span-2"><span className={labelClass}>Código Softtek</span><input {...register('softtekCode')} className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>IS</span><ISLookupField value={isValue ?? ''} onChange={(value) => setValue('softtekCode', value, { shouldDirty: true })} onResolved={hydrateFromDirectory} disabled={saving} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Usuario corporativo</span><input {...register('corporateUser')} className={fieldClass} /></label>
-          <label className="md:col-span-4"><span className={labelClass}>Correo electrónico *</span><input {...register('email', { required: true })} type="email" className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Correo electrónico *</span><input {...register('email', { required: true })} type="email" className={fieldClass} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Nombre *</span><input {...register('firstName', { required: true })} className={fieldClass} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Apellidos *</span><input {...register('lastName', { required: true })} className={fieldClass} /></label>
         </div>

@@ -13,7 +13,7 @@ function responseForError(error: unknown, context: InvocationContext): HttpRespo
   context.error('[BBVA:Catalogs] Error:', message);
   if (value.statusCode === 403) return { status: 403, jsonBody: { error: message } };
   if (value.statusCode === 409) return { status: 409, jsonBody: { error: message } };
-  if (value.number === 547) return { status: 409, jsonBody: { error: 'No es posible eliminar el registro porque tiene dependencias activas.' } };
+  if (value.number === 547) return { status: 409, jsonBody: { error: 'No es posible eliminar el registro porque aún existe una referencia activa. Actualiza el listado para consultar la Cantidad de usos.' } };
   if (value.number === 2601 || value.number === 2627 || /duplicate|unique|duplicad/i.test(message)) {
     return { status: 409, jsonBody: { error: 'Ya existe un registro equivalente en este catálogo.' } };
   }

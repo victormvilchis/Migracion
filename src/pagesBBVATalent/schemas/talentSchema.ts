@@ -32,7 +32,7 @@ export const talentSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['platformEndDate'], message: 'El vencimiento no puede ser anterior al inicio de vigencia.' });
   }
   if (value.talentType === 'ACADEMY') {
-    if (!value.softtekCode) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['softtekCode'], message: 'El Código Softtek es obligatorio para Academia.' });
+    if (!value.softtekCode) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['softtekCode'], message: 'El IS es obligatorio para Academia.' });
     if (!value.profileCatalogId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['profileCatalogId'], message: 'El perfil es obligatorio para Academia.' });
     if (!value.currentTechnologyCatalogId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['currentTechnologyCatalogId'], message: 'La tecnología es obligatoria para Academia.' });
   }

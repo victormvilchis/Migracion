@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   CERTIFICATION_LEVELS,
   CERTIFICATION_TYPES,
@@ -90,11 +91,13 @@ export class BbvaCertificationCatalogService {
   }
 
   async create(payload: unknown, actorEmail: string): Promise<CertificationCatalogRecord> {
-    return repository.create(await this.validate(payload), actorEmail);
+    return repository.create(await this.validate(payload, this.generateInternalCode()), actorEmail);
   }
 
   async update(id: string, payload: unknown, actorEmail: string): Promise<CertificationCatalogRecord | null> {
-    return repository.update(id, await this.validate(payload), actorEmail);
+    const current = await repository.findById(id);
+    if (!current) return null;
+    return repository.update(id, await this.validate(payload, current.code), actorEmail);
   }
 
   async updateStatus(id: string, status: unknown, actorEmail: string): Promise<CertificationCatalogRecord | null> {
@@ -106,9 +109,13 @@ export class BbvaCertificationCatalogService {
     return repository.delete(id, actorEmail);
   }
 
-  private async validate(payload: unknown): Promise<CertificationCatalogInput> {
+  private generateInternalCode(): string {
+    return `CERT_${randomUUID().replace(/-/g, '').slice(0, 24).toUpperCase()}`;
+  }
+
+  private async validate(payload: unknown, internalCode: string): Promise<CertificationCatalogInput> {
     const value = (payload ?? {}) as Record<string, unknown>;
-    const code = requiredText(value.code, 'El código', 80).toUpperCase();
+    const code = requiredText(internalCode, 'El identificador interno', 80).toUpperCase();
     const name = requiredText(value.name, 'El nombre', 180);
     const description = nullableText(value.description, 1000);
     const typeValue = String(value.certificationType ?? '').trim().toUpperCase() as CertificationType;

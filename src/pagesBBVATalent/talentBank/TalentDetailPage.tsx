@@ -30,7 +30,7 @@ export const TalentDetailPage: React.FC = () => {
   if (talentQuery.error || !talent) return <BBVAAlert tone="error">{(talentQuery.error as Error)?.message || 'No se encontró el talento.'}</BBVAAlert>;
 
   const rows: Array<[string, React.ReactNode]> = [
-    ['Nombre completo', talent.fullName], ['Correo electrónico', talent.email], ['Código Softtek', talent.softtekCode || 'N/A'], ['Usuario corporativo', talent.corporateUser || 'N/A'],
+    ['Nombre completo', talent.fullName], ['Correo electrónico', talent.email], ['IS', talent.softtekCode || 'N/A'], ['Usuario corporativo', talent.corporateUser || 'N/A'],
     ['Tipo', <TalentTypeBadge type={talent.talentType} />], ['Etapa', <TalentStageBadge stage={talent.stage} />], ['Rol', roleDisplay(talent)], ['Tecnología actual', technologyDisplay(talent)],
     ['Inicio de vigencia', formatDate(talent.platformStartDate)], ['Vencimiento', formatDate(talent.platformEndDate)], ['Fecha de contratación', formatDate(talent.hireDate)], ['Alta en Talent Bank', formatDate(talent.entryDate)],
   ];

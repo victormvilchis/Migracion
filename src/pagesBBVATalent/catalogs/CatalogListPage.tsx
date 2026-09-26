@@ -164,6 +164,7 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
           ? `Se eliminará ${config.singularArticle} ${config.singular} “${pendingItem?.name ?? ''}”. Solo es posible cuando no tiene usos registrados.`
           : `${pendingStatus === 'ACTIVE' ? 'Se habilitará nuevamente' : 'Se inactivará'} ${config.singularArticle} ${config.singular} “${pendingItem?.name ?? ''}”. ${pendingStatus === 'INACTIVE' ? 'Los datos históricos se conservarán.' : ''}`}
         confirmLabel={pending?.kind === 'delete' ? 'Eliminar' : pendingStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'}
+        tone={pending?.kind === 'delete' ? 'danger' : pendingStatus === 'ACTIVE' ? 'success' : 'warning'}
         busy={busy}
         onCancel={() => setPending(null)}
         onConfirm={() => void confirm()}

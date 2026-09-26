@@ -115,7 +115,7 @@ export const TalentConvertPage: React.FC = () => {
           <button type="button" disabled={busy || catalogsLoading} onClick={requestConfirmation} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" />Continuar</button>
         </div>
       </div>
-      <ConfirmDialog open={confirmOpen} title="Convertir a colaborador" message="Esta persona dejará Talent Bank y será incorporada a Colaboradores conservando su identidad e historial. ¿Deseas continuar?" confirmLabel="Confirmar conversión" busy={busy} onConfirm={() => void confirm()} onCancel={() => setConfirmOpen(false)} />
+      <ConfirmDialog open={confirmOpen} title="Convertir a colaborador" message="Esta persona dejará Talent Bank y será incorporada a Colaboradores conservando su identidad e historial. ¿Deseas continuar?" confirmLabel="Confirmar conversión" tone="danger" busy={busy} onConfirm={() => void confirm()} onCancel={() => setConfirmOpen(false)} />
     </div>
   );
 };

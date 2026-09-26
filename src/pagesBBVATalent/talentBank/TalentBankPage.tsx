@@ -93,7 +93,7 @@ export const TalentPage: React.FC = () => {
       <div className="grid gap-2 lg:grid-cols-[minmax(280px,1fr)_minmax(145px,0.28fr)_minmax(185px,0.36fr)_minmax(165px,0.32fr)]">
         <div className="relative">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, correo o código" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, correo o IS" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
         </div>
         <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as 'ALL' | TalentType)} className={selectClass} aria-label="Filtrar por tipo">
           <option value="ALL">Todos los tipos</option>
@@ -161,6 +161,7 @@ export const TalentPage: React.FC = () => {
         title="Eliminar definitivamente"
         message={`Se eliminará ${deleteTarget?.fullName ?? 'este talento'}, su historial y su CV. Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar definitivamente"
+        tone="danger"
         busy={deleteMutation.isPending}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}

@@ -17,6 +17,8 @@ import {
 import { formatBytes } from '../pagesBBVATalent/lib/talentDisplay';
 import { validateCvFile } from '../pagesBBVATalent/lib/talentCv';
 import { BBVAAlert } from './BBVAAlert';
+import { ISLookupField } from './ISLookupField';
+import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const defaultStage = (type: TalentType) => type === 'ACADEMY' ? 'ACADEMY' : 'REGISTERED';
@@ -73,8 +75,9 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
   const profiles = useMemo(() => profilesQuery.data?.items ?? [], [profilesQuery.data]);
   const technologyProfiles = useMemo(() => technologyProfilesQuery.data?.items ?? [], [technologyProfilesQuery.data]);
   const technologies = useMemo(() => technologiesQuery.data?.items ?? [], [technologiesQuery.data]);
-  const { register, handleSubmit, reset, watch } = useForm<TalentFormValues>({ defaultValues: toFormValues(selected, initialTalentType, [], [], []) });
+  const { register, handleSubmit, reset, watch, setValue } = useForm<TalentFormValues>({ defaultValues: toFormValues(selected, initialTalentType, [], [], []) });
   const talentType = watch('talentType');
+  const isValue = watch('softtekCode');
   const fullForm = talentType !== 'ACADEMY';
   const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading;
 
@@ -98,6 +101,18 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
     onSubmit(parsed.data, cvFile);
   };
 
+  const hydrateFromDirectory = (record: IdentityDirectoryRecord) => {
+    if (record.corporateUser) setValue('corporateUser', record.corporateUser, { shouldDirty: true, shouldValidate: true });
+    if (record.email) setValue('email', record.email, { shouldDirty: true, shouldValidate: true });
+    if (record.firstName) setValue('firstName', record.firstName, { shouldDirty: true, shouldValidate: true });
+    if (record.lastName) setValue('lastName', record.lastName, { shouldDirty: true, shouldValidate: true });
+    if (record.expertise) setValue('expertise', record.expertise, { shouldDirty: true, shouldValidate: true });
+    if (record.hireDate) setValue('hireDate', record.hireDate, { shouldDirty: true, shouldValidate: true });
+    if (record.profile) setValue('profileCatalogId', optionId(profiles, null, record.profile), { shouldDirty: true, shouldValidate: true });
+    if (record.technologyProfile) setValue('technologyProfileCatalogId', optionId(technologyProfiles, null, record.technologyProfile), { shouldDirty: true, shouldValidate: true });
+    if (record.currentTechnology) setValue('currentTechnologyCatalogId', optionId(technologies, null, record.currentTechnology), { shouldDirty: true, shouldValidate: true });
+  };
+
   const onFileSelected = (file?: File) => {
     if (!file) return;
     const error = validateCvFile(file);
@@ -118,9 +133,9 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
       <section className={sectionClass}>
         <div className="flex items-center justify-between gap-3"><h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Identificación</h3><span className="text-[10px] text-slate-400">{TALENT_TYPE_LABELS[talentType]}</span></div>
         <div className="grid gap-2 md:grid-cols-12">
-          <label className="md:col-span-2"><span className={labelClass}>Código Softtek</span><input {...register('softtekCode')} className={fieldClass} placeholder="XMF5048" /></label>
+          <label className="md:col-span-3"><span className={labelClass}>IS</span><ISLookupField value={isValue ?? ''} onChange={(value) => setValue('softtekCode', value, { shouldDirty: true })} onResolved={hydrateFromDirectory} disabled={saving} /></label>
           {fullForm && <label className="md:col-span-2"><span className={labelClass}>Usuario corporativo</span><input {...register('corporateUser')} className={fieldClass} /></label>}
-          <label className={fullForm ? 'md:col-span-4' : 'md:col-span-5'}><span className={labelClass}>Correo electrónico</span><input {...register('email')} type="email" className={fieldClass} /></label>
+          <label className={fullForm ? 'md:col-span-3' : 'md:col-span-4'}><span className={labelClass}>Correo electrónico</span><input {...register('email')} type="email" className={fieldClass} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Nombre</span><input {...register('firstName')} className={fieldClass} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Apellidos</span><input {...register('lastName')} className={fieldClass} /></label>
         </div>

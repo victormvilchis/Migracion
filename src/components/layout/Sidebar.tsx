@@ -6,10 +6,10 @@ import { cn } from '../../lib/utils';
 export const Sidebar: React.FC = () => {
   const businessItems = [
     {
-      to: '/bbva/talent-bank',
-      label: 'BBVA Talent Management',
+      to: '/bbva/dashboard',
+      label: 'BBVA Workspace',
       icon: Building2,
-      description: 'Acceso al módulo BBVA',
+      description: 'Talento, certificaciones y desarrollo',
     },
   ];
 

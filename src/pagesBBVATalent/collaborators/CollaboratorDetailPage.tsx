@@ -21,7 +21,7 @@ export const CollaboratorDetailPage: React.FC = () => {
   if (query.error || !item) return <BBVAAlert tone="error">{query.error ? (query.error as Error).message : 'Colaborador no encontrado.'}</BBVAAlert>;
 
   const rows = [
-    ['Nombre completo', item.fullName], ['Correo electrónico', item.email], ['Código Softtek', item.softtekCode], ['Usuario corporativo', item.corporateUser],
+    ['Nombre completo', item.fullName], ['Correo electrónico', item.email], ['IS', item.softtekCode], ['Usuario corporativo', item.corporateUser],
     ['Perfil', item.profile], ['Perfil tecnológico', item.technologyProfile], ['Tecnología actual', item.currentTechnology], ['Expertise', item.expertise],
     ['Fecha de alta', dateValue(item.startDate)], ['Vencimiento', dateValue(item.endDate)], ['Fecha de contratación', dateValue(item.hireDate)], ['Estado', item.status === 'ACTIVE' ? 'Activo' : 'Inactivo'],
   ];

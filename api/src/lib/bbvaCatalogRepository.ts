@@ -18,10 +18,15 @@ const SORT_MAP = {
 } as const;
 
 function usageExpression(definition: BbvaCatalogDefinition): string {
-  if (!definition.usageColumn) return 'CAST(0 AS INT)';
-  const byName = `UPPER(LTRIM(RTRIM(ISNULL(p.${definition.usageColumn}, N'')))) = UPPER(LTRIM(RTRIM(c.Name)))`;
-  if (!definition.usageIdColumn) return `(SELECT COUNT_BIG(1) FROM bbva.Person p WHERE ${byName})`;
-  return `(SELECT COUNT_BIG(1) FROM bbva.Person p WHERE p.${definition.usageIdColumn}=c.Id OR (p.${definition.usageIdColumn} IS NULL AND ${byName}))`;
+  const expressions: string[] = [];
+  if (definition.usageColumn) {
+    const byName = `UPPER(LTRIM(RTRIM(ISNULL(p.${definition.usageColumn}, N'')))) = UPPER(LTRIM(RTRIM(c.Name)))`;
+    expressions.push(definition.usageIdColumn
+      ? `(SELECT COUNT_BIG(1) FROM bbva.Person p WHERE p.${definition.usageIdColumn}=c.Id OR (p.${definition.usageIdColumn} IS NULL AND ${byName}))`
+      : `(SELECT COUNT_BIG(1) FROM bbva.Person p WHERE ${byName})`);
+  }
+  expressions.push(...(definition.extraUsageExpressions ?? []));
+  return expressions.length ? expressions.map((expression) => `(${expression})`).join(' + ') : 'CAST(0 AS INT)';
 }
 
 function selectColumns(definition: BbvaCatalogDefinition): string {

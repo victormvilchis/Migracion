@@ -156,3 +156,33 @@ Campos específicos:
 - Perfil tecnológico: nombre y descripción.
 
 Este patrón será reutilizable para nuevos catálogos sin crear dependencias en el shell global de BaseBFS.
+
+## Patrón transversal — confirmaciones y acciones sensibles
+
+- Toda confirmación de negocio de BBVA utiliza `ConfirmDialog`; no se crean modales aislados por pantalla ni se usa `window.confirm()`.
+- `ConfirmDialog` se renderiza mediante portal sobre `document.body`, bloquea el scroll de fondo, soporta cierre con `Esc`, restaura el foco y expone semántica `alertdialog` accesible.
+- El patrón visual mantiene una franja lateral con icono, título, explicación funcional, botón de cierre, `Cancelar` y una acción primaria explícita.
+- Los tonos son semánticos: `danger` para eliminación/conversión irreversible, `warning` para inactivación, `success` para reactivación y `primary` para confirmaciones neutras.
+- El componente compartido es la única fuente visual del patrón para Talent Bank, Colaboradores, Catálogos y Certificaciones.
+
+## Identidad de persona — IS y fuente corporativa desacoplada
+
+- En frontend el identificador `SofttekCode` se presenta al usuario como **IS**. El nombre técnico existente se conserva internamente para evitar una migración innecesaria de persistencia y contratos ya establecidos.
+- Los formularios de Talent Bank y Colaboradores incluyen `Buscar IS` y consumen `/api/bbva/identity-directory/{is}` mediante ruta relativa.
+- La fuente corporativa real todavía no está definida. El backend expone una capa anti-corrupción mediante `BbvaIdentityDirectoryProvider`, que deberá adaptarse a la fuente oficial cuando sea confirmada.
+- Hasta configurar un provider, la API responde de forma explícita que la fuente no está configurada; no se simulan datos ni se inventa un catálogo externo.
+- El contrato canónico permite hidratar, cuando estén disponibles, usuario corporativo, correo, nombre, apellidos, perfil, perfil tecnológico, tecnología actual, expertise y fecha de contratación.
+
+## Catálogo de certificaciones — superficie operativa
+
+- `Código` deja de ser un dato capturable o visible. Se mantiene únicamente como identificador técnico interno para compatibilidad con la persistencia existente y se genera en backend al crear una certificación.
+- La tabla operativa no muestra `Configuración` ni `Perfiles`; muestra Certificación, Tipo, Tecnología/Certificadora, Estado y Acciones.
+- El formulario no muestra `Grupo de requisito`, `Mínimo del grupo` ni `Perfiles aplicables`.
+- Al editar registros previamente configurados se preservan internamente las reglas históricas que ya existían, evitando pérdida silenciosa de información por el cambio de superficie operativa.
+
+## Integridad — Cantidad de usos
+
+- `Cantidad de usos` debe representar todas las referencias relacionales conocidas que impiden el borrado, no solamente las referencias desde `bbva.Person`.
+- Para `Perfiles`, el conteo incorpora también `bbva.CertificationProfileRule`.
+- Para `Tecnologías`, el conteo incorpora también `bbva.CertificationCatalog`.
+- El borrado continúa bloqueado con `409 Conflict` cuando el conteo real es mayor que cero. Así, la interfaz no debe mostrar `0` mientras exista una dependencia que impida la eliminación.

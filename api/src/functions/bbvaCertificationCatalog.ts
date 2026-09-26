@@ -19,7 +19,7 @@ function errorResponse(error: unknown, context: InvocationContext): HttpResponse
   if (value.statusCode === 403) return { status: 403, jsonBody: { error: message } };
   if (value.statusCode === 409 || value.number === 547) return { status: 409, jsonBody: { error: message } };
   if (value.number === 2601 || value.number === 2627 || /duplicate|unique|duplicad/i.test(message)) {
-    return { status: 409, jsonBody: { error: 'Ya existe una certificación con el mismo código o nombre.' } };
+    return { status: 409, jsonBody: { error: 'Ya existe una certificación con el mismo nombre.' } };
   }
   if (/obligatori|inválid|exceder|debe|seleccionad|vigencia|perfil|tecnología|grupo/i.test(message)) {
     return { status: 400, jsonBody: { error: message } };

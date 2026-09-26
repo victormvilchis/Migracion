@@ -10,6 +10,7 @@ export interface BbvaCatalogDefinition {
   supportsSeniority: boolean;
   usageColumn?: 'CurrentTechnology' | 'Profile' | 'TechnologyProfile';
   usageIdColumn?: 'CurrentTechnologyCatalogId' | 'ProfileCatalogId' | 'TechnologyProfileCatalogId';
+  extraUsageExpressions?: string[];
 }
 
 export interface BbvaCatalogInput {
@@ -75,6 +76,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
     supportsSeniority: false,
     usageColumn: 'CurrentTechnology',
     usageIdColumn: 'CurrentTechnologyCatalogId',
+    extraUsageExpressions: ['(SELECT COUNT_BIG(1) FROM bbva.CertificationCatalog cert WHERE cert.TechnologyId=c.Id)'],
   },
   profiles: {
     type: 'profiles',
@@ -85,6 +87,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
     supportsSeniority: true,
     usageColumn: 'Profile',
     usageIdColumn: 'ProfileCatalogId',
+    extraUsageExpressions: ['(SELECT COUNT_BIG(1) FROM bbva.CertificationProfileRule cpr WHERE cpr.ProfileId=c.Id)'],
   },
   'technology-profiles': {
     type: 'technology-profiles',

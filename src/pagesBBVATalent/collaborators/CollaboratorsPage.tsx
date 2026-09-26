@@ -100,7 +100,7 @@ export const CollaboratorsPage: React.FC = () => {
       <div className="grid gap-2 lg:grid-cols-[minmax(260px,1fr)_minmax(180px,0.6fr)_minmax(160px,0.45fr)_minmax(155px,0.42fr)]">
         <div className="relative">
           <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, correo, código o usuario" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, correo, IS o usuario" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
         </div>
         <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className={selectClass} aria-label="Filtrar por rol">
           <option value="ALL">Todos los roles</option>
@@ -170,6 +170,7 @@ export const CollaboratorsPage: React.FC = () => {
         title="Eliminar definitivamente"
         message={`Se eliminará ${deleteTarget?.fullName ?? 'este colaborador'} y su información asociada. Esta acción no se puede deshacer.`}
         confirmLabel="Eliminar definitivamente"
+        tone="danger"
         busy={deleteMutation.isPending}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => {
