@@ -15,7 +15,8 @@ import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ISLookupField } from '../../componentsBBVATalent/ISLookupField';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
-import { parseFirstExcelSheet } from '../lib/xlsxFirstSheet';
+import { parseFirstExcelSheet, parseTabularFile } from '../lib/xlsxFirstSheet';
+import { enrichImportRows, type ImportEnrichmentSummary } from '../lib/collaboratorImportEnrichment';
 import { useApplyCollaboratorImport, usePreviewCollaboratorImport } from '../hooks/useCollaboratorImport';
 import type {
   ImportCertificationPreview,
@@ -123,9 +124,12 @@ function CertificationBlock({
 export const CollaboratorImportPage: React.FC = () => {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const supplementInputRef = useRef<HTMLInputElement>(null);
   const previewMutation = usePreviewCollaboratorImport();
   const applyMutation = useApplyCollaboratorImport();
   const [file, setFile] = useState<File | null>(null);
+  const [supplementFile, setSupplementFile] = useState<File | null>(null);
+  const [enrichmentSummary, setEnrichmentSummary] = useState<ImportEnrichmentSummary | null>(null);
   const [sheetName, setSheetName] = useState('');
   const [ignoredRows, setIgnoredRows] = useState(0);
   const [rows, setRows] = useState<ImportSourceRow[]>([]);
@@ -133,6 +137,7 @@ export const CollaboratorImportPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('new');
   const [emails, setEmails] = useState<Record<string, string>>({});
   const [softtekCodes, setSofttekCodes] = useState<Record<string, string>>({});
+  const [deliveryManagers, setDeliveryManagers] = useState<Record<string, string>>({});
   const [decisions, setDecisions] = useState<Record<string, ImportChangeDecision>>({});
   const [lowDecisions, setLowDecisions] = useState<Record<string, ImportLowDecision>>({});
   const [error, setError] = useState<string | null>(null);
@@ -147,20 +152,30 @@ export const CollaboratorImportPage: React.FC = () => {
   ]);
 
   const resetPreview = () => {
-    setPreview(null); setRows([]); setSheetName(''); setIgnoredRows(0); setEmails({}); setSofttekCodes({}); setDecisions({}); setLowDecisions({}); setSuccess(null);
+    setPreview(null); setRows([]); setSheetName(''); setIgnoredRows(0); setEmails({}); setSofttekCodes({}); setDeliveryManagers({}); setEnrichmentSummary(null); setDecisions({}); setLowDecisions({}); setSuccess(null);
   };
   const chooseFile = (next: File | null) => { setFile(next); resetPreview(); setError(null); };
+  const chooseSupplementFile = (next: File | null) => { setSupplementFile(next); resetPreview(); setError(null); };
 
   const validate = async () => {
     if (!file) return;
     setError(null); setSuccess(null);
     try {
       const parsed = await parseFirstExcelSheet(file);
-      setSheetName(parsed.sheetName); setIgnoredRows(parsed.ignoredRows); setRows(parsed.rows);
-      const result = await previewMutation.mutateAsync(parsed.rows);
+      let effectiveRows: ImportSourceRow[] = parsed.rows;
+      let summary: ImportEnrichmentSummary | null = null;
+      if (supplementFile) {
+        const supplementary = await parseTabularFile(supplementFile);
+        const enrichment = enrichImportRows(parsed.rows, supplementary.rows);
+        effectiveRows = enrichment.rows;
+        summary = enrichment.summary;
+      }
+      setSheetName(parsed.sheetName); setIgnoredRows(parsed.ignoredRows); setRows(effectiveRows); setEnrichmentSummary(summary);
+      const result = await previewMutation.mutateAsync(effectiveRows);
       setPreview(result);
       setEmails(Object.fromEntries(result.newItems.map((item) => [item.rowKey, item.email ?? ''])));
       setSofttekCodes(Object.fromEntries(result.newItems.map((item) => [item.rowKey, item.softtekCode ?? ''])));
+      setDeliveryManagers(Object.fromEntries(result.newItems.map((item) => [item.rowKey, item.deliveryManager ?? ''])));
       setDecisions(decisionsForPreview(result));
       setLowDecisions(Object.fromEntries(result.possibleLows.map((item) => [item.collaboratorId, item.decision])));
       const firstAvailable: TabKey = result.newItems.length ? 'new' : result.changedItems.length ? 'changed' : result.conflicts.length ? 'conflicts' : result.possibleLows.length ? 'lows' : result.errors.length ? 'errors' : 'resolved';
@@ -170,6 +185,7 @@ export const CollaboratorImportPage: React.FC = () => {
 
   const invalidNewEmails = useMemo(() => preview?.newItems.filter((item) => !emailRe.test((emails[item.rowKey] ?? '').trim())) ?? [], [emails, preview]);
   const missingNewIs = useMemo(() => preview?.newItems.filter((item) => !(softtekCodes[item.rowKey] ?? '').trim()) ?? [], [preview, softtekCodes]);
+  const missingNewDm = useMemo(() => preview?.newItems.filter((item) => !(deliveryManagers[item.rowKey] ?? '').trim()) ?? [], [deliveryManagers, preview]);
   const unresolvedConflicts = useMemo(() => preview?.conflicts.filter((item) => !item.resolutionKey || !decisions[item.resolutionKey]) ?? [], [decisions, preview]);
   const actionable = Boolean(preview && (preview.newItems.length || preview.changedItems.length || preview.certificationChanges || preview.resolvedPreviously.length || Object.values(lowDecisions).some((decision) => decision === 'DEACTIVATE')));
 
@@ -177,7 +193,7 @@ export const CollaboratorImportPage: React.FC = () => {
     if (!preview) return;
     setConfirmOpen(false); setError(null);
     try {
-      const result = await applyMutation.mutateAsync({ rows, emails, softtekCodes, decisions, lowDecisions });
+      const result = await applyMutation.mutateAsync({ rows, emails, softtekCodes, deliveryManagers, decisions, lowDecisions });
       const parts = [
         result.created ? `${result.created} creado${result.created === 1 ? '' : 's'}` : '',
         result.updated ? `${result.updated} actualizado${result.updated === 1 ? '' : 's'}` : '',
@@ -194,6 +210,7 @@ export const CollaboratorImportPage: React.FC = () => {
         setPreview(refreshed);
         setEmails(Object.fromEntries(refreshed.newItems.map((item) => [item.rowKey, item.email ?? emails[item.rowKey] ?? ''])));
         setSofttekCodes(Object.fromEntries(refreshed.newItems.map((item) => [item.rowKey, item.softtekCode ?? softtekCodes[item.rowKey] ?? ''])));
+        setDeliveryManagers(Object.fromEntries(refreshed.newItems.map((item) => [item.rowKey, item.deliveryManager ?? deliveryManagers[item.rowKey] ?? ''])));
         setDecisions(decisionsForPreview(refreshed));
         setLowDecisions(Object.fromEntries(refreshed.possibleLows.map((item) => [item.collaboratorId, 'REVIEW'])));
         return;
@@ -216,10 +233,30 @@ export const CollaboratorImportPage: React.FC = () => {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }} onDrop={(event) => { event.preventDefault(); setDragging(false); chooseFile(event.dataTransfer.files?.[0] ?? null); }} className={`flex min-h-[126px] items-center justify-between gap-4 rounded-2xl border border-dashed px-5 py-4 transition ${dragging ? 'border-blue-400 bg-blue-50' : 'border-emerald-300 bg-emerald-50/30'}`}>
-          <div className="flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-emerald-200 bg-white text-emerald-600"><Upload className="h-5 w-5" /></span><div className="min-w-0"><div className="truncate text-sm font-semibold text-slate-900">{file ? file.name : 'Arrastra un archivo Excel o selecciónalo'}</div><div className="mt-1 text-[10.5px] text-slate-500">.xlsx · primera hoja · encabezados por nombre · filas válidas con NOMBRE EXTERNO</div>{sheetName ? <div className="mt-1 text-[10px] font-medium text-slate-500">Hoja analizada: {sheetName}{ignoredRows ? ` · ${ignoredRows} fila${ignoredRows === 1 ? '' : 's'} ignorada${ignoredRows === 1 ? '' : 's'} sin nombre` : ''}</div> : null}</div></div>
+          <div className="flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-emerald-200 bg-white text-emerald-600"><Upload className="h-5 w-5" /></span><div className="min-w-0"><div className="truncate text-sm font-semibold text-slate-900">{file ? file.name : 'Arrastra un archivo Excel o selecciónalo'}</div><div className="mt-1 text-[10.5px] text-slate-500">.xlsx · detecta automáticamente la hoja y los encabezados reconocibles · el formato puede variar</div>{sheetName ? <div className="mt-1 text-[10px] font-medium text-slate-500">Hoja analizada: {sheetName}{ignoredRows ? ` · ${ignoredRows} fila${ignoredRows === 1 ? '' : 's'} ignorada${ignoredRows === 1 ? '' : 's'} sin nombre` : ''}</div> : null}</div></div>
           <div className="flex shrink-0 gap-2"><input ref={inputRef} type="file" accept=".xlsx" className="hidden" onChange={(event) => chooseFile(event.target.files?.[0] ?? null)} /><button type="button" onClick={() => inputRef.current?.click()} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"><FileSpreadsheet className="h-3.5 w-3.5" />Seleccionar</button><button type="button" onClick={() => void validate()} disabled={!file || previewMutation.isPending} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40">{previewMutation.isPending ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}Validar y comparar</button></div>
         </div>
       </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10.5px] font-semibold text-slate-800">Archivo complementario <span className="font-normal text-slate-400">(opcional)</span></div>
+            <div className="mt-0.5 text-[9.5px] text-slate-500">Puede ser .xlsx, .csv, .tsv o .txt. Se usa sólo para completar IS, Usuario BBVA/XM, DM, correos y fechas faltantes; nunca reemplaza valores presentes en el tablero.</div>
+            {supplementFile ? <div className="mt-1 text-[9.5px] font-medium text-blue-700">{supplementFile.name}</div> : null}
+          </div>
+          <div className="flex gap-2">
+            <input ref={supplementInputRef} type="file" accept=".xlsx,.csv,.tsv,.txt" className="hidden" onChange={(event) => chooseSupplementFile(event.target.files?.[0] ?? null)} />
+            {supplementFile ? <button type="button" onClick={() => chooseSupplementFile(null)} className="h-8 rounded-xl border border-slate-300 bg-white px-3 text-[9.5px] font-semibold text-slate-600 hover:bg-slate-50">Quitar complemento</button> : null}
+            <button type="button" onClick={() => supplementInputRef.current?.click()} className="h-8 rounded-xl border border-slate-300 bg-white px-3 text-[9.5px] font-semibold text-blue-700 hover:bg-blue-50">{supplementFile ? 'Cambiar' : 'Seleccionar complemento'}</button>
+          </div>
+        </div>
+      </section>
+
+      {enrichmentSummary ? <BBVAAlert tone={enrichmentSummary.ambiguous > 0 ? 'warning' : 'info'}>
+        Complemento: {enrichmentSummary.matched} coincidencia{enrichmentSummary.matched === 1 ? '' : 's'} · {enrichmentSummary.fieldsAdded} dato{enrichmentSummary.fieldsAdded === 1 ? '' : 's'} agregado{enrichmentSummary.fieldsAdded === 1 ? '' : 's'} · {enrichmentSummary.unmatched} sin coincidencia · {enrichmentSummary.ambiguous} ambiguo{enrichmentSummary.ambiguous === 1 ? '' : 's'}.
+        {enrichmentSummary.warnings.length ? <div className="mt-1">{enrichmentSummary.warnings.slice(0, 4).join(' · ')}</div> : null}
+      </BBVAAlert> : null}
 
       {preview ? <>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
@@ -232,17 +269,18 @@ export const CollaboratorImportPage: React.FC = () => {
         </div>
 
         {preview.certificationRuleGaps.length ? <BBVAAlert tone="warning">{preview.certificationRuleGaps.join(' · ')}</BBVAAlert> : null}
+        {(invalidNewEmails.length || missingNewIs.length || missingNewDm.length) ? <BBVAAlert tone="warning">Antes de aplicar completa los campos obligatorios de nuevos colaboradores: {invalidNewEmails.length} correo{invalidNewEmails.length === 1 ? '' : 's'} inválido{invalidNewEmails.length === 1 ? '' : 's'}, {missingNewIs.length} IS faltante{missingNewIs.length === 1 ? '' : 's'} y {missingNewDm.length} DM faltante{missingNewDm.length === 1 ? '' : 's'}.</BBVAAlert> : null}
         {unresolvedConflicts.length ? <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10px] font-medium text-amber-800">Hay {unresolvedConflicts.length} conflicto{unresolvedConflicts.length === 1 ? '' : 's'} obligatorio{unresolvedConflicts.length === 1 ? '' : 's'} sin resolver. La importación no se puede aplicar hasta tomar una decisión.</div> : null}
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5">
             <div className="flex flex-wrap gap-1.5">{tabButton('new','Nuevos',preview.newItems.length)}{tabButton('changed','Con cambios',preview.changedItems.length)}{tabButton('lows','Posibles bajas',preview.possibleLows.length)}{tabButton('conflicts','Conflictos',preview.conflicts.length)}{tabButton('errors','Errores',preview.errors.length)}{tabButton('resolved','Resueltos previamente',preview.resolvedPreviously.length)}</div>
-            <button type="button" onClick={() => setConfirmOpen(true)} disabled={!actionable || invalidNewEmails.length > 0 || missingNewIs.length > 0 || unresolvedConflicts.length > 0 || applyMutation.isPending} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" />Aplicar importación</button>
+            <button type="button" onClick={() => setConfirmOpen(true)} disabled={!actionable || invalidNewEmails.length > 0 || missingNewIs.length > 0 || missingNewDm.length > 0 || unresolvedConflicts.length > 0 || applyMutation.isPending} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" />Aplicar importación</button>
           </div>
           {invalidNewEmails.length > 0 || missingNewIs.length > 0 ? <div className="border-b border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] text-amber-800">{missingNewIs.length ? `Captura el IS para ${missingNewIs.length} colaborador${missingNewIs.length === 1 ? '' : 'es'} nuevo${missingNewIs.length === 1 ? '' : 's'}. ` : ''}{invalidNewEmails.length ? `Captura un correo válido para ${invalidNewEmails.length} colaborador${invalidNewEmails.length === 1 ? '' : 'es'} nuevo${invalidNewEmails.length === 1 ? '' : 's'}.` : ''}</div> : null}
 
           <div className="max-h-[620px] overflow-auto">
-            {activeTab === 'new' ? <div className="divide-y divide-slate-100">{preview.newItems.map((item) => <div key={item.rowKey} className="p-3"><div className="grid gap-2 xl:grid-cols-[52px_minmax(180px,1fr)_190px_240px_150px_150px_150px]"><div className="pt-2 text-[9.5px] text-slate-500">Fila {item.rowNumber}</div><div className="pt-2 text-[10.5px] font-semibold text-slate-900">{item.fullName}</div><ISLookupField value={softtekCodes[item.rowKey] ?? ''} onChange={(value) => setSofttekCodes((current) => ({ ...current, [item.rowKey]: value }))} onResolved={(record) => { setSofttekCodes((current) => ({ ...current, [item.rowKey]: record.is })); if (record.email) setEmails((current) => ({ ...current, [item.rowKey]: record.email ?? current[item.rowKey] ?? '' })); }} disabled={applyMutation.isPending} /><input value={emails[item.rowKey] ?? ''} onChange={(event) => setEmails((current) => ({ ...current, [item.rowKey]: event.target.value }))} className={`h-9 rounded-xl border px-2.5 text-[10px] outline-none ${emailRe.test((emails[item.rowKey] ?? '').trim()) ? 'border-slate-300 focus:border-blue-500' : 'border-amber-300 bg-amber-50 focus:border-amber-500'}`} placeholder="correo@softtek.com" /><div className="pt-2 text-[9.5px] text-slate-600">{formatValue(item.profile)}</div><div className="pt-2 text-[9.5px] text-slate-600">{formatValue(item.technologyProfile)}</div><div className="pt-2 text-[9.5px] text-slate-600">{formatValue(item.currentTechnology)}</div></div>{item.certifications.length ? <div className="mt-2 space-y-2">{item.certifications.filter((cert) => cert.hasChanges).map((cert) => <CertificationBlock key={cert.resolutionKey} certification={cert} decisions={decisions} setDecisions={setDecisions} />)}</div> : null}</div>)}</div> : null}
+            {activeTab === 'new' ? <div className="divide-y divide-slate-100">{preview.newItems.map((item) => <div key={item.rowKey} className="p-3"><div className="grid gap-2 xl:grid-cols-[52px_minmax(270px,1.35fr)_170px_210px_180px_150px_150px_150px]"><div className="pt-2 text-[9.5px] text-slate-500">Fila {item.rowNumber}</div><div className="min-w-0 pt-1.5"><div className="text-[10.5px] font-semibold text-slate-900">{item.fullName}</div><div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[8.5px] text-slate-500"><span>Usuario BBVA: <b className="font-semibold text-slate-700">{formatValue(item.corporateUser)}</b></span><span>DM: <b className="font-semibold text-slate-700">{formatValue(item.deliveryManager)}</b></span>{item.bbvaEmail ? <span>BBVA: <b className="font-semibold text-slate-700">{item.bbvaEmail}</b></span> : null}</div><div className="mt-0.5 flex flex-wrap gap-x-2 text-[8.5px] text-slate-400">{item.startDate ? <span>Alta BBVA: {item.startDate}</span> : <span className="font-medium text-amber-600">Alta BBVA pendiente</span>}{item.hireDate ? <span>Contratación Softtek: {item.hireDate}</span> : null}</div></div><ISLookupField value={softtekCodes[item.rowKey] ?? ''} onChange={(value) => setSofttekCodes((current) => ({ ...current, [item.rowKey]: value }))} onResolved={(record) => { setSofttekCodes((current) => ({ ...current, [item.rowKey]: record.is })); if (record.email) setEmails((current) => ({ ...current, [item.rowKey]: record.email ?? current[item.rowKey] ?? '' })); }} disabled={applyMutation.isPending} /><input value={emails[item.rowKey] ?? ''} onChange={(event) => setEmails((current) => ({ ...current, [item.rowKey]: event.target.value }))} className={`h-9 rounded-xl border px-2.5 text-[10px] outline-none ${emailRe.test((emails[item.rowKey] ?? '').trim()) ? 'border-slate-300 focus:border-blue-500' : 'border-amber-300 bg-amber-50 focus:border-amber-500'}`} placeholder="correo@softtek.com" /><input value={deliveryManagers[item.rowKey] ?? ''} onChange={(event) => setDeliveryManagers((current) => ({ ...current, [item.rowKey]: event.target.value }))} className={`h-9 rounded-xl border px-2.5 text-[10px] outline-none ${(deliveryManagers[item.rowKey] ?? '').trim() ? 'border-slate-300 focus:border-blue-500' : 'border-amber-300 bg-amber-50 focus:border-amber-500'}`} placeholder="DM obligatorio" /><div className="pt-2 text-[9.5px] text-slate-600">{formatValue(item.profile)}</div><div className="pt-2 text-[9.5px] text-slate-600">{formatValue(item.technologyProfile)}</div><div className="pt-2 text-[9.5px] text-slate-600">{formatValue(item.currentTechnology)}</div></div>{item.certifications.length ? <div className="mt-2 space-y-2">{item.certifications.filter((cert) => cert.hasChanges).map((cert) => <CertificationBlock key={cert.resolutionKey} certification={cert} decisions={decisions} setDecisions={setDecisions} />)}</div> : null}</div>)}</div> : null}
 
             {activeTab === 'changed' ? <div className="divide-y divide-slate-100">{preview.changedItems.map((item) => <div key={item.rowKey} className="p-3"><div className="mb-2 flex items-center justify-between"><div><div className="text-[11px] font-semibold text-slate-900">{item.fullName}</div><div className="text-[9.5px] text-slate-500">Fila {item.rowNumber}{item.reactivationRequired ? ' · requiere reactivación' : ''}</div></div>{item.changes.length ? <div className="flex gap-1"><button type="button" onClick={() => setDecisions((current) => ({ ...current, ...Object.fromEntries(item.changes.map((change) => [change.resolutionKey,'APPLY_EXCEL'])) }))} className="h-7 rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-[9.5px] font-semibold text-blue-700">Aplicar datos</button><button type="button" onClick={() => setDecisions((current) => ({ ...current, ...Object.fromEntries(item.changes.map((change) => [change.resolutionKey,'KEEP_CURRENT'])) }))} className="h-7 rounded-lg border border-slate-200 bg-white px-2.5 text-[9.5px] font-semibold text-slate-600">Mantener datos</button></div> : null}</div>{item.changes.length ? <table className="mb-2 w-full min-w-[850px] text-left text-[10px]"><thead className="bg-slate-50 text-[8.5px] uppercase text-slate-500"><tr><th className="px-2 py-1.5">Campo</th><th className="px-2 py-1.5">Valor actual</th><th className="px-2 py-1.5">Valor Excel</th><th className="px-2 py-1.5">Decisión</th></tr></thead><tbody>{item.changes.map((change) => <tr key={change.resolutionKey} className="border-t border-slate-100"><td className="px-2 py-1.5 font-semibold">{change.label}</td><td className="px-2 py-1.5 text-slate-500">{formatValue(change.currentValue)}</td><td className="px-2 py-1.5 text-slate-900">{formatValue(change.excelValue)}</td><td className="px-2 py-1.5"><div className="flex gap-1"><button type="button" onClick={() => setDecisions((current) => ({ ...current, [change.resolutionKey]:'APPLY_EXCEL' }))} className={`h-7 rounded-lg px-2 text-[9px] font-semibold ${(decisions[change.resolutionKey] ?? change.decision) === 'APPLY_EXCEL' ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-600'}`}>Aplicar Excel</button><button type="button" onClick={() => setDecisions((current) => ({ ...current, [change.resolutionKey]:'KEEP_CURRENT' }))} className={`h-7 rounded-lg px-2 text-[9px] font-semibold ${(decisions[change.resolutionKey] ?? change.decision) === 'KEEP_CURRENT' ? 'bg-slate-700 text-white' : 'border border-slate-200 text-slate-600'}`}>Mantener actual</button></div></td></tr>)}</tbody></table> : null}<div className="space-y-2">{item.certifications.filter((cert) => cert.hasChanges).map((cert) => <CertificationBlock key={cert.resolutionKey} certification={cert} decisions={decisions} setDecisions={setDecisions} />)}</div></div>)}</div> : null}
 

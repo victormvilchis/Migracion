@@ -42,6 +42,7 @@ function values(item: Collaborator | null | undefined, profiles: CatalogOption[]
     bbvaUser: item?.bbvaUser ?? item?.corporateUser ?? '',
     softtekEmail: item?.softtekEmail ?? item?.email ?? '',
     bbvaEmail: item?.bbvaEmail ?? '',
+    deliveryManager: item?.deliveryManager ?? '',
     firstName: item?.firstName ?? '', lastName: item?.lastName ?? '',
     profile: item?.profile ?? '', profileCatalogId: optionId(profiles, item?.profileCatalogId, item?.profile),
     technologyProfile: item?.technologyProfile ?? '', technologyProfileCatalogId: optionId(technologyProfiles, item?.technologyProfileCatalogId, item?.technologyProfile),
@@ -151,6 +152,10 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
             <span className={labelClass}>Nivel de experiencia</span>
             <BBVASearchableSelect value={expertise ?? ''} onChange={(value) => setValue('expertise', value, { shouldDirty: true, shouldValidate: true })} options={expertiseOptions} disabled={readOnly || saving} ariaLabel="Nivel de experiencia" />
             <input type="hidden" {...register('expertise')} />
+          </label>
+          <label className="md:col-span-4">
+            <span className={labelClass}>DM *</span>
+            <input {...register('deliveryManager', { required: true })} disabled={readOnly || saving} className={fieldClass} placeholder="Delivery Manager" />
           </label>
         </div>
       </section>

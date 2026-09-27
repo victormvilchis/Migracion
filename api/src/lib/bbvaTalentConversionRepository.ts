@@ -9,7 +9,7 @@ export interface TalentConversionResult {
 
 /** Persistencia transaccional exclusiva del workflow Banco de talento -> Colaboradores. */
 export class TalentConversionRepository {
-  async convert(current: TalentRecord, actorEmail: string): Promise<TalentConversionResult> {
+  async convert(current: TalentRecord, deliveryManager: string, actorEmail: string): Promise<TalentConversionResult> {
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
@@ -31,14 +31,16 @@ export class TalentConversionRepository {
         await new sql.Request(transaction)
           .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
           .input('startDate', sql.Date, current.platformStartDate || current.entryDate || null)
+          .input('deliveryManager', sql.NVarChar(180), deliveryManager)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
-          .query(`UPDATE bbva.Collaborator SET Status=N'ACTIVE', StartDate=COALESCE(@startDate, StartDate), UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;`);
+          .query(`UPDATE bbva.Collaborator SET Status=N'ACTIVE', StartDate=COALESCE(@startDate, StartDate), DeliveryManager=@deliveryManager, UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;`);
       } else {
         const created = await new sql.Request(transaction)
           .input('personId', sql.UniqueIdentifier, current.personId)
           .input('startDate', sql.Date, current.platformStartDate || current.entryDate || null)
+          .input('deliveryManager', sql.NVarChar(180), deliveryManager)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
-          .query(`INSERT INTO bbva.Collaborator (PersonId, Status, StartDate, CreatedByEmail, UpdatedByEmail) OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id VALUES (@personId, N'ACTIVE', @startDate, @actorEmail, @actorEmail);`);
+          .query(`INSERT INTO bbva.Collaborator (PersonId, Status, StartDate, DeliveryManager, CreatedByEmail, UpdatedByEmail) OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id VALUES (@personId, N'ACTIVE', @startDate, @deliveryManager, @actorEmail, @actorEmail);`);
         collaboratorId = String(created.recordset[0].id);
         historyEvent = 'CREATED_FROM_TALENT';
         historyDescription = 'El colaborador fue incorporado desde Banco de talento.';

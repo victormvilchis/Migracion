@@ -2,6 +2,7 @@ export interface DashboardFilters {
   technologyId?: string | null;
   profileId?: string | null;
   certificationStatus?: string | null;
+  deliveryManager?: string | null;
   talentType?: string | null;
   fromDate?: string | null;
   toDate?: string | null;
@@ -17,6 +18,8 @@ export interface DashboardMetricCards {
   expired: number;
   recertificationPending: number;
   pending: number;
+  deliveryManagersRepresented: number;
+  dataQualityPending: number;
 }
 
 export interface DashboardSlice { label: string; value: number; }
@@ -28,6 +31,7 @@ export interface DashboardAttentionRow {
   fullName: string;
   technology: string;
   profile: string;
+  deliveryManager: string;
   valid: number;
   expiring: number;
   expired: number;
@@ -41,10 +45,12 @@ export interface BbvaDashboardResponse {
   certificationCoverage: DashboardSlice[];
   expirationByMonth: DashboardMonthlyPoint[];
   technologyDistribution: DashboardTechnologyPoint[];
+  deliveryManagerDistribution: DashboardSlice[];
   talentComposition: DashboardSlice[];
   attention: DashboardAttentionRow[];
   filters: {
     technologies: Array<{ id: string; name: string }>;
     profiles: Array<{ id: string; name: string }>;
+    deliveryManagers: string[];
   };
 }

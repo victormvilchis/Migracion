@@ -40,17 +40,19 @@ const certificationRepository = new CollaboratorCertificationRepository();
 const lifecycleService = new PersonLifecycleService();
 
 const HEADER_ALIASES = {
-  fullName: ['NOMBRE EXTERNO', 'NOMBRE COMPLETO', 'COLABORADOR'],
+  fullName: ['NOMBRE EXTERNO', 'NOMBRE COMPLETO', 'COLABORADOR', 'NOMBRE', 'NAME'],
   softtekCode: ['IS', 'CODIGO SOFTTEK', 'CÓDIGO SOFTTEK'],
-  corporateUser: ['USUARIO CORPORATIVO', 'USUARIO BBVA'],
-  email: ['CORREO', 'CORREO ELECTRONICO', 'CORREO ELECTRÓNICO', 'EMAIL', 'E-MAIL'],
-  profile: ['PERFIL'],
+  corporateUser: ['XM', 'USUARIO CORPORATIVO', 'USUARIO BBVA'],
+  email: ['CORREO SOFTTEK', 'CORREO', 'CORREO ELECTRONICO', 'CORREO ELECTRÓNICO', 'EMAIL', 'E-MAIL'],
+  bbvaEmail: ['CORREO BBVA', 'CORREO CORPORATIVO'],
+  deliveryManager: ['DM', 'DELIVERY MANAGER', 'DELIVERY MANAGER SOFTTEK'],
+  profile: ['PERFIL', 'PERFIL CLIENTE'],
   technologyProfile: ['PERFIL TECNOLOGICO', 'PERFIL TECNOLÓGICO'],
   currentTechnology: ['TECNOLOGIA EN LA QUE SE CERTIFICA', 'TECNOLOGÍA EN LA QUE SE CERTIFICA', 'TECNOLOGIA ACTUAL', 'TECNOLOGÍA ACTUAL'],
   expertise: ['EXPERTISE', 'SENIORITY'],
-  startDate: ['FECHA DE ALTA'],
-  hireDate: ['FECHA DE CONTRATACION', 'FECHA DE CONTRATACIÓN'],
-  resourceStatus: ['ESTATUS DEL RECURSO', 'ESTADO DEL RECURSO'],
+  startDate: ['FECHA ALTA BBVA', 'FECHA ALTA XM'],
+  hireDate: ['FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK', 'FECHA INGRESO SOFTTEK', 'FECHA ALTA -SAP', 'FECHA ALTA SAP', 'FECHA DE ALTA', 'FECHA DE CONTRATACION', 'FECHA DE CONTRATACIÓN'],
+  resourceStatus: ['ESTATUS DEL RECURSO', 'ESTADO DEL RECURSO', 'STATUS SOFTTEK'],
 } as const;
 
 type ImportField = keyof typeof HEADER_ALIASES | 'lifecycleState';
@@ -62,6 +64,8 @@ interface NormalizedRow {
   softtekCode: string | null;
   corporateUser: string | null;
   email: string | null;
+  bbvaEmail: string | null;
+  deliveryManager: string | null;
   profile: string | null;
   technologyProfile: string | null;
   currentTechnology: string | null;
@@ -81,14 +85,16 @@ interface MatchResult {
 const FIELD_LABELS: Record<ImportField, string> = {
   fullName: 'Nombre',
   softtekCode: 'IS',
-  corporateUser: 'Usuario corporativo',
-  email: 'Correo electrónico',
+  corporateUser: 'Usuario BBVA',
+  email: 'Correo Softtek',
+  bbvaEmail: 'Correo BBVA',
+  deliveryManager: 'DM',
   profile: 'Perfil',
   technologyProfile: 'Perfil tecnológico',
   currentTechnology: 'Tecnología actual',
   expertise: 'Nivel de experiencia',
-  startDate: 'Fecha de alta',
-  hireDate: 'Fecha de contratación',
+  startDate: 'Fecha de alta BBVA',
+  hireDate: 'Fecha de contratación Softtek',
   resourceStatus: 'Estado del recurso',
   lifecycleState: 'Estado operativo',
 };
@@ -167,17 +173,20 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
   const fullName = valueByAliases(source.values, HEADER_ALIASES.fullName);
   const rowKeySeed = fullName || `ROW_${source.rowNumber}`;
   const rowKey = hash(normalizeKey(rowKeySeed), String(source.rowNumber));
-  if (!fullName) return { rowKey, rowNumber: source.rowNumber, fullName: '', message: 'La fila no contiene NOMBRE EXTERNO.' };
+  if (!fullName) return { rowKey, rowNumber: source.rowNumber, fullName: '', message: 'La fila no contiene una columna de nombre reconocible.' };
 
   const rawStartDate = valueByAliases(source.values, HEADER_ALIASES.startDate);
   const rawHireDate = valueByAliases(source.values, HEADER_ALIASES.hireDate);
   const startDate = normalizeDate(rawStartDate);
   const hireDate = normalizeDate(rawHireDate);
-  if (rawStartDate && !startDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA DE ALTA no tiene un formato válido: ${rawStartDate}.` };
-  if (rawHireDate && !hireDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA DE CONTRATACIÓN no tiene un formato válido: ${rawHireDate}.` };
+  if (rawStartDate && !startDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA ALTA BBVA no tiene un formato válido: ${rawStartDate}.` };
+  if (rawHireDate && !hireDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA DE CONTRATACIÓN SOFTTEK no tiene un formato válido: ${rawHireDate}.` };
 
   const email = clean(valueByAliases(source.values, HEADER_ALIASES.email), 255)?.toLowerCase() ?? null;
-  if (email && !isEmail(email)) return { rowKey, rowNumber: source.rowNumber, fullName, message: `El correo del Excel no tiene un formato válido: ${email}.` };
+  if (email && !isEmail(email)) return { rowKey, rowNumber: source.rowNumber, fullName, message: `El correo Softtek del Excel no tiene un formato válido: ${email}.` };
+  const bbvaEmail = clean(valueByAliases(source.values, HEADER_ALIASES.bbvaEmail), 255)?.toLowerCase() ?? null;
+  if (bbvaEmail && !isEmail(bbvaEmail)) return { rowKey, rowNumber: source.rowNumber, fullName, message: `El correo BBVA del Excel no tiene un formato válido: ${bbvaEmail}.` };
+  const deliveryManager = clean(valueByAliases(source.values, HEADER_ALIASES.deliveryManager), 180);
 
   const softtekCode = upper(valueByAliases(source.values, HEADER_ALIASES.softtekCode), 80);
   const corporateUser = upper(valueByAliases(source.values, HEADER_ALIASES.corporateUser), 100);
@@ -190,6 +199,8 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
     softtekCode,
     corporateUser,
     email,
+    bbvaEmail,
+    deliveryManager,
     profile: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.profile)),
     technologyProfile: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.technologyProfile)),
     currentTechnology: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.currentTechnology)),
@@ -206,6 +217,7 @@ function indexPeople(people: ImportPersonRecord[]) {
     softtekCode: new Map<string, ImportPersonRecord[]>(),
     corporateUser: new Map<string, ImportPersonRecord[]>(),
     email: new Map<string, ImportPersonRecord[]>(),
+    bbvaEmail: new Map<string, ImportPersonRecord[]>(),
     fullName: new Map<string, ImportPersonRecord[]>(),
   };
   const add = (map: Map<string, ImportPersonRecord[]>, key: string, person: ImportPersonRecord) => {
@@ -216,6 +228,7 @@ function indexPeople(people: ImportPersonRecord[]) {
     add(maps.softtekCode, normalizeKey(person.softtekCode), person);
     add(maps.corporateUser, normalizeKey(person.corporateUser), person);
     add(maps.email, normalizeKey(person.email), person);
+    add(maps.bbvaEmail, normalizeKey(person.bbvaEmail), person);
     add(maps.fullName, normalizeKey(person.fullName), person);
   }
   return maps;
@@ -229,6 +242,7 @@ function matchRows(rows: NormalizedRow[], people: ImportPersonRecord[]): MatchRe
     if (row.softtekCode) collect(maps.softtekCode.get(normalizeKey(row.softtekCode)));
     if (row.corporateUser) collect(maps.corporateUser.get(normalizeKey(row.corporateUser)));
     if (row.email) collect(maps.email.get(normalizeKey(row.email)));
+    if (row.bbvaEmail) collect(maps.bbvaEmail.get(normalizeKey(row.bbvaEmail)));
     collect(maps.fullName.get(normalizeKey(row.fullName)));
     if (matches.size > 1) return { row, person: null, conflict: 'Los identificadores del Excel coinciden con más de una persona existente.' };
     return { row, person: matches.values().next().value ?? null, conflict: null };
@@ -294,7 +308,7 @@ async function catalogActions(row: NormalizedRow): Promise<ImportCatalogAction[]
   return actions;
 }
 
-async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, actorEmail: string, emailOverride?: string | null, decisions?: Map<string, ImportChangeDecision>, changes?: ImportFieldChange[], softtekCodeOverride?: string | null): Promise<ImportPersonInput> {
+async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, actorEmail: string, emailOverride?: string | null, decisions?: Map<string, ImportChangeDecision>, changes?: ImportFieldChange[], softtekCodeOverride?: string | null, deliveryManagerOverride?: string | null): Promise<ImportPersonInput> {
   const applyField = (field: ImportField, excel: string | null, current: string | null): string | null => {
     const change = changes?.find((item) => item.field === field);
     if (!change) return excel || current;
@@ -317,6 +331,8 @@ async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, 
   return {
     softtekCode: upper(softtekCodeOverride ?? applyField('softtekCode', row.softtekCode, existing?.softtekCode ?? null), 80),
     corporateUser: upper(applyField('corporateUser', row.corporateUser, existing?.corporateUser ?? null), 100),
+    bbvaEmail: clean(applyField('bbvaEmail', row.bbvaEmail, existing?.bbvaEmail ?? null), 255)?.toLowerCase() ?? null,
+    deliveryManager: clean(deliveryManagerOverride, 180) || clean(applyField('deliveryManager', row.deliveryManager, existing?.deliveryManager ?? null), 180) || (() => { throw new Error(`DM es obligatorio para ${resolvedFullName}.`); })(),
     email: resolvedEmail,
     firstName: names.firstName,
     lastName: names.lastName,
@@ -591,15 +607,15 @@ export class CollaboratorImportService {
       if (!match.person) {
         newItems.push({
           rowKey: match.row.rowKey,rowNumber: match.row.rowNumber,fullName: match.row.fullName,email: match.row.email,
-          softtekCode: match.row.softtekCode,corporateUser: match.row.corporateUser,profile: match.row.profile,
+          softtekCode: match.row.softtekCode,corporateUser: match.row.corporateUser,bbvaEmail: match.row.bbvaEmail,deliveryManager: match.row.deliveryManager,profile: match.row.profile,
           technologyProfile: match.row.technologyProfile,currentTechnology: match.row.currentTechnology,expertise: match.row.expertise,
-          startDate: match.row.startDate,catalogActions: rowCatalogActions,certifications: prepared.map((item) => item.preview),
+          startDate: match.row.startDate,hireDate: match.row.hireDate,catalogActions: rowCatalogActions,certifications: prepared.map((item) => item.preview),
         });
         continue;
       }
 
       matchedPersonIds.add(match.person.personId);
-      const fields: ImportField[] = ['fullName','softtekCode','corporateUser','email','profile','technologyProfile','currentTechnology','expertise','startDate','hireDate'];
+      const fields: ImportField[] = ['fullName','softtekCode','corporateUser','email','bbvaEmail','deliveryManager','profile','technologyProfile','currentTechnology','expertise','startDate','hireDate'];
       const changes = fields.map((field) => buildChange(match.person as ImportPersonRecord, match.row, field)).filter((item): item is ImportFieldChange => Boolean(item));
       if (match.person.collaboratorStatus !== 'ACTIVE') {
         const lifecycle = buildChange(match.person, match.row, 'lifecycleState');
@@ -755,7 +771,7 @@ export class CollaboratorImportService {
         if (!requestedIs) throw new Error(`Captura un IS válido para ${item.fullName}.`);
         const duplicateIs = people.find((candidate) => normalizeKey(candidate.softtekCode) === normalizeKey(requestedIs));
         if (duplicateIs) throw new Error(`El IS ${requestedIs} ya pertenece a ${duplicateIs.fullName}. Vuelve a validar el Excel para reconciliar la identidad en lugar de crear una persona duplicada.`);
-        const input = await toInput(row,null,actorEmail,payload.emails?.[item.rowKey] ?? item.email,undefined,undefined,requestedIs);
+        const input = await toInput(row,null,actorEmail,payload.emails?.[item.rowKey] ?? item.email,undefined,undefined,requestedIs,payload.deliveryManagers?.[item.rowKey] ?? item.deliveryManager);
         const created = await repository.create(input,actorEmail);
         await certificationService.synchronize(created.collaboratorId,actorEmail);
         await applyCertifications(row,null,created.personId);
@@ -788,7 +804,7 @@ export class CollaboratorImportService {
         for (const change of changes) await repository.saveDecision(change.resolutionKey,decisions.get(change.resolutionKey) ?? change.decision,actorEmail);
         let collaboratorId = person.collaboratorId;
         if (shouldReactivate || hasDataChange) {
-          const input = await toInput(row,person,actorEmail,null,decisions,changes);
+          const input = await toInput(row,person,actorEmail,null,decisions,changes,undefined,payload.deliveryManagers?.[rowKey] ?? row.deliveryManager ?? person.deliveryManager);
           if (shouldReactivate) {
             collaboratorId = await repository.reactivate(person,input,actorEmail);
             result.reactivated += 1;

@@ -111,7 +111,8 @@ export async function talentConvertHandler(request: HttpRequest, context: Invoca
     assertBbvaPermission(user, 'TALENT_WRITE');
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
-    const result = await conversionService.convert(id, user.email);
+    const payload = await readBbvaJson(request) as { deliveryManager?: string | null };
+    const result = await conversionService.convert(id, payload, user.email);
     return result
       ? { status: 200, jsonBody: { collaboratorId: result.collaboratorId, message: 'El talento se convirtió correctamente en colaborador.' } }
       : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };

@@ -59,7 +59,7 @@ export function useUpdateTalentStage() {
 export function useConvertTalent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => talentApi.convert(id),
+    mutationFn: ({ id, deliveryManager }: { id: string; deliveryManager: string }) => talentApi.convert(id, deliveryManager),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['talent'] });
       queryClient.invalidateQueries({ queryKey: ['collaborators'] });

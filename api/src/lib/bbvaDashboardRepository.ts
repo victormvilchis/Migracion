@@ -5,6 +5,10 @@ export interface DashboardCollaboratorRow {
   personId: string;
   fullName: string;
   email: string;
+  softtekCode: string | null;
+  bbvaUser: string | null;
+  bbvaEmail: string | null;
+  deliveryManager: string | null;
   profileId: string | null;
   profile: string | null;
   technologyId: string | null;
@@ -43,7 +47,11 @@ export class BbvaDashboardRepository {
       SELECT CAST(c.Id AS NVARCHAR(36)) AS collaboratorId,
              CAST(p.Id AS NVARCHAR(36)) AS personId,
              LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS fullName,
-             p.Email AS email,
+             COALESCE(p.SofttekEmail,p.Email) AS email,
+             p.SofttekCode AS softtekCode,
+             COALESCE(p.BbvaUser,p.CorporateUser) AS bbvaUser,
+             p.BbvaEmail AS bbvaEmail,
+             c.DeliveryManager AS deliveryManager,
              CAST(p.ProfileCatalogId AS NVARCHAR(36)) AS profileId,
              p.Profile AS profile,
              CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS technologyId,
@@ -93,10 +101,15 @@ export class BbvaDashboardRepository {
 
   async filterOptions() {
     const pool = await getDbConnection();
-    const [technologies, profiles] = await Promise.all([
+    const [technologies, profiles, deliveryManagers] = await Promise.all([
       pool.request().query(`SELECT CAST(Id AS NVARCHAR(36)) AS id,Name AS name FROM bbva.CatalogTechnology WHERE Status=N'ACTIVE' ORDER BY Name;`),
       pool.request().query(`SELECT CAST(Id AS NVARCHAR(36)) AS id,Name AS name FROM bbva.CatalogProfile WHERE Status=N'ACTIVE' ORDER BY Name;`),
+      pool.request().query(`SELECT DISTINCT LTRIM(RTRIM(DeliveryManager)) AS name FROM bbva.Collaborator WHERE Status=N'ACTIVE' AND NULLIF(LTRIM(RTRIM(DeliveryManager)),N'') IS NOT NULL ORDER BY name;`),
     ]);
-    return { technologies: technologies.recordset as Array<{ id: string; name: string }>, profiles: profiles.recordset as Array<{ id: string; name: string }> };
+    return {
+      technologies: technologies.recordset as Array<{ id: string; name: string }>,
+      profiles: profiles.recordset as Array<{ id: string; name: string }>,
+      deliveryManagers: (deliveryManagers.recordset as Array<{ name: string }>).map((item) => item.name),
+    };
   }
 }

@@ -18,7 +18,17 @@ interface ZipEntry {
   localHeaderOffset: number;
 }
 
+interface WorksheetRef { name: string; path: string; }
+interface MatrixRow { rowNumber: number; cells: string[]; }
+
 const decoder = new TextDecoder('utf-8');
+const NAME_HEADERS = ['NOMBRE EXTERNO', 'NOMBRE COMPLETO', 'COLABORADOR', 'NOMBRE', 'NAME'];
+const DISCOVERY_HEADERS = new Set([
+  ...NAME_HEADERS,
+  'IS', 'XM', 'USUARIO BBVA', 'USUARIO CORPORATIVO', 'CORREO', 'CORREO SOFTTEK', 'CORREO BBVA', 'CORREO CORPORATIVO',
+  'DM', 'DELIVERY MANAGER', 'PERFIL', 'PERFIL TECNOLOGICO', 'PERFIL TECNOLÓGICO', 'TECNOLOGIA EN LA QUE SE CERTIFICA',
+  'TECNOLOGÍA EN LA QUE SE CERTIFICA', 'FECHA DE ALTA', 'FECHA ALTA BBVA', 'FECHA ALTA XM',
+]);
 
 function u16(view: DataView, offset: number) { return view.getUint16(offset, true); }
 function u32(view: DataView, offset: number) { return view.getUint32(offset, true); }
@@ -87,8 +97,8 @@ function parseXml(xml: string): Document {
   return document;
 }
 
-function normalizedHeader(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+export function normalizedHeader(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
 }
 
 function columnIndex(cellRef: string): number {
@@ -125,46 +135,30 @@ function cellValue(cell: Element, sharedStrings: string[]): string {
   return raw;
 }
 
-async function firstWorksheet(buffer: ArrayBuffer, entries: Map<string, ZipEntry>): Promise<{ name: string; path: string }> {
+async function worksheets(buffer: ArrayBuffer, entries: Map<string, ZipEntry>): Promise<WorksheetRef[]> {
   const workbookEntry = entries.get('xl/workbook.xml');
   const relsEntry = entries.get('xl/_rels/workbook.xml.rels');
   if (!workbookEntry || !relsEntry) {
-    const fallback = Array.from(entries.keys()).filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(name)).sort()[0];
-    if (!fallback) throw new Error('El archivo no contiene hojas de cálculo.');
-    return { name: 'Hoja 1', path: fallback };
+    return Array.from(entries.keys())
+      .filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/i.test(name))
+      .sort()
+      .map((path, index) => ({ name: `Hoja ${index + 1}`, path }));
   }
 
   const workbook = parseXml(await readEntry(buffer, workbookEntry));
-  const first = workbook.querySelector('sheets > sheet');
-  if (!first) throw new Error('El archivo no contiene hojas de cálculo.');
-  const name = first.getAttribute('name') || 'Hoja 1';
-  const relationId = first.getAttribute('r:id') || first.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id');
-  if (!relationId) throw new Error('No fue posible resolver la primera hoja del Excel.');
-
   const rels = parseXml(await readEntry(buffer, relsEntry));
-  const relation = Array.from(rels.querySelectorAll('Relationship')).find((item) => item.getAttribute('Id') === relationId);
-  const target = relation?.getAttribute('Target');
-  if (!target) throw new Error('No fue posible resolver la primera hoja del Excel.');
-  const path = target.startsWith('/') ? target.slice(1) : `xl/${target.replace(/^\.\//, '')}`.replace(/\/\.\//g, '/');
-  return { name, path };
+  const relationships = new Map(Array.from(rels.querySelectorAll('Relationship')).map((item) => [item.getAttribute('Id') ?? '', item.getAttribute('Target') ?? '']));
+  return Array.from(workbook.querySelectorAll('sheets > sheet')).map((sheet, index) => {
+    const name = sheet.getAttribute('name') || `Hoja ${index + 1}`;
+    const relationId = sheet.getAttribute('r:id') || sheet.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id') || '';
+    const target = relationships.get(relationId) ?? '';
+    const path = target.startsWith('/') ? target.slice(1) : `xl/${target.replace(/^\.\//, '')}`.replace(/\/\.\//g, '/');
+    return { name, path };
+  }).filter((sheet) => Boolean(sheet.path));
 }
 
-export async function parseFirstExcelSheet(file: File): Promise<ParsedExcelSheet> {
-  if (!file.name.toLowerCase().endsWith('.xlsx')) throw new Error('Selecciona un archivo con formato .xlsx.');
-  if (file.size > 15 * 1024 * 1024) throw new Error('El archivo supera el límite de 15 MB.');
-
-  const buffer = await file.arrayBuffer();
-  const entries = readZipEntries(buffer);
-  const sharedEntry = entries.get('xl/sharedStrings.xml');
-  const sharedStrings = sharedEntry
-    ? Array.from(parseXml(await readEntry(buffer, sharedEntry)).querySelectorAll('si')).map((item) => textContent(item))
-    : [];
-  const sheet = await firstWorksheet(buffer, entries);
-  const sheetEntry = entries.get(sheet.path);
-  if (!sheetEntry) throw new Error(`No fue posible leer la primera hoja (${sheet.name}).`);
-  const worksheet = parseXml(await readEntry(buffer, sheetEntry));
-
-  const matrix: Array<{ rowNumber: number; cells: string[] }> = [];
+function matrixFromWorksheet(worksheet: Document, sharedStrings: string[]): MatrixRow[] {
+  const matrix: MatrixRow[] = [];
   for (const row of Array.from(worksheet.querySelectorAll('sheetData > row'))) {
     const rowNumber = Number(row.getAttribute('r') || matrix.length + 1);
     const cells: string[] = [];
@@ -175,22 +169,35 @@ export async function parseFirstExcelSheet(file: File): Promise<ParsedExcelSheet
     }
     matrix.push({ rowNumber, cells });
   }
+  return matrix;
+}
 
-  const headerPosition = matrix.findIndex(({ cells }) => cells.some((value) => normalizedHeader(value) === 'NOMBRE EXTERNO'));
-  const fallbackPosition = matrix.findIndex(({ cells }) => cells.some((value) => value.trim()));
-  const resolvedHeaderPosition = headerPosition >= 0 ? headerPosition : fallbackPosition;
-  if (resolvedHeaderPosition < 0) throw new Error('La primera hoja está vacía.');
+function nameHeaderIndex(cells: string[]): number {
+  const names = new Set(NAME_HEADERS.map(normalizedHeader));
+  return cells.findIndex((value) => names.has(normalizedHeader(value)));
+}
 
-  const headerRow = matrix[resolvedHeaderPosition];
-  const headers = headerRow.cells.map((value, index) => value.trim() || `COLUMNA_${index + 1}`);
-  if (!headers.some((header) => normalizedHeader(header) === 'NOMBRE EXTERNO')) {
-    throw new Error('No se encontró el encabezado obligatorio NOMBRE EXTERNO en la primera hoja.');
+function headerCandidate(matrix: MatrixRow[]): { position: number; score: number } | null {
+  let best: { position: number; score: number } | null = null;
+  const discovery = new Set([...DISCOVERY_HEADERS].map(normalizedHeader));
+  for (let position = 0; position < Math.min(matrix.length, 40); position += 1) {
+    const cells = matrix[position].cells;
+    if (nameHeaderIndex(cells) < 0) continue;
+    const score = cells.reduce((total, value) => total + (discovery.has(normalizedHeader(value)) ? 1 : 0), 0);
+    if (!best || score > best.score) best = { position, score };
   }
+  return best;
+}
+
+function parseMatrix(sheetName: string, matrix: MatrixRow[], headerPosition: number): ParsedExcelSheet {
+  const headerRow = matrix[headerPosition];
+  const headers = headerRow.cells.map((value, index) => value.trim() || `COLUMNA_${index + 1}`);
+  const nameIndex = nameHeaderIndex(headers);
+  if (nameIndex < 0) throw new Error(`No se encontró una columna de nombre reconocible en la hoja ${sheetName}.`);
 
   const rows: ParsedExcelRow[] = [];
   let ignoredRows = 0;
-  const nameIndex = headers.findIndex((header) => normalizedHeader(header) === 'NOMBRE EXTERNO');
-  for (const source of matrix.slice(resolvedHeaderPosition + 1)) {
+  for (const source of matrix.slice(headerPosition + 1)) {
     const name = source.cells[nameIndex]?.trim() ?? '';
     if (!name) {
       if (source.cells.some((value) => value?.trim())) ignoredRows += 1;
@@ -204,6 +211,101 @@ export async function parseFirstExcelSheet(file: File): Promise<ParsedExcelSheet
     });
     rows.push({ rowNumber: source.rowNumber, values });
   }
+  return { sheetName, headers, rows, ignoredRows };
+}
 
-  return { sheetName: sheet.name, headers, rows, ignoredRows };
+export async function parseFirstExcelSheet(file: File): Promise<ParsedExcelSheet> {
+  if (!file.name.toLowerCase().endsWith('.xlsx')) throw new Error('Selecciona un archivo principal con formato .xlsx.');
+  if (file.size > 20 * 1024 * 1024) throw new Error('El archivo supera el límite de 20 MB.');
+
+  const buffer = await file.arrayBuffer();
+  const entries = readZipEntries(buffer);
+  const sharedEntry = entries.get('xl/sharedStrings.xml');
+  const sharedStrings = sharedEntry
+    ? Array.from(parseXml(await readEntry(buffer, sharedEntry)).querySelectorAll('si')).map((item) => textContent(item))
+    : [];
+  const sheetRefs = await worksheets(buffer, entries);
+  if (!sheetRefs.length) throw new Error('El archivo no contiene hojas de cálculo.');
+
+  let best: { parsed: ParsedExcelSheet; score: number; order: number } | null = null;
+  for (let order = 0; order < sheetRefs.length; order += 1) {
+    const sheet = sheetRefs[order];
+    const sheetEntry = entries.get(sheet.path);
+    if (!sheetEntry) continue;
+    const worksheet = parseXml(await readEntry(buffer, sheetEntry));
+    const matrix = matrixFromWorksheet(worksheet, sharedStrings);
+    const candidate = headerCandidate(matrix);
+    if (!candidate) continue;
+    const parsed = parseMatrix(sheet.name, matrix, candidate.position);
+    if (!best || candidate.score > best.score || (candidate.score === best.score && order < best.order)) best = { parsed, score: candidate.score, order };
+  }
+
+  if (!best) throw new Error('No se encontró una hoja con una columna de nombre reconocible (NOMBRE EXTERNO, NOMBRE COMPLETO, COLABORADOR, NOMBRE o NAME).');
+  if (!best.parsed.rows.length) throw new Error(`La hoja ${best.parsed.sheetName} no contiene filas válidas.`);
+  return best.parsed;
+}
+
+function detectDelimiter(line: string): string {
+  const candidates = ['\t', ';', ','];
+  let best = '\t';
+  let bestCount = -1;
+  for (const delimiter of candidates) {
+    let count = 0;
+    let quoted = false;
+    for (let index = 0; index < line.length; index += 1) {
+      const char = line[index];
+      if (char === '"') {
+        if (quoted && line[index + 1] === '"') index += 1;
+        else quoted = !quoted;
+      } else if (!quoted && char === delimiter) count += 1;
+    }
+    if (count > bestCount) { best = delimiter; bestCount = count; }
+  }
+  return best;
+}
+
+function parseDelimited(text: string, delimiter: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let quoted = false;
+  for (let index = 0; index < text.length; index += 1) {
+    const char = text[index];
+    if (char === '"') {
+      if (quoted && text[index + 1] === '"') { field += '"'; index += 1; }
+      else quoted = !quoted;
+      continue;
+    }
+    if (!quoted && char === delimiter) { row.push(field.trim()); field = ''; continue; }
+    if (!quoted && (char === '\n' || char === '\r')) {
+      if (char === '\r' && text[index + 1] === '\n') index += 1;
+      row.push(field.trim()); field = '';
+      if (row.some((value) => value.trim())) rows.push(row);
+      row = [];
+      continue;
+    }
+    field += char;
+  }
+  row.push(field.trim());
+  if (row.some((value) => value.trim())) rows.push(row);
+  return rows;
+}
+
+async function parseTextTable(file: File): Promise<ParsedExcelSheet> {
+  if (file.size > 20 * 1024 * 1024) throw new Error('El archivo complementario supera el límite de 20 MB.');
+  const text = (await file.text()).replace(/^\uFEFF/, '');
+  const firstMeaningful = text.split(/\r?\n/).find((line) => line.trim()) ?? '';
+  const delimiter = detectDelimiter(firstMeaningful);
+  const rawRows = parseDelimited(text, delimiter);
+  const matrix: MatrixRow[] = rawRows.map((cells, index) => ({ rowNumber: index + 1, cells }));
+  const candidate = headerCandidate(matrix);
+  if (!candidate) throw new Error('El archivo complementario no contiene una columna de nombre reconocible.');
+  return parseMatrix(file.name, matrix, candidate.position);
+}
+
+export async function parseTabularFile(file: File): Promise<ParsedExcelSheet> {
+  const lower = file.name.toLowerCase();
+  if (lower.endsWith('.xlsx')) return parseFirstExcelSheet(file);
+  if (lower.endsWith('.csv') || lower.endsWith('.tsv') || lower.endsWith('.txt')) return parseTextTable(file);
+  throw new Error('El archivo complementario debe ser .xlsx, .csv, .tsv o .txt.');
 }

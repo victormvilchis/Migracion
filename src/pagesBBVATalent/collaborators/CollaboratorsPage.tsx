@@ -64,7 +64,7 @@ export const CollaboratorsPage: React.FC = () => {
     return items.filter((item) => {
       const role = roleDisplay(item.profile, item.technologyProfile);
       const cert = certificationStatus(item);
-      const matchesSearch = !term || [item.fullName, item.softtekEmail, item.bbvaEmail, item.email, item.softtekCode, item.bbvaUser, item.corporateUser, role, item.currentTechnology, item.expertise]
+      const matchesSearch = !term || [item.fullName, item.softtekEmail, item.bbvaEmail, item.email, item.softtekCode, item.bbvaUser, item.corporateUser, item.deliveryManager, role, item.currentTechnology, item.expertise]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
       return matchesSearch
@@ -112,7 +112,8 @@ export const CollaboratorsPage: React.FC = () => {
                 <tr>
                   <th className="w-[29%] px-2 py-1.5">Colaborador</th>
                   <th className="w-[25%] px-2 py-1.5">Rol</th>
-                  <th className="w-[15%] px-2 py-1.5">Tecnología actual</th>
+                  <th className="w-[13%] px-2 py-1.5">Tecnología actual</th>
+                  <th className="w-[13%] px-2 py-1.5">DM</th>
                   <th className="w-[9%] px-2 py-1.5">Alta BBVA</th>
                   <th className="w-[11%] px-2 py-1.5">Certificaciones</th>
                   <th className="w-[10%] px-2 py-1.5">Estado</th>
@@ -127,6 +128,7 @@ export const CollaboratorsPage: React.FC = () => {
                       <td className="px-2 py-1.5"><div className="truncate font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">{item.softtekEmail || item.email}</div></td>
                       <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] text-slate-700 [.bbva-dark_&]:text-slate-300">{roleDisplay(item.profile, item.technologyProfile)}</div></td>
                       <td className="px-2 py-1.5 text-slate-700 [.bbva-dark_&]:text-slate-300">{technologyDisplay(item.currentTechnology, item.expertise)}</td>
+                      <td className="px-2 py-1.5 truncate text-slate-600 [.bbva-dark_&]:text-slate-300" title={item.deliveryManager}>{item.deliveryManager || 'No disponible'}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap text-slate-700 [.bbva-dark_&]:text-slate-300">{formatDate(item.bbvaStartDate ?? item.startDate)}</td>
                       <td className="px-2 py-1.5"><div className="font-semibold tabular-nums text-slate-800">{item.certificationValid + item.certificationExpiring}/{item.certificationApplicable}</div><div className="text-[9px] text-slate-400">cubiertas / aplicables</div></td>
                       <td className="px-2 py-1.5"><span className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold ${certificationTone[certStatus]}`}>{certificationLabels[certStatus]}</span></td>

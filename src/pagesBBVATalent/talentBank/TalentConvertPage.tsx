@@ -77,6 +77,7 @@ export const TalentConvertPage: React.FC = () => {
   const technologies = useMemo(() => technologiesQuery.data?.items ?? [], [technologiesQuery.data]);
   const talent = talentQuery.data?.item ?? null;
   const [values, setValues] = useState(() => initialValues(talent, [], [], []));
+  const [deliveryManager, setDeliveryManager] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +90,10 @@ export const TalentConvertPage: React.FC = () => {
       setError('Selecciona perfil, perfil tecnológico y tecnología actual antes de continuar.');
       return;
     }
+    if (!deliveryManager.trim()) {
+      setError('Captura el DM antes de convertir a colaborador.');
+      return;
+    }
     setError(null);
     setConfirmOpen(true);
   };
@@ -98,7 +103,7 @@ export const TalentConvertPage: React.FC = () => {
     try {
       setError(null);
       await updateMutation.mutateAsync({ id, payload: toPayload(talent, values, profiles, technologyProfiles, technologies) });
-      const result = await convertMutation.mutateAsync(id);
+      const result = await convertMutation.mutateAsync({ id, deliveryManager: deliveryManager.trim() });
       navigate(`/bbva/collaborators/${result.collaboratorId}/manage`, { state: { message: result.message } });
     } catch (conversionError) {
       setConfirmOpen(false);
@@ -126,6 +131,7 @@ export const TalentConvertPage: React.FC = () => {
           <label className="md:col-span-3"><span className={labelClass}>Tecnología actual *</span><BBVASearchableSelect value={values.currentTechnologyCatalogId} onChange={(value) => setValues((v) => ({ ...v, currentTechnologyCatalogId: value }))} options={toOptions(technologies)} disabled={catalogsLoading} ariaLabel="Tecnología actual" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Nivel de experiencia</span><BBVASearchableSelect value={values.expertise} onChange={(value) => setValues((v) => ({ ...v, expertise: value }))} options={[{ value: '', label: '—' }, { value: 'TR', label: 'TR' }, { value: 'JR', label: 'JR' }, { value: 'STD', label: 'STD' }, { value: 'SR', label: 'SR' }]} ariaLabel="Nivel de experiencia" /></label>
           <label className="md:col-span-4"><span className={labelClass}>Usuario BBVA</span><input value={values.bbvaUser} onChange={(e) => setValues((v) => ({ ...v, bbvaUser: e.target.value }))} className={fieldClass} /></label>
+          <label className="md:col-span-4"><span className={labelClass}>DM *</span><input value={deliveryManager} onChange={(e) => setDeliveryManager(e.target.value)} className={fieldClass} placeholder="Delivery Manager" /></label>
         </div>
         <div className="mt-4 flex justify-end gap-2 border-t border-slate-200 pt-4">
           <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="h-9 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">Cancelar</button>

@@ -184,6 +184,7 @@ export const CollaboratorManagePage: React.FC = () => {
                 <DataItem label="Perfil tecnológico" value={item.technologyProfile} />
                 <DataItem label="Tecnología principal" value={item.currentTechnology} />
                 <DataItem label="Nivel de experiencia" value={item.expertise} />
+                <DataItem label="DM" value={item.deliveryManager} />
                 <DataItem label="Usuario BBVA" value={item.bbvaUser ?? item.corporateUser} />
                 <DataItem label="Fecha de alta BBVA" value={formatDate(item.bbvaStartDate ?? item.startDate)} />
                 <DataItem label="Contratación Softtek" value={formatDate(item.softtekHireDate ?? item.hireDate)} />

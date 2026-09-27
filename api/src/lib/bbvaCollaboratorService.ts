@@ -40,6 +40,7 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
     bbvaUser: cleanText(payload?.bbvaUser ?? payload?.corporateUser, 100)?.toUpperCase() ?? null,
     softtekEmail,
     bbvaEmail: bbvaEmailRaw,
+    deliveryManager: requiredText(payload?.deliveryManager, 'El DM', 180),
     firstName: requiredText(payload?.firstName, 'El nombre', 120),
     lastName: requiredText(payload?.lastName, 'Los apellidos', 180),
     profile: catalogs.profile,

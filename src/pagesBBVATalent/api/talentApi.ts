@@ -31,8 +31,8 @@ export const talentApi = {
       method: 'PATCH',
       body: JSON.stringify({ stage }),
     }),
-  convert: (id: string) =>
-    fetchApi<{ collaboratorId: string; message: string }>(`/bbva/talent-bank/${id}/convert`, { method: 'POST' }),
+  convert: (id: string, deliveryManager: string) =>
+    fetchApi<{ collaboratorId: string; message: string }>(`/bbva/talent-bank/${id}/convert`, { method: 'POST', body: JSON.stringify({ deliveryManager }) }),
   remove: (id: string) =>
     fetchApi<{ deleted: boolean }>(`/bbva/talent-bank/${id}`, { method: 'DELETE' }),
   history: (id: string) =>

@@ -5,6 +5,7 @@ export interface CollaboratorPayload {
   bbvaUser: string;
   softtekEmail: string;
   bbvaEmail: string;
+  deliveryManager: string;
   firstName: string;
   lastName: string;
   profile: string;
@@ -32,6 +33,7 @@ export interface Collaborator {
   bbvaUser: string | null;
   softtekEmail: string;
   bbvaEmail: string | null;
+  deliveryManager: string;
   firstName: string;
   lastName: string | null;
   fullName: string;

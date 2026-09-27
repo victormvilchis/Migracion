@@ -54,8 +54,9 @@ export class BbvaDashboardService {
     let collaborators = allCollaborators.filter((row) => {
       if (filters.technologyId && row.technologyId !== filters.technologyId) return false;
       if (filters.profileId && row.profileId !== filters.profileId) return false;
+      if (filters.deliveryManager && row.deliveryManager !== filters.deliveryManager) return false;
       if (!matchesDate(row.startDate, fromDate, toDate)) return false;
-      if (search && !`${row.fullName} ${row.email} ${row.profile ?? ''} ${row.technology ?? ''}`.toLocaleLowerCase('es-MX').includes(search)) return false;
+      if (search && !`${row.fullName} ${row.email} ${row.softtekCode ?? ''} ${row.bbvaUser ?? ''} ${row.bbvaEmail ?? ''} ${row.deliveryManager ?? ''} ${row.profile ?? ''} ${row.technology ?? ''}`.toLocaleLowerCase('es-MX').includes(search)) return false;
       return true;
     });
 
@@ -137,6 +138,7 @@ export class BbvaDashboardService {
         fullName: collaborator.fullName,
         technology: collaborator.technology ?? 'Sin tecnología',
         profile: collaborator.profile ?? 'Sin perfil',
+        deliveryManager: collaborator.deliveryManager ?? 'Sin DM',
         ...result,
       };
     }).sort((a, b) => {
@@ -180,8 +182,23 @@ export class BbvaDashboardService {
       .map(([label, data]) => ({ technologyId: data.technologyId, label, value: data.value }))
       .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'es-MX'));
 
+    const deliveryManagerMap = new Map<string, number>();
+    for (const collaborator of collaborators) {
+      const label = collaborator.deliveryManager?.trim() || 'Sin DM';
+      deliveryManagerMap.set(label, (deliveryManagerMap.get(label) ?? 0) + 1);
+    }
+
+    const dataQualityPending = collaborators.filter((collaborator) =>
+      !collaborator.softtekCode?.trim()
+      || !collaborator.bbvaUser?.trim()
+      || !collaborator.email?.trim()
+      || !collaborator.bbvaEmail?.trim()
+      || !collaborator.deliveryManager?.trim()
+      || !collaborator.startDate
+    ).length;
+
     const talentMap = new Map<string, number>();
-    const typeLabel: Record<string, string> = { ACADEMY: 'Academia', PROSPECT: 'Prospectos', BBVA_EXIT: 'Bajas de BBVA' };
+    const typeLabel: Record<string, string> = { ACADEMY: 'Academia', PROSPECT: 'Prospectos', FORMER_COLLABORATOR: 'Excolaboradores', BBVA_EXIT: 'Bajas de BBVA' };
     for (const item of talent) talentMap.set(typeLabel[item.talentType] ?? item.talentType, (talentMap.get(typeLabel[item.talentType] ?? item.talentType) ?? 0) + 1);
 
     return {
@@ -194,11 +211,14 @@ export class BbvaDashboardService {
         expired: counts.expired,
         recertificationPending: counts.recertificationPending,
         pending: counts.pending + counts.failed,
+        deliveryManagersRepresented: [...deliveryManagerMap.keys()].filter((item) => item !== 'Sin DM').length,
+        dataQualityPending,
       },
       collaboratorFocus: [...collaboratorFocusMap.entries()].map(([label, value]) => ({ label, value })),
       certificationCoverage,
       expirationByMonth,
       technologyDistribution,
+      deliveryManagerDistribution: sortSlices(deliveryManagerMap),
       talentComposition: sortSlices(talentMap),
       attention,
       filters: filterOptions,

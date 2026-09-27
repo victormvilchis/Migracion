@@ -69,11 +69,14 @@ export interface ImportNewCandidate {
   email: string | null;
   softtekCode: string | null;
   corporateUser: string | null;
+  bbvaEmail: string | null;
+  deliveryManager: string | null;
   profile: string | null;
   technologyProfile: string | null;
   currentTechnology: string | null;
   expertise: string | null;
   startDate: string | null;
+  hireDate: string | null;
   catalogActions: ImportCatalogAction[];
   certifications: ImportCertificationPreview[];
 }
@@ -150,6 +153,7 @@ export interface ImportApplyRequest {
   rows: ImportSourceRow[];
   emails: Record<string, string>;
   softtekCodes: Record<string, string>;
+  deliveryManagers: Record<string, string>;
   decisions: Record<string, ImportChangeDecision>;
   lowDecisions: Record<string, ImportLowDecision>;
 }

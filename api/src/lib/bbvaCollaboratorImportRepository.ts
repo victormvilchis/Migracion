@@ -9,6 +9,8 @@ export interface ImportPersonRecord {
   activeTalentId: string | null;
   softtekCode: string | null;
   corporateUser: string | null;
+  bbvaEmail: string | null;
+  deliveryManager: string | null;
   email: string;
   firstName: string;
   lastName: string | null;
@@ -28,6 +30,8 @@ export interface ImportPersonRecord {
 export interface ImportPersonInput {
   softtekCode: string | null;
   corporateUser: string | null;
+  bbvaEmail: string | null;
+  deliveryManager: string;
   email: string;
   firstName: string;
   lastName: string | null;
@@ -58,6 +62,8 @@ const PERSON_IMPORT_SELECT = `
     CAST(tb.Id AS NVARCHAR(36)) AS activeTalentId,
     p.SofttekCode AS softtekCode,
     COALESCE(p.BbvaUser,p.CorporateUser) AS corporateUser,
+    p.BbvaEmail AS bbvaEmail,
+    c.DeliveryManager AS deliveryManager,
     COALESCE(p.SofttekEmail,p.Email) AS email,
     p.FirstName AS firstName,
     p.LastName AS lastName,
@@ -86,6 +92,8 @@ function bindPerson(request: sql.Request, input: ImportPersonInput): sql.Request
   return request
     .input('softtekCode', sql.NVarChar(80), input.softtekCode)
     .input('corporateUser', sql.NVarChar(100), input.corporateUser)
+    .input('bbvaEmail', sql.NVarChar(255), input.bbvaEmail)
+    .input('deliveryManager', sql.NVarChar(180), input.deliveryManager)
     .input('email', sql.NVarChar(255), input.email)
     .input('firstName', sql.NVarChar(120), input.firstName)
     .input('lastName', sql.NVarChar(180), input.lastName)
@@ -194,11 +202,11 @@ export class CollaboratorImportRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           INSERT INTO bbva.Person(
-            Id,SofttekCode,CorporateUser,BbvaUser,Email,SofttekEmail,FirstName,LastName,Profile,ProfileCatalogId,
+            Id,SofttekCode,CorporateUser,BbvaUser,Email,SofttekEmail,BbvaEmail,FirstName,LastName,Profile,ProfileCatalogId,
             TechnologyProfile,TechnologyProfileCatalogId,CurrentTechnology,CurrentTechnologyCatalogId,
             Expertise,HireDate,Notes,CreatedByEmail,UpdatedByEmail
           ) VALUES(
-            @personId,@softtekCode,@corporateUser,@corporateUser,@email,@email,@firstName,@lastName,@profile,@profileCatalogId,
+            @personId,@softtekCode,@corporateUser,@corporateUser,@email,@email,@bbvaEmail,@firstName,@lastName,@profile,@profileCatalogId,
             @technologyProfile,@technologyProfileCatalogId,@currentTechnology,@currentTechnologyCatalogId,
             @expertise,@hireDate,@notes,@actorEmail,@actorEmail
           );
@@ -209,8 +217,8 @@ export class CollaboratorImportRepository {
         .input('startDate', sql.Date, input.startDate)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
-          INSERT INTO bbva.Collaborator(Id,PersonId,Status,StartDate,CreatedByEmail,UpdatedByEmail)
-          VALUES(@collaboratorId,@personId,N'ACTIVE',@startDate,@actorEmail,@actorEmail);
+          INSERT INTO bbva.Collaborator(Id,PersonId,Status,StartDate,DeliveryManager,CreatedByEmail,UpdatedByEmail)
+          VALUES(@collaboratorId,@personId,N'ACTIVE',@startDate,@deliveryManager,@actorEmail,@actorEmail);
           INSERT INTO bbva.CollaboratorHistory(CollaboratorId,EventType,Description,CreatedByEmail)
           VALUES(@collaboratorId,N'IMPORTED',N'El colaborador fue registrado mediante importación Excel.',@actorEmail);
           INSERT INTO bbva.PersonLifecycleHistory(PersonId,EventType,ToState,EffectiveDate,Description,CreatedByEmail)
@@ -235,7 +243,7 @@ export class CollaboratorImportRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.Person SET
-            SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,FirstName=@firstName,LastName=@lastName,
+            SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,BbvaEmail=@bbvaEmail,FirstName=@firstName,LastName=@lastName,
             Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,
             TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,
             CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,
@@ -247,7 +255,7 @@ export class CollaboratorImportRepository {
         .input('startDate', sql.Date, input.startDate)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
-          UPDATE bbva.Collaborator SET StartDate=@startDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;
+          UPDATE bbva.Collaborator SET StartDate=@startDate,DeliveryManager=@deliveryManager,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;
           INSERT INTO bbva.CollaboratorHistory(CollaboratorId,EventType,Description,CreatedByEmail)
           VALUES(@collaboratorId,N'IMPORTED_UPDATE',N'La información del colaborador fue actualizada mediante importación Excel.',@actorEmail);
         `);
@@ -268,7 +276,7 @@ export class CollaboratorImportRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.Person SET
-            SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,FirstName=@firstName,LastName=@lastName,
+            SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,BbvaEmail=@bbvaEmail,FirstName=@firstName,LastName=@lastName,
             Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,
             TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,
             CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,
@@ -283,7 +291,7 @@ export class CollaboratorImportRepository {
           .input('startDate', sql.Date, input.startDate)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
           .query(`
-            UPDATE bbva.Collaborator SET Status=N'ACTIVE',StartDate=COALESCE(@startDate,StartDate),UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;
+            UPDATE bbva.Collaborator SET Status=N'ACTIVE',StartDate=COALESCE(@startDate,StartDate),DeliveryManager=@deliveryManager,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;
             INSERT INTO bbva.CollaboratorHistory(CollaboratorId,EventType,Description,CreatedByEmail)
             VALUES(@collaboratorId,N'REACTIVATED_FROM_IMPORT',N'El colaborador fue reactivado mediante importación Excel.',@actorEmail);
           `);
@@ -295,8 +303,8 @@ export class CollaboratorImportRepository {
           .input('startDate', sql.Date, input.startDate)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
           .query(`
-            INSERT INTO bbva.Collaborator(Id,PersonId,Status,StartDate,CreatedByEmail,UpdatedByEmail)
-            VALUES(@collaboratorId,@personId,N'ACTIVE',@startDate,@actorEmail,@actorEmail);
+            INSERT INTO bbva.Collaborator(Id,PersonId,Status,StartDate,DeliveryManager,CreatedByEmail,UpdatedByEmail)
+            VALUES(@collaboratorId,@personId,N'ACTIVE',@startDate,@deliveryManager,@actorEmail,@actorEmail);
             INSERT INTO bbva.CollaboratorHistory(CollaboratorId,EventType,Description,CreatedByEmail)
             VALUES(@collaboratorId,N'CREATED_FROM_IMPORT',N'El colaborador fue incorporado mediante importación Excel.',@actorEmail);
           `);

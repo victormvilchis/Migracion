@@ -10,6 +10,7 @@ import type { DashboardFilters } from '../types/dashboard';
 const initialFilters: DashboardFilters = {
   technologyId: '',
   profileId: '',
+  deliveryManager: '',
   certificationStatus: '',
   talentType: '',
   fromDate: '',

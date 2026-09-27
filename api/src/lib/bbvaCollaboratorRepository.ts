@@ -10,6 +10,7 @@ const COLLABORATOR_SELECT = `
     COALESCE(p.BbvaUser,p.CorporateUser) AS bbvaUser,
     COALESCE(p.SofttekEmail,p.Email) AS softtekEmail,
     p.BbvaEmail AS bbvaEmail,
+    c.DeliveryManager AS deliveryManager,
     COALESCE(p.BbvaUser,p.CorporateUser) AS corporateUser,
     COALESCE(p.SofttekEmail,p.Email) AS email,
     p.FirstName AS firstName,
@@ -60,6 +61,7 @@ function bindPerson(request: sql.Request, input: CollaboratorInput) {
     .input('bbvaUser', sql.NVarChar(100), input.bbvaUser)
     .input('softtekEmail', sql.NVarChar(255), input.softtekEmail)
     .input('bbvaEmail', sql.NVarChar(255), input.bbvaEmail)
+    .input('deliveryManager', sql.NVarChar(180), input.deliveryManager)
     .input('firstName', sql.NVarChar(120), input.firstName)
     .input('lastName', sql.NVarChar(180), input.lastName)
     .input('profile', sql.NVarChar(120), input.profile)
@@ -103,8 +105,9 @@ export class CollaboratorRepository {
         .input('personId', sql.UniqueIdentifier, personId)
         .input('status', sql.NVarChar(20), 'ACTIVE')
         .input('bbvaStartDate', sql.Date, input.bbvaStartDate)
+        .input('deliveryManager', sql.NVarChar(180), input.deliveryManager)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`INSERT INTO bbva.Collaborator (Id,PersonId,Status,StartDate,CreatedByEmail,UpdatedByEmail) VALUES (@collaboratorId,@personId,@status,@bbvaStartDate,@actorEmail,@actorEmail);
+        .query(`INSERT INTO bbva.Collaborator (Id,PersonId,Status,StartDate,DeliveryManager,CreatedByEmail,UpdatedByEmail) VALUES (@collaboratorId,@personId,@status,@bbvaStartDate,@deliveryManager,@actorEmail,@actorEmail);
                 INSERT INTO bbva.CollaboratorHistory (CollaboratorId,EventType,Description,CreatedByEmail) VALUES (@collaboratorId,N'CREATED',N'El colaborador fue registrado.',@actorEmail);`);
       await new sql.Request(transaction)
         .input('personId', sql.UniqueIdentifier, personId)
@@ -145,8 +148,9 @@ export class CollaboratorRepository {
       await new sql.Request(transaction)
         .input('id', sql.UniqueIdentifier, id)
         .input('bbvaStartDate', sql.Date, input.bbvaStartDate)
+        .input('deliveryManager', sql.NVarChar(180), input.deliveryManager)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`UPDATE bbva.Collaborator SET StartDate=@bbvaStartDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id AND Status=N'ACTIVE';
+        .query(`UPDATE bbva.Collaborator SET StartDate=@bbvaStartDate,DeliveryManager=@deliveryManager,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id AND Status=N'ACTIVE';
                 INSERT INTO bbva.CollaboratorHistory (CollaboratorId,EventType,Description,CreatedByEmail) VALUES (@id,N'UPDATED',N'La información del colaborador fue actualizada.',@actorEmail);`);
       await transaction.commit();
       return this.findById(id);

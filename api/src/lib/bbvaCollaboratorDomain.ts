@@ -5,6 +5,7 @@ export interface CollaboratorInput {
   bbvaUser: string | null;
   softtekEmail: string;
   bbvaEmail: string | null;
+  deliveryManager: string;
   firstName: string;
   lastName: string;
   profile: string | null;
@@ -27,6 +28,7 @@ export interface CollaboratorRecord {
   bbvaUser: string | null;
   softtekEmail: string;
   bbvaEmail: string | null;
+  deliveryManager: string;
   /** Alias temporal para compatibilidad con módulos anteriores. */
   corporateUser: string | null;
   /** Alias temporal para compatibilidad con módulos anteriores. */
