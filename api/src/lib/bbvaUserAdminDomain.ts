@@ -61,6 +61,8 @@ export interface BbvaAdminListParams {
   status?: BbvaAdminStatus | 'ALL';
   page?: number;
   size?: number;
+  sort?: string;
+  direction?: 'asc' | 'desc';
 }
 
 export interface BbvaAdminPage<T> {

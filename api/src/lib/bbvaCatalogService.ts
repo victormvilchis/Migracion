@@ -36,7 +36,10 @@ export class BbvaCatalogService {
     return this.repository.create(definition, this.validate(definition, payload), actorEmail);
   }
 
-  update(definition: BbvaCatalogDefinition, id: string, payload: unknown, actorEmail: string): Promise<BbvaCatalogRecord | null> {
+  async update(definition: BbvaCatalogDefinition, id: string, payload: unknown, actorEmail: string): Promise<BbvaCatalogRecord | null> {
+    const current = await this.repository.findById(definition, id);
+    if (!current) return null;
+    if (current.status === 'INACTIVE') throw Object.assign(new Error(`Activa ${definition.singularArticle} ${definition.singularLabel} antes de modificarlo.`), { statusCode: 409 });
     return this.repository.update(definition, id, this.validate(definition, payload), actorEmail);
   }
 
@@ -45,7 +48,10 @@ export class BbvaCatalogService {
     return this.repository.updateStatus(definition, id, status as BbvaCatalogStatus, actorEmail);
   }
 
-  delete(definition: BbvaCatalogDefinition, id: string): Promise<boolean> {
+  async delete(definition: BbvaCatalogDefinition, id: string): Promise<boolean> {
+    const current = await this.repository.findById(definition, id);
+    if (!current) return false;
+    if (current.status !== 'INACTIVE') throw Object.assign(new Error(`Inactiva ${definition.singularArticle} ${definition.singularLabel} antes de eliminarlo definitivamente.`), { statusCode: 409 });
     return this.repository.delete(definition, id);
   }
 

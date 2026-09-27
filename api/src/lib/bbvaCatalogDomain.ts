@@ -4,6 +4,7 @@ export type BbvaCatalogStatus = 'ACTIVE' | 'INACTIVE';
 export interface BbvaCatalogDefinition {
   type: BbvaCatalogType;
   singularLabel: string;
+  singularArticle: 'el' | 'la';
   pluralLabel: string;
   tableName: string;
   supportsSeniority: boolean;
@@ -58,6 +59,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
   categories: {
     type: 'categories',
     singularLabel: 'categoría',
+    singularArticle: 'la',
     pluralLabel: 'Categorías',
     tableName: 'bbva.CatalogCategory',
     supportsSeniority: false,
@@ -65,6 +67,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
   technologies: {
     type: 'technologies',
     singularLabel: 'tecnología',
+    singularArticle: 'la',
     pluralLabel: 'Tecnologías',
     tableName: 'bbva.CatalogTechnology',
     supportsSeniority: false,
@@ -75,6 +78,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
   profiles: {
     type: 'profiles',
     singularLabel: 'perfil',
+    singularArticle: 'el',
     pluralLabel: 'Perfiles',
     tableName: 'bbva.CatalogProfile',
     supportsSeniority: true,
@@ -84,6 +88,7 @@ export const bbvaCatalogDefinitions: Record<BbvaCatalogType, BbvaCatalogDefiniti
   'technology-profiles': {
     type: 'technology-profiles',
     singularLabel: 'perfil tecnológico',
+    singularArticle: 'el',
     pluralLabel: 'Perfiles tecnológicos',
     tableName: 'bbva.CatalogTechnologyProfile',
     supportsSeniority: false,

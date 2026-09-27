@@ -410,22 +410,30 @@ function chooseCertificationConfig(
   person: ImportPersonRecord | null,
   catalog: ImportCertificationCatalogConfig[],
   currentStates: ImportCertificationCurrentState[],
-): { config: ImportCertificationCatalogConfig | null; issue: string | null } {
+): { config: ImportCertificationCatalogConfig | null; issue: string | null; inactive: boolean } {
   if (block !== 'TECHNOLOGICAL') {
     const name = catalogNameForBlock(block);
-    const config = catalog.find((item) => normalizeKey(item.name) === normalizeKey(name)) ?? null;
-    return { config, issue: config ? null : `No existe una configuración activa de catálogo para ${certificationBlockLabel(block)}.` };
+    const matches = catalog.filter((item) => normalizeKey(item.name) === normalizeKey(name));
+    const active = matches.find((item) => item.status === 'ACTIVE') ?? null;
+    if (active) return { config: active, issue: null, inactive: false };
+    const inactive = matches.find((item) => item.status === 'INACTIVE') ?? null;
+    if (inactive) return { config: inactive, issue: null, inactive: true };
+    return { config: null, issue: `No existe una configuración de catálogo para ${certificationBlockLabel(block)}.`, inactive: false };
   }
-  if (!row.currentTechnology) return { config: null, issue: 'La fila no informa TECNOLOGÍA EN LA QUE SE CERTIFICA.' };
-  const candidates = catalog.filter((item) => item.certificationType === 'TECHNOLOGICAL' && normalizeKey(item.technologyName) === normalizeKey(row.currentTechnology));
-  if (!candidates.length) return { config: null, issue: `No existe una certificación tecnológica activa asociada a ${row.currentTechnology}.` };
-  if (candidates.length === 1) return { config: candidates[0], issue: null };
+  if (!row.currentTechnology) return { config: null, issue: 'La fila no informa TECNOLOGÍA EN LA QUE SE CERTIFICA.', inactive: false };
+  const allCandidates = catalog.filter((item) => item.certificationType === 'TECHNOLOGICAL' && normalizeKey(item.technologyName) === normalizeKey(row.currentTechnology));
+  const candidates = allCandidates.filter((item) => item.status === 'ACTIVE');
+  if (!candidates.length && allCandidates.some((item) => item.status === 'INACTIVE')) {
+    return { config: allCandidates.find((item) => item.status === 'INACTIVE') ?? null, issue: null, inactive: true };
+  }
+  if (!candidates.length) return { config: null, issue: `No existe una certificación tecnológica asociada a ${row.currentTechnology}.`, inactive: false };
+  if (candidates.length === 1) return { config: candidates[0], issue: null, inactive: false };
 
   const exact = candidates.filter((item) => normalizeKey(item.name) === normalizeKey(row.currentTechnology));
-  if (exact.length === 1) return { config: exact[0], issue: null };
+  if (exact.length === 1) return { config: exact[0], issue: null, inactive: false };
 
   const activeCurrent = candidates.filter((candidate) => currentStates.some((state) => state.certificationId === candidate.id && state.applicable && state.baseStatus !== 'NOT_APPLICABLE'));
-  if (activeCurrent.length === 1) return { config: activeCurrent[0], issue: null };
+  if (activeCurrent.length === 1) return { config: activeCurrent[0], issue: null, inactive: false };
 
   const profileText = normalizeKey(`${row.profile ?? ''} ${row.technologyProfile ?? ''} ${person?.profile ?? ''}`);
   const profileMatches = candidates.filter((candidate) => {
@@ -434,9 +442,9 @@ function chooseCertificationConfig(
     const discriminator = candidateName.replace(technology, '').trim();
     return discriminator.length >= 3 && profileText.includes(discriminator);
   });
-  if (profileMatches.length === 1) return { config: profileMatches[0], issue: null };
+  if (profileMatches.length === 1) return { config: profileMatches[0], issue: null, inactive: false };
 
-  return { config: null, issue: `La tecnología ${row.currentTechnology} tiene más de una certificación aplicable (${candidates.map((item) => item.name).join(', ')}) y el perfil no permite elegir una de forma inequívoca.` };
+  return { config: null, issue: `La tecnología ${row.currentTechnology} tiene más de una certificación aplicable (${candidates.map((item) => item.name).join(', ')}) y el perfil no permite elegir una de forma inequívoca.`, inactive: false };
 }
 
 function rawStatusToCalculated(rawStatus: string | null): string | null {
@@ -534,13 +542,18 @@ function prepareCertifications(
     });
     if (!evidence) continue;
     const issues = [...evidence.issues];
+    if (selected.inactive) {
+      issues.push({ code: 'CATALOG_INACTIVE_SKIPPED', message: `${evidence.label} está inactiva en el catálogo y se conservará sin cambios.`, blocking: false });
+    }
     const nonApplicableWithoutCatalog = !selected.config && evidence.applicable === false;
     if (selected.issue && !nonApplicableWithoutCatalog) {
       issues.push({ code: 'INVALID_CATALOG_MAPPING', message: selected.issue, blocking: true });
     }
-    const hasChanges = selected.config
-      ? effectiveEvidenceChanged(current, evidence)
-      : issues.some((issue) => issue.blocking && issue.code !== 'INVALID_CATALOG_MAPPING');
+    const hasChanges = selected.inactive
+      ? false
+      : selected.config
+        ? effectiveEvidenceChanged(current, evidence)
+        : issues.some((issue) => issue.blocking && issue.code !== 'INVALID_CATALOG_MAPPING');
     if (requiresManualCertificationReconciliation(current, manualProtectedCertificationOutcomeChanged(current, evidence), issues.some(isCertificationDataError))) {
       issues.push({ code:'MANUAL_HISTORY_DIFFERENCE', message:`${evidence.label} tiene resultados registrados manualmente y el Excel propone información diferente.`, blocking:true });
     }
@@ -576,7 +589,7 @@ function prepareCertifications(
       message: issue.message,
     }));
     prepared.push({
-      config:selected.config,
+      config:selected.inactive ? null : selected.config,
       evidence,
       conflictKeys,
       preview:{

@@ -81,6 +81,9 @@ export class BbvaCertificationCatalogService {
   async update(id: string, payload: unknown, actorEmail: string): Promise<CertificationCatalogRecord | null> {
     const current = await repository.findById(id);
     if (!current) return null;
+    if (current.status === 'INACTIVE') {
+      throw Object.assign(new Error('Activa la certificación antes de modificar su configuración.'), { statusCode: 409 });
+    }
     const updated = await repository.update(id, await this.validate(payload), actorEmail);
     if (updated) await collaboratorCertificationService.synchronizeAllActive(actorEmail);
     return updated;
@@ -88,12 +91,21 @@ export class BbvaCertificationCatalogService {
 
   async updateStatus(id: string, status: unknown, actorEmail: string): Promise<CertificationCatalogRecord | null> {
     if (status !== 'ACTIVE' && status !== 'INACTIVE') throw new Error('El estado de la certificación es inválido.');
+    const current = await repository.findById(id);
+    if (!current) return null;
     const updated = await repository.updateStatus(id, status as CertificationCatalogStatus, actorEmail);
-    if (updated) await collaboratorCertificationService.synchronizeAllActive(actorEmail);
+    // Activar puede crear nuevas asignaciones obligatorias. Inactivar no requiere recorrer
+    // todos los colaboradores y debe responder de inmediato.
+    if (updated && status === 'ACTIVE') await collaboratorCertificationService.synchronizeAllActive(actorEmail);
     return updated;
   }
 
-  delete(id: string, actorEmail: string): Promise<boolean> {
+  async delete(id: string, actorEmail: string): Promise<boolean> {
+    const current = await repository.findById(id);
+    if (!current) return false;
+    if (current.status !== 'INACTIVE') {
+      throw Object.assign(new Error('Inactiva la certificación antes de eliminarla definitivamente.'), { statusCode: 409 });
+    }
     return repository.delete(id, actorEmail);
   }
 

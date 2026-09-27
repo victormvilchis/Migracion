@@ -71,7 +71,10 @@ export class BbvaUserAdminRepository {
       .input('offset', sql.Int, offset)
       .input('size', sql.Int, size);
     const count = await request().query(`SELECT COUNT(1) AS total FROM bbva.SystemUser u ${whereSql};`);
-    const result = await request().query(`${userSelect()} ${whereSql} ORDER BY u.FullName,u.Id OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;`);
+    const userSort: Record<string,string> = { fullName:'u.FullName', email:'u.Email', corporateUser:'u.CorporateUser', softtekCode:'u.SofttekCode', collaboratorCount:'collaboratorCount', status:'u.Status', updatedAt:'u.UpdatedAt' };
+    const orderBy = userSort[String(params.sort ?? '')] ?? 'u.FullName';
+    const direction = params.direction === 'desc' ? 'DESC' : 'ASC';
+    const result = await request().query(`${userSelect()} ${whereSql} ORDER BY ${orderBy} ${direction},u.Id ASC OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;`);
     const rows = result.recordset as BbvaSystemUserRecord[];
     const roleMap = await rolesForUsers(rows.map((item) => item.id));
     const items = rows.map((item) => ({ ...item, collaboratorCount: Number(item.collaboratorCount ?? 0), roles: roleMap.get(item.id) ?? [] }));
@@ -141,6 +144,7 @@ export class BbvaUserAdminRepository {
   async updateUser(id: string, input: BbvaSystemUserPayload, actorEmail: string): Promise<BbvaSystemUserRecord | null> {
     const current = await this.userById(id);
     if (!current) return null;
+    if (current.status === 'INACTIVE') throw Object.assign(new Error('Activa el usuario antes de modificar su información.'), { statusCode: 409 });
     const pool = await getDbConnection();
     const dmRoleCheck = await pool.request().input('roles', sql.NVarChar(sql.MAX), JSON.stringify(input.roleIds)).query(`
       SELECT COUNT(1) AS total FROM bbva.SystemRole
@@ -212,6 +216,7 @@ export class BbvaUserAdminRepository {
   async deleteUser(id: string): Promise<boolean> {
     const current = await this.userById(id);
     if (!current) return false;
+    if (current.status !== 'INACTIVE') throw Object.assign(new Error('Inactiva el usuario antes de eliminarlo definitivamente.'), { statusCode: 409 });
     if (current.collaboratorCount > 0) throw Object.assign(new Error('El usuario está asignado como Delivery Manager. Inactívalo después de reasignar sus colaboradores.'), { statusCode: 409 });
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
@@ -221,6 +226,26 @@ export class BbvaUserAdminRepository {
       await transaction.commit();
       return true;
     } catch (error) { await transaction.rollback(); throw error; }
+  }
+
+  async reassignDeliveryManager(id: string, targetUserId: string, actorEmail: string): Promise<{ reassigned: number; target: BbvaSystemUserOption }> {
+    if (id === targetUserId) throw Object.assign(new Error('Selecciona un Delivery Manager diferente.'), { statusCode: 400 });
+    const source = await this.userById(id);
+    if (!source) throw Object.assign(new Error('Usuario no encontrado.'), { statusCode: 404 });
+    const target = await this.userById(targetUserId);
+    if (!target || target.status !== 'ACTIVE' || !target.roles.some((role) => role.isDeliveryManager)) {
+      throw Object.assign(new Error('Selecciona un Delivery Manager activo para recibir las asignaciones.'), { statusCode: 400 });
+    }
+    const pool = await getDbConnection();
+    const result = await pool.request()
+      .input('sourceName', sql.NVarChar(220), source.fullName)
+      .input('targetName', sql.NVarChar(220), target.fullName)
+      .input('actorEmail', sql.NVarChar(255), actorEmail)
+      .query(`UPDATE bbva.Collaborator
+              SET DeliveryManager=@targetName,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+              WHERE UPPER(LTRIM(RTRIM(ISNULL(DeliveryManager,N''))))=UPPER(LTRIM(RTRIM(@sourceName)));
+              SELECT @@ROWCOUNT AS reassigned;`);
+    return { reassigned: Number(result.recordset[0]?.reassigned ?? 0), target: { id: target.id, fullName: target.fullName, email: target.email, corporateUser: target.corporateUser, softtekCode: target.softtekCode } };
   }
 
   async listRoles(params: BbvaAdminListParams): Promise<BbvaAdminPage<BbvaSystemRoleRecord>> {
@@ -233,7 +258,10 @@ export class BbvaUserAdminRepository {
     const whereSql = `WHERE ${where.join(' AND ')}`;
     const req = () => pool.request().input('search',sql.NVarChar(220),search).input('term',sql.NVarChar(230),`%${search}%`).input('status',sql.NVarChar(16),status==='ALL'?null:status).input('offset',sql.Int,offset).input('size',sql.Int,size);
     const count = await req().query(`SELECT COUNT(1) AS total FROM bbva.SystemRole r ${whereSql};`);
-    const result = await req().query(`${roleSelect()} ${whereSql} ORDER BY r.IsSystem DESC,r.Name,r.Id OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;`);
+    const roleSort: Record<string,string> = { name:'r.Name', code:'r.Code', userCount:'userCount', status:'r.Status', updatedAt:'r.UpdatedAt' };
+    const orderBy = roleSort[String(params.sort ?? '')] ?? 'r.Name';
+    const direction = params.direction === 'desc' ? 'DESC' : 'ASC';
+    const result = await req().query(`${roleSelect()} ${whereSql} ORDER BY ${orderBy} ${direction},r.IsSystem DESC,r.Id ASC OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;`);
     const total = Number(count.recordset[0]?.total ?? 0);
     return { items:(result.recordset as BbvaSystemRoleRecord[]).map((r)=>({...r,isDeliveryManager:Boolean(r.isDeliveryManager),isSystem:Boolean(r.isSystem),userCount:Number(r.userCount??0)})), page,size,total,totalPages:Math.max(1,Math.ceil(total/size)) };
   }
@@ -260,6 +288,7 @@ export class BbvaUserAdminRepository {
 
   async updateRole(id:string,input:BbvaSystemRolePayload,actorEmail:string):Promise<BbvaSystemRoleRecord|null>{
     const current=await this.roleById(id); if(!current)return null;
+    if(current.status==='INACTIVE') throw Object.assign(new Error('Activa el rol antes de modificarlo.'),{statusCode:409});
     const pool=await getDbConnection();
     const result=await pool.request().input('id',sql.UniqueIdentifier,id).input('code',sql.NVarChar(50),current.isSystem?current.code:input.code).input('name',sql.NVarChar(120),input.name).input('description',sql.NVarChar(500),input.description).input('isDm',sql.Bit,input.isDeliveryManager).input('actor',sql.NVarChar(255),actorEmail)
       .query(`UPDATE bbva.SystemRole SET Code=@code,Name=@name,Description=@description,IsDeliveryManager=@isDm,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@id; SELECT @@ROWCOUNT AS affected;`);
@@ -275,7 +304,8 @@ export class BbvaUserAdminRepository {
 
   async deleteRole(id:string):Promise<boolean>{
     const current=await this.roleById(id); if(!current)return false;
-    if(current.isSystem) throw Object.assign(new Error('Los roles base del sistema no se eliminan; puedes inactivarlos.'),{statusCode:409});
+    if(current.status!=='INACTIVE') throw Object.assign(new Error('Inactiva el rol antes de eliminarlo definitivamente.'),{statusCode:409});
+    if(current.isSystem) throw Object.assign(new Error('Los roles base del sistema se conservan. Déjalo inactivo.'),{statusCode:409});
     if(current.userCount>0) throw Object.assign(new Error('El rol tiene usuarios asignados. Retira esas asignaciones antes de eliminarlo.'),{statusCode:409});
     const pool=await getDbConnection(); const result=await pool.request().input('id',sql.UniqueIdentifier,id).query(`DELETE FROM bbva.SystemRole WHERE Id=@id; SELECT @@ROWCOUNT AS affected;`); return Number(result.recordset[0]?.affected??0)>0;
   }

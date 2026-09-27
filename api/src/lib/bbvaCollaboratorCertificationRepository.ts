@@ -538,12 +538,20 @@ export class CollaboratorCertificationRepository {
         CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
         cc.RecertificationEnabled AS recertificationEnabled,
         cc.RequiresAttempts AS requiresAttempts,
-        cc.MaxAttempts AS maxAttempts
+        cc.MaxAttempts AS maxAttempts,
+        CAST(latestAttempt.Id AS NVARCHAR(36)) AS latestAttemptId,
+        latestAttempt.Result AS latestAttemptResult
       FROM bbva.PersonCertification pc
       INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
       INNER JOIN bbva.Person p ON p.Id=pc.PersonId
       INNER JOIN bbva.Collaborator c ON c.PersonId=p.Id AND c.Status=N'ACTIVE'
       LEFT JOIN bbva.CatalogTechnology tech ON tech.Id=cc.TechnologyId
+      OUTER APPLY (
+        SELECT TOP 1 a.Id,a.Result
+        FROM bbva.PersonCertificationAttempt a
+        WHERE a.PersonCertificationId=pc.Id
+        ORDER BY a.CycleNumber DESC,a.AttemptNumber DESC,a.CreatedAt DESC,a.Id DESC
+      ) latestAttempt
       OUTER APPLY (
         SELECT MAX(a.ApplicationDate) AS LatestApprovedAttemptDate
         FROM bbva.PersonCertificationAttempt a
@@ -578,11 +586,10 @@ export class CollaboratorCertificationRepository {
              t.Name AS technologyName,cc.ValidityMonths AS validityMonths,
              cc.InitialCompletionDays AS initialCompletionDays,cc.ExpiringSoonDays AS expiringSoonDays,
              cc.RecertificationEnabled AS recertificationEnabled,cc.RequiresAttempts AS requiresAttempts,cc.MaxAttempts AS maxAttempts,
-             cc.RequiresApplicationDate AS requiresApplicationDate
+             cc.RequiresApplicationDate AS requiresApplicationDate,cc.Status AS status
       FROM bbva.CertificationCatalog cc
       LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
-      WHERE cc.Status=N'ACTIVE'
-      ORDER BY cc.CertificationType,cc.Name;
+      ORDER BY CASE cc.Status WHEN N'ACTIVE' THEN 0 ELSE 1 END,cc.CertificationType,cc.Name;
     `);
     return result.recordset.map((row: any) => ({
       ...row,
@@ -593,6 +600,7 @@ export class CollaboratorCertificationRepository {
       requiresAttempts: Boolean(row.requiresAttempts),
       maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
       requiresApplicationDate: Boolean(row.requiresApplicationDate),
+      status: row.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
     })) as ImportCertificationCatalogConfig[];
   }
 

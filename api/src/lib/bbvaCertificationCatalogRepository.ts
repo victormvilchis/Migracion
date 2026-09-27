@@ -220,7 +220,7 @@ export class BbvaCertificationCatalogRepository {
     const current = await this.findById(id);
     if (!current) return false;
     if (current.usageCount > 0) {
-      const error = new Error('No es posible eliminar la certificación porque tiene historial operativo asociado. Puedes inactivarla para impedir nuevas asignaciones.') as Error & { statusCode?: number };
+      const error = new Error('Esta certificación está vinculada a expedientes históricos y no puede eliminarse sin perder trazabilidad. Déjala inactiva; ya no podrá asignarse ni modificarse.') as Error & { statusCode?: number };
       error.statusCode = 409;
       throw error;
     }

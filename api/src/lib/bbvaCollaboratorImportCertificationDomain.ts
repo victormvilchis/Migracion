@@ -34,6 +34,7 @@ export interface ImportCertificationCatalogConfig {
   requiresAttempts: boolean;
   maxAttempts: number | null;
   requiresApplicationDate: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
 }
 
 export interface ImportCertificationCurrentState {
@@ -349,7 +350,7 @@ export function parseCertificationEvidence(args: {
   if (score.value !== null && !applicationDate) {
     issues.push({ code: 'SCORE_WITHOUT_DATE', message: `${BLOCK_LABELS[block]} tiene promedio sin fecha de aplicación.`, blocking: true });
   }
-  if (attempt.value !== null && !applicationDate && !statusOnlyBlock(block)) {
+  if (applicable !== false && attempt.value !== null && !applicationDate && !statusOnlyBlock(block)) {
     issues.push({ code: 'ATTEMPT_WITHOUT_EVIDENCE', message: `${BLOCK_LABELS[block]} informa intento sin evidencia de aplicación.`, blocking: true });
   }
   if (applicable === false && (applicationDate || score.value !== null || attempt.value !== null || ['APROBADO','APROBADA','REPROBADO','REPROBADA'].includes(examKey))) {

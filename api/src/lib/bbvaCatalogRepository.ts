@@ -186,7 +186,7 @@ export class BbvaCatalogRepository {
     const current = await this.findById(definition, id);
     if (!current) return false;
     if (current.usageCount > 0) {
-      const error = new Error(`No es posible eliminar ${definition.singularLabel === 'categoría' ? 'la' : 'el'} ${definition.singularLabel} porque está en uso. Puedes inactivarlo para impedir nuevas asignaciones.`) as Error & { statusCode?: number };
+      const error = new Error(`${definition.singularArticle === 'la' ? 'La' : 'El'} ${definition.singularLabel} está vinculado a registros históricos y no puede eliminarse sin perder trazabilidad. Déjalo inactivo; ya no podrá seleccionarse en nuevas asignaciones.`) as Error & { statusCode?: number };
       error.statusCode = 409;
       throw error;
     }

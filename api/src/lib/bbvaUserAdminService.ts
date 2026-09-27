@@ -16,6 +16,7 @@ export class BbvaUserAdminService {
   async updateUser(id:string,payload:any,actor:string){return repository.updateUser(id,this.userPayload(payload),actor);}
   updateUserStatus(id:string,value:unknown,actor:string){return repository.updateUserStatus(id,status(value),actor);}
   deleteUser(id:string){return repository.deleteUser(id);}
+  reassignDeliveryManager(id:string,targetUserId:unknown,actor:string){return repository.reassignDeliveryManager(id,required(targetUserId,'El Delivery Manager destino',80),actor);}
 
   listRoles(params:BbvaAdminListParams){return repository.listRoles(params);}
   getRole(id:string){return repository.roleById(id);}

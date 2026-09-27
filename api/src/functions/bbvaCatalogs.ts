@@ -4,6 +4,7 @@ import { assertBbvaPermission } from '../lib/bbvaAuthz.js';
 import { bbvaCatalogDefinitions, isBbvaCatalogType, type BbvaCatalogListParams } from '../lib/bbvaCatalogDomain.js';
 import { BbvaCatalogService } from '../lib/bbvaCatalogService.js';
 import { readBbvaJson } from '../lib/bbvaHttp.js';
+import { friendlyDuplicateMessage, isSqlDuplicate } from '../lib/bbvaFriendlyErrors.js';
 
 const service = new BbvaCatalogService();
 
@@ -14,9 +15,7 @@ function responseForError(error: unknown, context: InvocationContext): HttpRespo
   if (value.statusCode === 403) return { status: 403, jsonBody: { error: message } };
   if (value.statusCode === 409) return { status: 409, jsonBody: { error: message } };
   if (value.number === 547) return { status: 409, jsonBody: { error: 'No es posible eliminar el registro porque aún existe una referencia activa. Actualiza el listado para consultar la Cantidad de usos.' } };
-  if (value.number === 2601 || value.number === 2627 || /duplicate|unique|duplicad/i.test(message)) {
-    return { status: 409, jsonBody: { error: 'Ya existe un registro equivalente en este catálogo.' } };
-  }
+  if (isSqlDuplicate(error)) return { status: 409, jsonBody: { error: friendlyDuplicateMessage(error, 'registro del catálogo') } };
   if (/obligatorio|inválid|exceder|estado|seniority/i.test(message)) return { status: 400, jsonBody: { error: message } };
   return { status: 500, jsonBody: { error: 'No fue posible completar la operación del catálogo.' } };
 }

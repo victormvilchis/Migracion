@@ -124,6 +124,8 @@ export interface CertificationTrackingRecord {
   expirationDate: string | null;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
+  latestAttemptId: string | null;
+  latestAttemptResult: CertificationAttemptResult | null;
 }
 
 export interface CertificationAttemptInput {
