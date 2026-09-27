@@ -81,7 +81,7 @@ export const CollaboratorsPage: React.FC = () => {
     <div className="space-y-3 animate-fade-in">
       <div className="flex flex-wrap items-center justify-end gap-2">
         <button type="button" onClick={() => navigate('/bbva/collaborators/import')} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800">
-          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 [.bbva-dark_&]:text-emerald-400" /> Cargar Excel
+          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600 [.bbva-dark_&]:text-emerald-400" /> Cargar Tablero
         </button>
         <button type="button" onClick={() => navigate('/bbva/collaborators/new')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[11px] font-semibold text-white shadow-sm transition hover:bg-blue-500">
           <Plus className="h-3.5 w-3.5" /> Agregar colaborador

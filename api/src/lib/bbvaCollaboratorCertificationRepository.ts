@@ -256,8 +256,7 @@ export class CollaboratorCertificationRepository {
              CAST(a.PersonCertificationId AS NVARCHAR(36)) AS certificationRecordId,
              a.CycleNumber AS cycleNumber,a.AttemptNumber AS attemptNumber,
              CONVERT(VARCHAR(10),a.ApplicationDate,23) AS applicationDate,
-             a.Result AS result,CONVERT(VARCHAR(10),a.ResultDate,23) AS resultDate,
-             a.CostAmount AS costAmount,a.CostCurrency AS costCurrency,a.Notes AS notes,
+             a.Result AS result,a.Notes AS notes,
              a.Score10 AS score10,a.Source AS source,a.ImportFingerprint AS importFingerprint,
              CONVERT(VARCHAR(33),a.CreatedAt,127) AS createdAt,a.CreatedByEmail AS createdByEmail
       FROM bbva.PersonCertificationAttempt a
@@ -280,7 +279,6 @@ export class CollaboratorCertificationRepository {
         ...row,
         cycleNumber: Number(row.cycleNumber),
         attemptNumber: Number(row.attemptNumber),
-        costAmount: row.costAmount === null ? null : Number(row.costAmount),
         score10: row.score10 === null ? null : Number(row.score10),
       })) as CollaboratorCertificationAttemptRecord[],
       history: history.recordset as CertificationHistoryRecord[],
@@ -375,7 +373,7 @@ export class CollaboratorCertificationRepository {
     await transaction.begin();
     try {
       const catalog = await new sql.Request(transaction).input('certificationId', sql.UniqueIdentifier, current.item.certificationId).query(`
-        SELECT ValidityMonths,FirstAttemptCost,SubsequentAttemptCost,CostCurrency,RequiresApplicationDate
+        SELECT ValidityMonths,RequiresApplicationDate
         FROM bbva.CertificationCatalog WHERE Id=@certificationId;
       `);
       const config = catalog.recordset[0] as any;
@@ -388,9 +386,7 @@ export class CollaboratorCertificationRepository {
         .input('cycle', sql.Int, current.item.currentCycle)
         .query(`SELECT COUNT(1) AS total FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle;`);
       const attemptNumber = Number(count.recordset[0]?.total ?? 0) + 1;
-      const costAmount = attemptNumber === 1 ? config?.FirstAttemptCost ?? null : config?.SubsequentAttemptCost ?? null;
-      const resultDate = input.result === 'PENDING' ? null : (input.resultDate || input.applicationDate || new Date().toISOString().slice(0, 10));
-      const approvedDate = input.result === 'APPROVED' ? resultDate : null;
+      const approvedDate = input.result === 'APPROVED' ? (input.applicationDate || new Date().toISOString().slice(0, 10)) : null;
 
       await new sql.Request(transaction)
         .input('recordId', sql.UniqueIdentifier, recordId)
@@ -398,15 +394,12 @@ export class CollaboratorCertificationRepository {
         .input('attemptNumber', sql.Int, attemptNumber)
         .input('applicationDate', sql.Date, input.applicationDate)
         .input('result', sql.NVarChar(16), input.result)
-        .input('resultDate', sql.Date, resultDate)
-        .input('costAmount', sql.Decimal(12, 2), costAmount)
-        .input('costCurrency', sql.NVarChar(8), config?.CostCurrency ?? null)
         .input('notes', sql.NVarChar(1000), input.notes)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           INSERT INTO bbva.PersonCertificationAttempt(
-            PersonCertificationId,CycleNumber,AttemptNumber,ApplicationDate,Result,ResultDate,CostAmount,CostCurrency,Notes,CreatedByEmail
-          ) VALUES(@recordId,@cycle,@attemptNumber,@applicationDate,@result,@resultDate,@costAmount,@costCurrency,@notes,@actorEmail);
+            PersonCertificationId,CycleNumber,AttemptNumber,ApplicationDate,Result,Notes,CreatedByEmail
+          ) VALUES(@recordId,@cycle,@attemptNumber,@applicationDate,@result,@notes,@actorEmail);
         `);
 
       await new sql.Request(transaction)
@@ -491,7 +484,7 @@ export class CollaboratorCertificationRepository {
     const result = await pool.request().query(`
       SELECT CAST(cc.Id AS NVARCHAR(36)) AS id,cc.Name AS name,cc.CertificationType AS certificationType,
              t.Name AS technologyName,cc.ValidityMonths AS validityMonths,
-             cc.InitialCompletionMonths AS initialCompletionMonths,cc.ExpiringSoonDays AS expiringSoonDays,
+             cc.InitialCompletionDays AS initialCompletionDays,cc.ExpiringSoonDays AS expiringSoonDays,
              cc.RecertificationEnabled AS recertificationEnabled,cc.RequiresAttempts AS requiresAttempts,
              cc.RequiresApplicationDate AS requiresApplicationDate
       FROM bbva.CertificationCatalog cc
@@ -502,7 +495,7 @@ export class CollaboratorCertificationRepository {
     return result.recordset.map((row: any) => ({
       ...row,
       validityMonths: row.validityMonths === null ? null : Number(row.validityMonths),
-      initialCompletionMonths: row.initialCompletionMonths === null ? null : Number(row.initialCompletionMonths),
+      initialCompletionDays: row.initialCompletionDays === null ? null : Number(row.initialCompletionDays),
       expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
       recertificationEnabled: Boolean(row.recertificationEnabled),
       requiresAttempts: Boolean(row.requiresAttempts),
@@ -531,8 +524,7 @@ export class CollaboratorCertificationRepository {
       SELECT CAST(a.Id AS NVARCHAR(36)) AS id,CAST(a.PersonCertificationId AS NVARCHAR(36)) AS recordId,
              a.CycleNumber AS cycleNumber,a.AttemptNumber AS attemptNumber,
              CONVERT(VARCHAR(10),a.ApplicationDate,23) AS applicationDate,a.Result AS result,
-             CONVERT(VARCHAR(10),a.ResultDate,23) AS resultDate,a.Score10 AS score10,
-             a.Source AS source,a.ImportFingerprint AS importFingerprint
+             a.Score10 AS score10,a.Source AS source,a.ImportFingerprint AS importFingerprint
       FROM bbva.PersonCertificationAttempt a;
     `);
     const attemptsByRecord = new Map<string, ImportCertificationCurrentState['attempts']>();
@@ -540,7 +532,7 @@ export class CollaboratorCertificationRepository {
       const list = attemptsByRecord.get(String(row.recordId)) ?? [];
       list.push({
         id: String(row.id), cycleNumber:Number(row.cycleNumber), attemptNumber:Number(row.attemptNumber),
-        applicationDate:row.applicationDate ?? null, result:String(row.result), resultDate:row.resultDate ?? null,
+        applicationDate:row.applicationDate ?? null, result:String(row.result),
         score10:row.score10 === null ? null : Number(row.score10), source:row.source ?? null, importFingerprint:row.importFingerprint ?? null,
       });
       attemptsByRecord.set(String(row.recordId), list);
@@ -657,8 +649,8 @@ export class CollaboratorCertificationRepository {
               .input('applicationDate',sql.Date,evidence.applicationDate).input('result',sql.NVarChar(16),result)
               .input('score10',sql.Decimal(5,2),evidence.score10).input('fingerprint',sql.Char(64),attemptFingerprint)
               .input('actorEmail',sql.NVarChar(255),actorEmail)
-              .query(`INSERT INTO bbva.PersonCertificationAttempt(PersonCertificationId,CycleNumber,AttemptNumber,ApplicationDate,Result,ResultDate,Score10,Source,ImportFingerprint,CreatedByEmail)
-                      VALUES(@recordId,@cycle,@attemptNumber,@applicationDate,@result,@applicationDate,@score10,N'IMPORT',@fingerprint,@actorEmail);`);
+              .query(`INSERT INTO bbva.PersonCertificationAttempt(PersonCertificationId,CycleNumber,AttemptNumber,ApplicationDate,Result,Score10,Source,ImportFingerprint,CreatedByEmail)
+                      VALUES(@recordId,@cycle,@attemptNumber,@applicationDate,@result,@score10,N'IMPORT',@fingerprint,@actorEmail);`);
             resultRegistered = true;
           }
         }

@@ -37,7 +37,7 @@ export const CollaboratorMoveToTalentPage: React.FC = () => {
     const selected = reasons.find((reason) => reason.code === values.reasonCode);
     if (!selected) return;
     setValues((current) => current.talentStage === selected.defaultTalentStage ? current : { ...current, talentStage: selected.defaultTalentStage });
-  }, [reasons, values.reasonCode, values.talentStage]);
+  }, [reasons, values.reasonCode]);
 
   const requestConfirmation = () => {
     if (!values.reasonCode) return setError('Selecciona el motivo del movimiento.');
@@ -113,7 +113,7 @@ export const CollaboratorMoveToTalentPage: React.FC = () => {
       <ConfirmDialog
         open={confirmOpen}
         title="Mover a Banco de talento"
-        message={`La persona dejará Colaboradores y quedará disponible en Banco de talento. Se conservarán su identidad, CV e historial. ¿Deseas continuar?`}
+        message={`La persona dejará Colaboradores y pasará a Banco de talento con motivo "${reasons.find((reason) => reason.code === values.reasonCode)?.name ?? values.reasonCode}" y etapa "${values.talentStage === 'AVAILABLE' ? 'Disponible' : 'Desasignado'}". Se conservarán su identidad, CV, certificaciones e historial. ¿Deseas continuar?`}
         confirmLabel="Confirmar movimiento"
         tone="primary"
         busy={moveMutation.isPending}

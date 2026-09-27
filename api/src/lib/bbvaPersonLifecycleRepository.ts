@@ -166,7 +166,8 @@ export class PersonLifecycleRepository {
           WHERE Id=@collaboratorId;
         `);
 
-      const description = `La persona pasó de Colaboradores a Banco de talento. Motivo: ${reason.name}.`;
+      const stageLabel = input.talentStage === 'AVAILABLE' ? 'Disponible' : 'Desasignado';
+      const description = `La persona pasó de Colaboradores a Banco de talento. Motivo: ${reason.name}. Etapa destino: ${stageLabel}.`;
 
       await new sql.Request(transaction)
         .input('collaboratorId', sql.UniqueIdentifier, collaborator.id)

@@ -29,19 +29,13 @@ function requiredText(value: unknown, label: string, maxLength: number): string 
   return normalized;
 }
 
-function nullablePositiveInteger(value: unknown, label: string): number | null {
+function nullablePositiveInteger(value: unknown, label: string, max = 240): number | null {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
-  if (!Number.isInteger(number) || number <= 0 || number > 240) throw new Error(`${label} debe ser un entero entre 1 y 240.`);
+  if (!Number.isInteger(number) || number <= 0 || number > max) throw new Error(`${label} debe ser un entero entre 1 y ${max}.`);
   return number;
 }
 
-function nullableMoney(value: unknown, label: string): number | null {
-  if (value === null || value === undefined || value === '') return null;
-  const number = Number(value);
-  if (!Number.isFinite(number) || number < 0 || number > 1_000_000) throw new Error(`${label} debe ser un importe válido.`);
-  return Math.round(number * 100) / 100;
-}
 
 function normalizeBoolean(value: unknown): boolean {
   return value === true || value === 'true' || value === 1 || value === '1';
@@ -113,11 +107,8 @@ export class BbvaCertificationCatalogService {
     const provider = nullableText(value.provider, 120);
     const technologyId = normalizeUuid(value.technologyId, 'La tecnología', typeValue === 'TECHNOLOGICAL');
     const validityMonths = nullablePositiveInteger(value.validityMonths, 'La vigencia');
-    const initialCompletionMonths = nullablePositiveInteger(value.initialCompletionMonths, 'El tiempo inicial para completar');
+    const initialCompletionDays = nullablePositiveInteger(value.initialCompletionDays, 'El tiempo inicial para completar', 3650);
     const expiringSoonDays = nullablePositiveInteger(value.expiringSoonDays, 'Los días de próxima expiración');
-    const firstAttemptCost = nullableMoney(value.firstAttemptCost, 'El costo del primer intento');
-    const subsequentAttemptCost = nullableMoney(value.subsequentAttemptCost, 'El costo de intentos posteriores');
-    const costCurrency = nullableText(value.costCurrency, 8)?.toUpperCase() ?? null;
     const includesTraining = normalizeBoolean(value.includesTraining);
     const recertificationEnabled = normalizeBoolean(value.recertificationEnabled);
     const requiresAttempts = normalizeBoolean(value.requiresAttempts);
@@ -133,8 +124,6 @@ export class BbvaCertificationCatalogService {
     if (typeValue !== 'TECHNOLOGICAL' && technologyId) {
       throw new Error('La tecnología solo puede asignarse a certificaciones tecnológicas.');
     }
-    if ((firstAttemptCost !== null || subsequentAttemptCost !== null) && !costCurrency) throw new Error('La moneda es obligatoria cuando existe un costo configurado.');
-    if (costCurrency && !['USD', 'MXN'].includes(costCurrency)) throw new Error('La moneda permitida es USD o MXN.');
     if (validityMonths && !expiringSoonDays) throw new Error('Configura los días de próxima expiración para certificaciones con vigencia.');
     if (recertificationEnabled && !validityMonths) {
       throw new Error('Una certificación con recertificación debe definir su vigencia en meses.');
@@ -156,11 +145,8 @@ export class BbvaCertificationCatalogService {
       provider,
       technologyId,
       validityMonths,
-      initialCompletionMonths,
+      initialCompletionDays,
       expiringSoonDays,
-      firstAttemptCost,
-      subsequentAttemptCost,
-      costCurrency,
       includesTraining,
       recertificationEnabled,
       requiresAttempts,

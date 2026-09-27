@@ -5,7 +5,7 @@ import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
-import { TalentTypeBadge } from '../../componentsBBVATalent/TalentTypeBadge';
+import { TalentStageBadge } from '../../componentsBBVATalent/TalentStageBadge';
 import { downloadCvDocument, viewCvDocument } from '../lib/talentCv';
 import { roleDisplay, technologyDisplay } from '../lib/talentDisplay';
 import { useTalentList } from '../hooks/useTalent';
@@ -41,7 +41,7 @@ export const TalentPage: React.FC = () => {
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return items.filter((item) => {
-      const values = [item.fullName, item.email, item.softtekCode, item.corporateUser, item.profile, item.technologyProfile, item.currentTechnology, item.expertise];
+      const values = [item.fullName, item.email, item.softtekCode, item.corporateUser, item.profile, item.technologyProfile, item.currentTechnology, item.expertise, item.lifecycleReasonName, item.lifecycleReasonCode];
       const matchesSearch = !term || values.filter(Boolean).some((value) => String(value).toLowerCase().includes(term));
       return matchesSearch
         && (typeFilter === 'ALL' || item.talentType === typeFilter)
@@ -92,14 +92,15 @@ export const TalentPage: React.FC = () => {
       ) : (
         <div className="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75 [.bbva-dark_&]:shadow-none">
           <div className="overflow-x-auto overflow-y-visible">
-            <table className="w-full min-w-[1020px] table-fixed text-left text-[10.5px]">
+            <table className="w-full min-w-[1120px] table-fixed text-left text-[10.5px]">
               <thead className="border-b border-slate-200 bg-slate-50/90 text-[9px] font-semibold uppercase tracking-[0.035em] text-slate-600 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-950/55 [.bbva-dark_&]:text-slate-400">
                 <tr>
-                  <th className="w-[31%] px-2 py-1.5">Persona</th>
-                  <th className="w-[11%] px-2 py-1.5">Tipo</th>
-                  <th className="w-[24%] px-2 py-1.5">Perfil</th>
-                  <th className="w-[19%] px-2 py-1.5">Tecnología</th>
-                  <th className="w-[7%] px-2 py-1.5">CV</th>
+                  <th className="w-[26%] px-2 py-1.5">Persona</th>
+                  <th className="w-[15%] px-2 py-1.5">Motivo / origen</th>
+                  <th className="w-[10%] px-2 py-1.5">Etapa</th>
+                  <th className="w-[21%] px-2 py-1.5">Perfil</th>
+                  <th className="w-[14%] px-2 py-1.5">Tecnología</th>
+                  <th className="w-[6%] px-2 py-1.5">CV</th>
                   <th className="w-[8%] px-2 py-1.5 text-right">Acciones</th>
                 </tr>
               </thead>
@@ -107,7 +108,11 @@ export const TalentPage: React.FC = () => {
                 {paged.map((item) => (
                   <tr key={item.id} className="h-[39px] transition hover:bg-slate-50 [.bbva-dark_&]:hover:bg-slate-800/60">
                     <td className="px-2 py-1.5"><div className="truncate font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">{item.email}</div></td>
-                    <td className="px-2 py-1.5"><TalentTypeBadge type={item.talentType} /></td>
+                    <td className="px-2 py-1.5">
+                      <div className="truncate font-medium text-slate-700 [.bbva-dark_&]:text-slate-300">{item.lifecycleReasonName || TALENT_TYPE_LABELS[item.talentType]}</div>
+                      {item.talentType === 'BBVA_EXIT' && item.lifecycleEffectiveDate ? <div className="mt-0.5 text-[9px] text-slate-400">Desde {item.lifecycleEffectiveDate}</div> : null}
+                    </td>
+                    <td className="px-2 py-1.5"><TalentStageBadge stage={item.stage} /></td>
                     <td className="px-2 py-1.5 text-slate-700 [.bbva-dark_&]:text-slate-300"><div className="line-clamp-2 leading-[1.15]">{roleDisplay(item)}</div></td>
                     <td className="px-2 py-1.5 text-slate-700 [.bbva-dark_&]:text-slate-300">{technologyDisplay(item)}</td>
                     <td className="px-2 py-1.5">

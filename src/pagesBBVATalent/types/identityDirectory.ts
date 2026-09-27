@@ -15,5 +15,5 @@ export interface IdentityDirectoryRecord {
 
 export interface IdentityDirectoryLookupResponse {
   item: IdentityDirectoryRecord;
-  storage: 'external-directory';
+  storage: 'identity-directory';
 }

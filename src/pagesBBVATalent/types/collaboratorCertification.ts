@@ -71,9 +71,6 @@ export interface CertificationAttempt {
   attemptNumber: number;
   applicationDate: string | null;
   result: CertificationAttemptResult;
-  resultDate: string | null;
-  costAmount: number | null;
-  costCurrency: string | null;
   notes: string | null;
   createdAt: string;
   createdByEmail: string;

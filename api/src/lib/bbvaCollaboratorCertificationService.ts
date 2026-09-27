@@ -59,14 +59,9 @@ export class CollaboratorCertificationService {
       throw Object.assign(new Error('El resultado del intento no es válido.'), { statusCode: 400 });
     }
     const applicationDate = normalizeDate(valueOf(payload, 'applicationDate'), 'La fecha de aplicación');
-    const resultDate = normalizeDate(valueOf(payload, 'resultDate'), 'La fecha de resultado');
-    if (resultDate && applicationDate && resultDate < applicationDate) {
-      throw Object.assign(new Error('La fecha de resultado no puede ser anterior a la fecha de aplicación.'), { statusCode: 400 });
-    }
     const input: CertificationAttemptInput = {
       applicationDate,
       result: result as CertificationAttemptInput['result'],
-      resultDate,
       notes: cleanText(valueOf(payload, 'notes'), 1000),
     };
     return repository.addAttempt(collaboratorId, recordId, input, actorEmail);

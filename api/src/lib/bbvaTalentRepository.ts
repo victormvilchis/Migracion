@@ -26,6 +26,10 @@ const TALENT_SELECT = `
     CONVERT(VARCHAR(10), p.HireDate, 23) AS hireDate,
     CONVERT(VARCHAR(10), t.EntryDate, 23) AS entryDate,
     p.Notes AS notes,
+    lifecycle.ReasonCode AS lifecycleReasonCode,
+    lifecycle.ReasonName AS lifecycleReasonName,
+    lifecycle.EffectiveDate AS lifecycleEffectiveDate,
+    lifecycle.Notes AS lifecycleNotes,
     CONVERT(VARCHAR(33), t.ConvertedAt, 127) AS convertedAt,
     d.FileName AS cvFileName,
     d.ContentType AS cvContentType,
@@ -38,6 +42,17 @@ const TALENT_SELECT = `
   FROM bbva.TalentBankEntry t
   INNER JOIN bbva.Person p ON p.Id = t.PersonId
   LEFT JOIN bbva.PersonDocument d ON d.PersonId = p.Id AND d.DocumentType = N'CV'
+  OUTER APPLY (
+    SELECT TOP 1
+      h.ReasonCode,
+      r.Name AS ReasonName,
+      CONVERT(VARCHAR(10), h.EffectiveDate, 23) AS EffectiveDate,
+      h.Notes
+    FROM bbva.PersonLifecycleHistory h
+    LEFT JOIN bbva.LifecycleReasonCatalog r ON r.Code=h.ReasonCode
+    WHERE h.PersonId=p.Id AND h.EventType=N'COLLABORATOR_TO_TALENT'
+    ORDER BY h.CreatedAt DESC,h.Id DESC
+  ) lifecycle
 `;
 
 interface TalentRow extends Omit<TalentRecord, 'cv'> {

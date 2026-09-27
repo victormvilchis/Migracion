@@ -32,7 +32,7 @@ export function useUpdateCollaboratorCertification(collaboratorId: string) {
 
 export function useAddCertificationAttempt(collaboratorId: string) {
   const invalidate = useInvalidate(collaboratorId);
-  return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { applicationDate: string; result: CertificationAttemptResult; resultDate: string; notes: string } }) => collaboratorCertificationApi.addAttempt(collaboratorId, recordId, payload), onSuccess: invalidate });
+  return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { applicationDate: string; result: CertificationAttemptResult; notes: string } }) => collaboratorCertificationApi.addAttempt(collaboratorId, recordId, payload), onSuccess: invalidate });
 }
 
 export function useRecertifyCollaboratorCertification(collaboratorId: string) {

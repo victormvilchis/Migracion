@@ -19,7 +19,7 @@ export async function identityDirectoryLookupHandler(request: HttpRequest, conte
     assertBbvaPermission(user, 'IDENTITY_DIRECTORY_READ');
     const isValue = request.params.is;
     if (!isValue) return { status: 400, jsonBody: { error: 'El IS es obligatorio.' } };
-    return { status: 200, jsonBody: { item: await service.lookup(isValue), storage: 'external-directory' } };
+    return { status: 200, jsonBody: { item: await service.lookup(isValue), storage: 'identity-directory' } };
   } catch (error) {
     return errorResponse(error, context);
   }

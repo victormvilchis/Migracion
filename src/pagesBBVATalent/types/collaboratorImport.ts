@@ -136,6 +136,7 @@ export interface ImportPreviewResponse {
 export interface ImportApplyPayload {
   rows: ImportSourceRow[];
   emails: Record<string, string>;
+  softtekCodes: Record<string, string>;
   decisions: Record<string, ImportChangeDecision>;
   lowDecisions: Record<string, ImportLowDecision>;
 }

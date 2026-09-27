@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  addCalendarDays,
   addCalendarMonths,
   importCertificationAttemptFingerprint,
   importCertificationResolutionKey,
@@ -12,7 +13,7 @@ const config = (overrides = {}) => ({
   certificationType: 'COMPLIANCE',
   technologyName: null,
   validityMonths: null,
-  initialCompletionMonths: null,
+  initialCompletionDays: null,
   expiringSoonDays: null,
   recertificationEnabled: false,
   requiresAttempts: false,
@@ -39,7 +40,7 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
     'FECHA DE APLICACIÓN DS': '07/09/2026',
     'PROMEDIO DS': '9.13',
     'INTENTO DS': '0',
-  }, { config: config({ validityMonths: 12, initialCompletionMonths: 3, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
+  }, { config: config({ validityMonths: 12, initialCompletionDays: 90, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
   assert.equal(evidence.baseStatus, 'APPROVED');
   assert.equal(evidence.applicationDate, '2026-09-07');
   assert.equal(evidence.score10, 9.13);
@@ -56,7 +57,7 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
     'ESTATUS DEL EXAMEN DS': 'REPROBADO',
     'FECHA DE APLICACIÓN DS': '07/09/2026',
     'INTENTO DS': '0',
-  }, { config: config({ validityMonths: 12, initialCompletionMonths: 3, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
+  }, { config: config({ validityMonths: 12, initialCompletionDays: 90, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
   assert.equal(evidence.baseStatus, 'FAILED');
   assert.equal(issueCodes(evidence).has('FAILED_WITH_ATTEMPT_ZERO'), true);
 }
@@ -67,7 +68,7 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
     '¿APLICA TECNOLOGICA?': 'NO',
     'ESTATUS CERTIFICACIÓN': 'NO APLICA',
     'INTENTO': '1',
-  }, { config: config({ validityMonths: 24, initialCompletionMonths: 1, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
+  }, { config: config({ validityMonths: 24, initialCompletionDays: 30, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
   assert.equal(evidence.baseStatus, 'NOT_APPLICABLE');
   assert.equal(issueCodes(evidence).has('NOT_APPLICABLE_WITH_EVIDENCE'), true);
 }
@@ -96,7 +97,7 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
     'FECHA DE APLICACIÓN NORMATIVA': '07/09/2026',
     'PROMEDIO NORMATIVA': '5.68',
     'INTENTO NORMATIVA': '1',
-  }, { config: config({ validityMonths: 12, initialCompletionMonths: 2, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
+  }, { config: config({ validityMonths: 12, initialCompletionDays: 60, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
   assert.equal(evidence.baseStatus, 'FAILED');
   assert.equal(evidence.score10, 5.68);
   assert.equal(evidence.administrativeAttempt, 1);
@@ -119,35 +120,35 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
   assert.equal(evidence.administrativeAttempt, null);
 }
 
-// I. Tecnológica: inicial = alta + 1 mes; recertificación = aprobación + 24 meses.
+// I. Tecnológica: inicial = alta + 30 días; recertificación = aprobación + 24 meses.
 {
   const initial = parse('TECHNOLOGICAL', {
     '¿APLICA TECNOLOGICA?': 'SI', 'ESTATUS CERTIFICACIÓN': 'SIN PRESENTAR - PROXIMO A VENCER',
-  }, { startDate: '2026-01-31', config: config({ validityMonths: 24, initialCompletionMonths: 1, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
-  assert.equal(initial.initialDueDate, '2026-02-28');
+  }, { startDate: '2026-01-31', config: config({ validityMonths: 24, initialCompletionDays: 30, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
+  assert.equal(initial.initialDueDate, '2026-03-02');
   assert.equal(initial.lifecycle, 'INITIAL');
 
   const recert = parse('TECHNOLOGICAL', {
     '¿APLICA TECNOLOGICA?': 'SI', 'ESTATUS CERTIFICACIÓN': 'VIGENTE - REGULAR', 'ESTATUS DEL EXAMEN': 'APROBADO', 'FECHA DE APLICACIÓN TEC': '30/09/2026', 'INTENTO': '0',
-  }, { hadPreviousApproval: true, startDate: '2020-01-01', config: config({ validityMonths: 24, initialCompletionMonths: 1, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
+  }, { hadPreviousApproval: true, startDate: '2020-01-01', config: config({ validityMonths: 24, initialCompletionDays: 30, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
   assert.equal(recert.lifecycle, 'RECERTIFICATION');
   assert.equal(recert.initialDueDate, null);
   assert.equal(recert.expirationDate, '2028-09-30');
 }
 
-// J. DS: inicial = alta + 3 meses.
+// J. DS: inicial = alta + 90 días.
 {
   const evidence = parse('DEVELOPMENT_SECURITY', { '¿APLICA DS?': 'SI', 'ESTATUS CERTIFICACIÓN DS': 'SIN PRESENTAR - PROXIMO A VENCER' }, {
-    startDate: '2026-01-31', config: config({ validityMonths: 12, initialCompletionMonths: 3, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }),
+    startDate: '2026-01-31', config: config({ validityMonths: 12, initialCompletionDays: 90, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }),
   });
-  assert.equal(evidence.initialDueDate, '2026-04-30');
+  assert.equal(evidence.initialDueDate, '2026-05-01');
 }
 
-// K. Normativa: LIMITE PARA NORMATIVA tiene prioridad sobre alta + 2 meses.
+// K. Normativa: LIMITE PARA NORMATIVA tiene prioridad sobre alta + 60 días.
 {
   const evidence = parse('NORMATIVE_TESTING', {
     'LIMITE PARA NORMATIVA': '15/10/2026', '¿APLICA NORMATIVA?': 'SI', 'ESTATUS CERTIFICACIÓN NORMATIVA': 'SIN PRESENTAR - PROXIMO A VENCER',
-  }, { startDate: '2026-01-01', config: config({ validityMonths: 12, initialCompletionMonths: 2, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
+  }, { startDate: '2026-01-01', config: config({ validityMonths: 12, initialCompletionDays: 60, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
   assert.equal(evidence.initialDueDate, '2026-10-15');
 }
 
@@ -155,7 +156,7 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
 {
   const evidence = parse('DEVELOPMENT_SECURITY', {
     '¿APLICA DS?': 'SI', 'ESTATUS CERTIFICACIÓN DS': 'VIGENTE - PROXIMO A VENCER', 'ESTATUS DEL EXAMEN DS': 'APROBADO', 'FECHA DE APLICACIÓN DS': '30/09/2025', 'INTENTO DS': '0',
-  }, { config: config({ validityMonths: 12, initialCompletionMonths: 3, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true, expiringSoonDays: null }), todayIso: '2026-09-01' });
+  }, { config: config({ validityMonths: 12, initialCompletionDays: 90, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true, expiringSoonDays: null }), todayIso: '2026-09-01' });
   assert.equal(evidence.expirationDate, '2026-09-30');
   assert.equal(evidence.calculatedStatus, 'VALID');
 }
@@ -192,5 +193,6 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
 // Sanidad de fechas de calendario (sin timezone drift).
 assert.equal(addCalendarMonths('2024-01-31', 1), '2024-02-29');
 assert.equal(addCalendarMonths('2025-01-31', 1), '2025-02-28');
+assert.equal(addCalendarDays('2026-01-31', 30), '2026-03-02');
 
 console.log('OK: 17 escenarios de dominio de importación histórica de certificaciones.');

@@ -28,7 +28,7 @@ export interface ImportCertificationCatalogConfig {
   certificationType: string;
   technologyName: string | null;
   validityMonths: number | null;
-  initialCompletionMonths: number | null;
+  initialCompletionDays: number | null;
   expiringSoonDays: number | null;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
@@ -62,7 +62,6 @@ export interface ImportCertificationCurrentState {
     attemptNumber: number;
     applicationDate: string | null;
     result: string;
-    resultDate: string | null;
     score10: number | null;
     source: string | null;
     importFingerprint: string | null;
@@ -207,6 +206,11 @@ export function addCalendarMonths(dateIso: string, months: number): string {
   return new Date(Date.UTC(targetYear, targetMonth, Math.min(day, lastDay))).toISOString().slice(0, 10);
 }
 
+export function addCalendarDays(dateIso: string, days: number): string {
+  const [year, month, day] = dateIso.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
 function parseApplicability(raw: string | null, block: ImportCertificationBlock): boolean | null {
   const value = normalizeKey(raw);
   if (!value) return null;
@@ -349,7 +353,7 @@ export function parseCertificationEvidence(args: {
   let initialDueDate: string | null = null;
   if (!statusOnlyBlock(block) && !hadPreviousApproval && applicable !== false) {
     if (block === 'NORMATIVE_TESTING' && normativeLimitDate) initialDueDate = normativeLimitDate;
-    else if (startDate && config?.initialCompletionMonths) initialDueDate = addCalendarMonths(startDate, config.initialCompletionMonths);
+    else if (startDate && config?.initialCompletionDays) initialDueDate = addCalendarDays(startDate, config.initialCompletionDays);
   }
 
   const approvedDate = baseStatus === 'APPROVED' && applicationDate ? applicationDate : null;

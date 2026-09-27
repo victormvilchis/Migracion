@@ -18,11 +18,8 @@ export interface CertificationCatalogInput {
   provider: string | null;
   technologyId: string | null;
   validityMonths: number | null;
-  initialCompletionMonths: number | null;
+  initialCompletionDays: number | null;
   expiringSoonDays: number | null;
-  firstAttemptCost: number | null;
-  subsequentAttemptCost: number | null;
-  costCurrency: string | null;
   includesTraining: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
@@ -42,11 +39,8 @@ export interface CertificationCatalogRecord {
   technologyId: string | null;
   technologyName: string | null;
   validityMonths: number | null;
-  initialCompletionMonths: number | null;
+  initialCompletionDays: number | null;
   expiringSoonDays: number | null;
-  firstAttemptCost: number | null;
-  subsequentAttemptCost: number | null;
-  costCurrency: string | null;
   includesTraining: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
@@ -90,7 +84,7 @@ export interface CertificationCatalogOption {
   technologyId: string | null;
   technologyName: string | null;
   validityMonths: number | null;
-  initialCompletionMonths: number | null;
+  initialCompletionDays: number | null;
   expiringSoonDays: number | null;
   recertificationEnabled: boolean;
   defaultMandatory: boolean;

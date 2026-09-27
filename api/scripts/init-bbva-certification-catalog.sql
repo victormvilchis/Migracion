@@ -101,6 +101,7 @@ BEGIN TRY
       TechnologyId UNIQUEIDENTIFIER NULL,
       ValidityMonths INT NULL,
       InitialCompletionMonths INT NULL,
+      InitialCompletionDays INT NULL,
       ExpiringSoonDays INT NULL,
       FirstAttemptCost DECIMAL(12,2) NULL,
       SubsequentAttemptCost DECIMAL(12,2) NULL,
@@ -122,6 +123,7 @@ BEGIN TRY
       CONSTRAINT CK_BBVA_CertificationCatalog_Status CHECK (Status IN (N'ACTIVE',N'INACTIVE')),
       CONSTRAINT CK_BBVA_CertificationCatalog_Validity CHECK (ValidityMonths IS NULL OR ValidityMonths > 0),
       CONSTRAINT CK_BBVA_CertificationCatalog_Completion CHECK (InitialCompletionMonths IS NULL OR InitialCompletionMonths > 0),
+      CONSTRAINT CK_BBVA_CertificationCatalog_CompletionDays CHECK (InitialCompletionDays IS NULL OR InitialCompletionDays > 0),
       CONSTRAINT CK_BBVA_CertificationCatalog_ExpiringSoon CHECK (ExpiringSoonDays IS NULL OR ExpiringSoonDays > 0),
       CONSTRAINT CK_BBVA_CertificationCatalog_FirstCost CHECK (FirstAttemptCost IS NULL OR FirstAttemptCost >= 0),
       CONSTRAINT CK_BBVA_CertificationCatalog_SubsequentCost CHECK (SubsequentAttemptCost IS NULL OR SubsequentAttemptCost >= 0),
@@ -130,6 +132,7 @@ BEGIN TRY
     );
   END;
 
+  IF COL_LENGTH(N'bbva.CertificationCatalog', N'InitialCompletionDays') IS NULL ALTER TABLE bbva.CertificationCatalog ADD InitialCompletionDays INT NULL;
   IF COL_LENGTH(N'bbva.CertificationCatalog', N'ExpiringSoonDays') IS NULL ALTER TABLE bbva.CertificationCatalog ADD ExpiringSoonDays INT NULL;
   IF COL_LENGTH(N'bbva.CertificationCatalog', N'FirstAttemptCost') IS NULL ALTER TABLE bbva.CertificationCatalog ADD FirstAttemptCost DECIMAL(12,2) NULL;
   IF COL_LENGTH(N'bbva.CertificationCatalog', N'SubsequentAttemptCost') IS NULL ALTER TABLE bbva.CertificationCatalog ADD SubsequentAttemptCost DECIMAL(12,2) NULL;
@@ -306,33 +309,31 @@ BEGIN TRY
     (N'SCRUM DEVELOPER',N'METHODOLOGICAL',N'SCRUM INSTITUTE',NULL,NULL,NULL,0,1,1,1,N'METHODOLOGICAL',1,N'GENERIC',N'Certificación metodológica de conocimiento ágil; certificación única.');
 
   INSERT INTO bbva.CertificationCatalog (
-    Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionMonths,
+    Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionMonths,InitialCompletionDays,
     RecertificationEnabled,RequiresAttempts,RequiresApplicationDate,DefaultMandatory,RequirementGroup,RequirementGroupMinimum,
     Status,CreatedByEmail,UpdatedByEmail
   )
-  SELECT s.Name,s.Description,s.CertificationType,s.Provider,t.Id,s.ValidityMonths,s.CompletionMonths,
+  SELECT s.Name,s.Description,s.CertificationType,s.Provider,t.Id,s.ValidityMonths,s.CompletionMonths,CASE WHEN s.CompletionMonths IS NULL THEN NULL ELSE s.CompletionMonths * 30 END,
          s.Recert,s.Attempts,s.ApplicationDate,s.Mandatory,s.RequirementGroup,s.RequirementGroupMinimum,
          N'ACTIVE',@SeedActor,@SeedActor
   FROM @CertificationSeeds s
   LEFT JOIN bbva.CatalogTechnology t ON s.TechnologyName IS NOT NULL AND UPPER(t.Name)=UPPER(s.TechnologyName)
   WHERE NOT EXISTS (SELECT 1 FROM bbva.CertificationCatalog c WHERE UPPER(c.Name)=UPPER(s.Name));
 
-  /* Configuración económica y de alertamiento incorporada desde la fuente operativa. */
-  UPDATE c SET FirstAttemptCost=53.00,SubsequentAttemptCost=47.00,CostCurrency=N'USD'
-  FROM bbva.CertificationCatalog c INNER JOIN @CertificationSeeds s ON UPPER(s.Name)=UPPER(c.Name)
-  WHERE c.Provider=N'NETEC' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
 
-  UPDATE c SET FirstAttemptCost=1800.00,SubsequentAttemptCost=1800.00,CostCurrency=N'MXN'
-  FROM bbva.CertificationCatalog c INNER JOIN @CertificationSeeds s ON UPPER(s.Name)=UPPER(c.Name)
-  WHERE c.Provider=N'MAINWARE' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
+  UPDATE bbva.CertificationCatalog SET InitialCompletionDays=30 WHERE CertificationType=N'TECHNOLOGICAL' AND InitialCompletionDays IS NULL;
+  UPDATE bbva.CertificationCatalog SET InitialCompletionDays=90 WHERE CertificationType=N'DEVELOPMENT_SECURITY' AND InitialCompletionDays IS NULL;
+  UPDATE bbva.CertificationCatalog SET InitialCompletionDays=60 WHERE CertificationType=N'NORMATIVE_TESTING' AND InitialCompletionDays IS NULL;
 
-  UPDATE c SET FirstAttemptCost=120.00,SubsequentAttemptCost=120.00,CostCurrency=N'USD',IncludesTraining=1
+  /* Costos de intento/resultados quedan fuera del contrato funcional BBVA.
+     Las columnas legacy se conservan únicamente para compatibilidad histórica. */
+  UPDATE c SET IncludesTraining=1
   FROM bbva.CertificationCatalog c
-  WHERE c.Name=N'SAFE PRACTITIONER' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
+  WHERE c.Name=N'SAFE PRACTITIONER';
 
-  UPDATE c SET FirstAttemptCost=49.00,SubsequentAttemptCost=49.00,CostCurrency=N'USD',IncludesTraining=0
+  UPDATE c SET IncludesTraining=0
   FROM bbva.CertificationCatalog c
-  WHERE c.Name=N'SCRUM DEVELOPER' AND c.FirstAttemptCost IS NULL AND c.CreatedByEmail=@SeedActor AND c.UpdatedByEmail=@SeedActor;
+  WHERE c.Name=N'SCRUM DEVELOPER';
 
   /* Niveles permitidos de la matriz. */
   INSERT INTO bbva.CertificationAllowedLevel (CertificationId,LevelCode)

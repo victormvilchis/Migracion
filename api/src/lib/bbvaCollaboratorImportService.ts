@@ -294,7 +294,7 @@ async function catalogActions(row: NormalizedRow): Promise<ImportCatalogAction[]
   return actions;
 }
 
-async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, actorEmail: string, emailOverride?: string | null, decisions?: Map<string, ImportChangeDecision>, changes?: ImportFieldChange[]): Promise<ImportPersonInput> {
+async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, actorEmail: string, emailOverride?: string | null, decisions?: Map<string, ImportChangeDecision>, changes?: ImportFieldChange[], softtekCodeOverride?: string | null): Promise<ImportPersonInput> {
   const applyField = (field: ImportField, excel: string | null, current: string | null): string | null => {
     const change = changes?.find((item) => item.field === field);
     if (!change) return excel || current;
@@ -315,7 +315,7 @@ async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, 
   if (!isEmail(resolvedEmail)) throw new Error(`Captura un correo válido para ${resolvedFullName}.`);
 
   return {
-    softtekCode: upper(applyField('softtekCode', row.softtekCode, existing?.softtekCode ?? null), 80),
+    softtekCode: upper(softtekCodeOverride ?? applyField('softtekCode', row.softtekCode, existing?.softtekCode ?? null), 80),
     corporateUser: upper(applyField('corporateUser', row.corporateUser, existing?.corporateUser ?? null), 100),
     email: resolvedEmail,
     firstName: names.firstName,
@@ -736,7 +736,11 @@ export class CollaboratorImportService {
       if (!row) continue;
       if (unresolvedRows.has(item.rowKey) || errorRows.has(item.rowKey)) { result.skipped += 1; continue; }
       try {
-        const input = await toInput(row,null,actorEmail,payload.emails?.[item.rowKey] ?? item.email);
+        const requestedIs = upper(payload.softtekCodes?.[item.rowKey] ?? item.softtekCode, 80);
+        if (!requestedIs) throw new Error(`Captura un IS válido para ${item.fullName}.`);
+        const duplicateIs = people.find((candidate) => normalizeKey(candidate.softtekCode) === normalizeKey(requestedIs));
+        if (duplicateIs) throw new Error(`El IS ${requestedIs} ya pertenece a ${duplicateIs.fullName}. Vuelve a validar el Excel para reconciliar la identidad en lugar de crear una persona duplicada.`);
+        const input = await toInput(row,null,actorEmail,payload.emails?.[item.rowKey] ?? item.email,undefined,undefined,requestedIs);
         const created = await repository.create(input,actorEmail);
         await certificationService.synchronize(created.collaboratorId,actorEmail);
         await applyCertifications(row,null,created.personId);

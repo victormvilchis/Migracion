@@ -62,6 +62,10 @@ export interface Talent {
   hireDate: string | null;
   entryDate: string;
   notes: string | null;
+  lifecycleReasonCode: string | null;
+  lifecycleReasonName: string | null;
+  lifecycleEffectiveDate: string | null;
+  lifecycleNotes: string | null;
   convertedAt: string | null;
   cv: TalentCvMetadata | null;
   createdAt: string;

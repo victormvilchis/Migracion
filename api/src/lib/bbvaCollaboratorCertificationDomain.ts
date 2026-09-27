@@ -70,9 +70,6 @@ export interface CollaboratorCertificationAttemptRecord {
   attemptNumber: number;
   applicationDate: string | null;
   result: CertificationAttemptResult;
-  resultDate: string | null;
-  costAmount: number | null;
-  costCurrency: string | null;
   notes: string | null;
   score10: number | null;
   source: 'MANUAL' | 'IMPORT';
@@ -105,7 +102,6 @@ export interface CollaboratorCertificationListResult {
 export interface CertificationAttemptInput {
   applicationDate: string | null;
   result: CertificationAttemptResult;
-  resultDate: string | null;
   notes: string | null;
 }
 

@@ -28,11 +28,8 @@ interface BaseRow {
   technologyId: string | null;
   technologyName: string | null;
   validityMonths: number | null;
-  initialCompletionMonths: number | null;
+  initialCompletionDays: number | null;
   expiringSoonDays: number | null;
-  firstAttemptCost: number | null;
-  subsequentAttemptCost: number | null;
-  costCurrency: string | null;
   includesTraining: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
@@ -59,11 +56,8 @@ const BASE_SELECT = `
     CAST(c.TechnologyId AS NVARCHAR(36)) AS technologyId,
     t.Name AS technologyName,
     c.ValidityMonths AS validityMonths,
-    c.InitialCompletionMonths AS initialCompletionMonths,
+    c.InitialCompletionDays AS initialCompletionDays,
     c.ExpiringSoonDays AS expiringSoonDays,
-    c.FirstAttemptCost AS firstAttemptCost,
-    c.SubsequentAttemptCost AS subsequentAttemptCost,
-    c.CostCurrency AS costCurrency,
     c.IncludesTraining AS includesTraining,
     c.RecertificationEnabled AS recertificationEnabled,
     c.RequiresAttempts AS requiresAttempts,
@@ -90,10 +84,8 @@ function toBaseRecord(row: BaseRow): CertificationCatalogRecord {
     allowedLevels,
     usageCount: Number(row.usageCount ?? 0),
     validityMonths: row.validityMonths === null ? null : Number(row.validityMonths),
-    initialCompletionMonths: row.initialCompletionMonths === null ? null : Number(row.initialCompletionMonths),
+    initialCompletionDays: row.initialCompletionDays === null ? null : Number(row.initialCompletionDays),
     expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
-    firstAttemptCost: row.firstAttemptCost === null ? null : Number(row.firstAttemptCost),
-    subsequentAttemptCost: row.subsequentAttemptCost === null ? null : Number(row.subsequentAttemptCost),
     requirementGroupMinimum: row.requirementGroupMinimum === null ? null : Number(row.requirementGroupMinimum),
   };
 }
@@ -146,7 +138,7 @@ export class BbvaCertificationCatalogRepository {
       SELECT CAST(c.Id AS NVARCHAR(36)) AS id, c.Name AS name,
              c.CertificationType AS certificationType,
              CAST(c.TechnologyId AS NVARCHAR(36)) AS technologyId, t.Name AS technologyName,
-             c.ValidityMonths AS validityMonths, c.InitialCompletionMonths AS initialCompletionMonths, c.ExpiringSoonDays AS expiringSoonDays,
+             c.ValidityMonths AS validityMonths, c.InitialCompletionDays AS initialCompletionDays, c.ExpiringSoonDays AS expiringSoonDays,
              c.RecertificationEnabled AS recertificationEnabled, c.DefaultMandatory AS defaultMandatory
       FROM bbva.CertificationCatalog c
       LEFT JOIN bbva.CatalogTechnology t ON t.Id=c.TechnologyId
@@ -258,12 +250,9 @@ export class BbvaCertificationCatalogRepository {
       .input('provider', sql.NVarChar(120), input.provider)
       .input('technologyId', sql.UniqueIdentifier, input.technologyId)
       .input('validityMonths', sql.Int, input.validityMonths)
-      .input('initialCompletionMonths', sql.Int, input.initialCompletionMonths)
+      .input('initialCompletionDays', sql.Int, input.initialCompletionDays)
       .input('expiringSoonDays', sql.Int, input.expiringSoonDays)
-      .input('firstAttemptCost', sql.Decimal(12, 2), input.firstAttemptCost)
-      .input('subsequentAttemptCost', sql.Decimal(12, 2), input.subsequentAttemptCost)
-      .input('costCurrency', sql.NVarChar(8), input.costCurrency)
-      .input('includesTraining', sql.Bit, input.includesTraining)
+                        .input('includesTraining', sql.Bit, input.includesTraining)
       .input('recertificationEnabled', sql.Bit, input.recertificationEnabled)
       .input('requiresAttempts', sql.Bit, input.requiresAttempts)
       .input('requiresApplicationDate', sql.Bit, input.requiresApplicationDate)
@@ -275,11 +264,11 @@ export class BbvaCertificationCatalogRepository {
     if (create) {
       await request.query(`
         INSERT INTO bbva.CertificationCatalog (
-          Id,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionMonths,ExpiringSoonDays,FirstAttemptCost,SubsequentAttemptCost,CostCurrency,IncludesTraining,
+          Id,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionDays,ExpiringSoonDays,IncludesTraining,
           RecertificationEnabled,RequiresAttempts,RequiresApplicationDate,DefaultMandatory,RequirementGroup,RequirementGroupMinimum,
           Status,CreatedByEmail,UpdatedByEmail
         ) VALUES (
-          @id,@name,@description,@certificationType,@provider,@technologyId,@validityMonths,@initialCompletionMonths,@expiringSoonDays,@firstAttemptCost,@subsequentAttemptCost,@costCurrency,@includesTraining,
+          @id,@name,@description,@certificationType,@provider,@technologyId,@validityMonths,@initialCompletionDays,@expiringSoonDays,@includesTraining,
           @recertificationEnabled,@requiresAttempts,@requiresApplicationDate,@defaultMandatory,@requirementGroup,@requirementGroupMinimum,
           N'ACTIVE',@actorEmail,@actorEmail
         );
@@ -288,8 +277,8 @@ export class BbvaCertificationCatalogRepository {
       await request.query(`
         UPDATE bbva.CertificationCatalog SET
           Name=@name,Description=@description,CertificationType=@certificationType,Provider=@provider,TechnologyId=@technologyId,
-          ValidityMonths=@validityMonths,InitialCompletionMonths=@initialCompletionMonths,ExpiringSoonDays=@expiringSoonDays,
-          FirstAttemptCost=@firstAttemptCost,SubsequentAttemptCost=@subsequentAttemptCost,CostCurrency=@costCurrency,IncludesTraining=@includesTraining,RecertificationEnabled=@recertificationEnabled,
+          ValidityMonths=@validityMonths,InitialCompletionDays=@initialCompletionDays,ExpiringSoonDays=@expiringSoonDays,
+          IncludesTraining=@includesTraining,RecertificationEnabled=@recertificationEnabled,
           RequiresAttempts=@requiresAttempts,RequiresApplicationDate=@requiresApplicationDate,DefaultMandatory=@defaultMandatory,
           RequirementGroup=@requirementGroup,RequirementGroupMinimum=@requirementGroupMinimum,
           UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
