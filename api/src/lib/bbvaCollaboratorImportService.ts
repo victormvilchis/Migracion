@@ -99,8 +99,14 @@ const FIELD_LABELS: Record<ImportField, string> = {
   lifecycleState: 'Estado operativo',
 };
 
-function normalizeHeader(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+function normalizeHeader(value: unknown): string {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+\[\d+\]$/, '')
+    .trim()
+    .toUpperCase();
 }
 
 function normalizeKey(value: string | null | undefined): string {
@@ -119,7 +125,9 @@ function upper(value: unknown, maxLength: number): string | null {
 function valueByAliases(values: Record<string, string>, aliases: readonly string[]): string | null {
   const normalizedAliases = new Set(aliases.map(normalizeHeader));
   for (const [header, value] of Object.entries(values)) {
-    if (normalizedAliases.has(normalizeHeader(header))) return clean(value, 1000);
+    if (!normalizedAliases.has(normalizeHeader(header))) continue;
+    const candidate = clean(value, 1000);
+    if (candidate) return candidate;
   }
   return null;
 }

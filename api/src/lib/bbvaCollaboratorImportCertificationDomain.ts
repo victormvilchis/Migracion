@@ -162,6 +162,7 @@ function normalizeKey(value: unknown): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, ' ')
+    .replace(/\s+\[\d+\]$/, '')
     .trim()
     .toUpperCase();
 }
@@ -175,7 +176,9 @@ function valueByAliases(values: Record<string, string>, aliases: string[] | unde
   if (!aliases?.length) return null;
   const candidates = new Set(aliases.map(normalizeKey));
   for (const [header, value] of Object.entries(values)) {
-    if (candidates.has(normalizeKey(header))) return clean(value, 1000);
+    if (!candidates.has(normalizeKey(header))) continue;
+    const candidate = clean(value, 1000);
+    if (candidate) return candidate;
   }
   return null;
 }

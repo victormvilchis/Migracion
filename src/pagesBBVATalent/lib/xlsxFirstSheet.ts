@@ -97,8 +97,18 @@ function parseXml(xml: string): Document {
   return document;
 }
 
-export function normalizedHeader(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
+function safeCellText(value: unknown): string {
+  return String(value ?? '').replace(/[\r\n\t]+/g, ' ').trim();
+}
+
+export function normalizedHeader(value: unknown): string {
+  return safeCellText(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+\[\d+\]$/, '')
+    .trim()
+    .toUpperCase();
 }
 
 function columnIndex(cellRef: string): number {
@@ -172,18 +182,22 @@ function matrixFromWorksheet(worksheet: Document, sharedStrings: string[]): Matr
   return matrix;
 }
 
+function denseCells(cells: string[]): string[] {
+  return Array.from({ length: cells.length }, (_, index) => safeCellText(cells[index]));
+}
+
 function nameHeaderIndex(cells: string[]): number {
   const names = new Set(NAME_HEADERS.map(normalizedHeader));
-  return cells.findIndex((value) => names.has(normalizedHeader(value)));
+  return denseCells(cells).findIndex((value) => names.has(normalizedHeader(value)));
 }
 
 function headerCandidate(matrix: MatrixRow[]): { position: number; score: number } | null {
   let best: { position: number; score: number } | null = null;
   const discovery = new Set([...DISCOVERY_HEADERS].map(normalizedHeader));
   for (let position = 0; position < Math.min(matrix.length, 40); position += 1) {
-    const cells = matrix[position].cells;
+    const cells = matrix[position]?.cells ?? [];
     if (nameHeaderIndex(cells) < 0) continue;
-    const score = cells.reduce((total, value) => total + (discovery.has(normalizedHeader(value)) ? 1 : 0), 0);
+    const score = denseCells(cells).reduce((total, value) => total + (discovery.has(normalizedHeader(value)) ? 1 : 0), 0);
     if (!best || score > best.score) best = { position, score };
   }
   return best;
@@ -191,21 +205,30 @@ function headerCandidate(matrix: MatrixRow[]): { position: number; score: number
 
 function parseMatrix(sheetName: string, matrix: MatrixRow[], headerPosition: number): ParsedExcelSheet {
   const headerRow = matrix[headerPosition];
-  const headers = headerRow.cells.map((value, index) => value.trim() || `COLUMNA_${index + 1}`);
+  if (!headerRow) throw new Error(`No fue posible localizar la fila de encabezados en la hoja ${sheetName}.`);
+
+  const headerCounts = new Map<string, number>();
+  const headers = denseCells(headerRow.cells).map((value, index) => {
+    const base = value || `COLUMNA_${index + 1}`;
+    const logicalKey = normalizedHeader(base) || `COLUMNA_${index + 1}`;
+    const count = (headerCounts.get(logicalKey) ?? 0) + 1;
+    headerCounts.set(logicalKey, count);
+    return count === 1 ? base : `${base} [${count}]`;
+  });
   const nameIndex = nameHeaderIndex(headers);
   if (nameIndex < 0) throw new Error(`No se encontró una columna de nombre reconocible en la hoja ${sheetName}.`);
 
   const rows: ParsedExcelRow[] = [];
   let ignoredRows = 0;
   for (const source of matrix.slice(headerPosition + 1)) {
-    const name = source.cells[nameIndex]?.trim() ?? '';
+    const name = safeCellText(source.cells[nameIndex]);
     if (!name) {
       if (source.cells.some((value) => value?.trim())) ignoredRows += 1;
       continue;
     }
     const values: Record<string, string> = {};
     headers.forEach((header, index) => {
-      let value = source.cells[index]?.trim() ?? '';
+      let value = safeCellText(source.cells[index]);
       if (value && isDateHeader(header) && /^\d+(?:\.\d+)?$/.test(value)) value = excelSerialToIso(Number(value));
       values[header] = value;
     });

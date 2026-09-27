@@ -49,6 +49,13 @@ function summaryCard(label: string, value: number, icon: React.ReactNode, active
 
 function formatValue(value: string | null | undefined) { return value?.trim() || 'No disponible'; }
 
+function readableImportError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message.trim();
+  if (typeof error === 'string' && error.trim()) return error.trim();
+  return 'No fue posible analizar el archivo. Revisa el formato e inténtalo nuevamente.';
+}
+
+
 function different(current: string | null, excel: string | null, calculated: string | null) {
   const normalize = (value: string | null) => (value ?? '').trim().toUpperCase();
   return new Set([normalize(current), normalize(excel), normalize(calculated)].filter(Boolean)).size > 1;
@@ -180,7 +187,10 @@ export const CollaboratorImportPage: React.FC = () => {
       setLowDecisions(Object.fromEntries(result.possibleLows.map((item) => [item.collaboratorId, item.decision])));
       const firstAvailable: TabKey = result.newItems.length ? 'new' : result.changedItems.length ? 'changed' : result.conflicts.length ? 'conflicts' : result.possibleLows.length ? 'lows' : result.errors.length ? 'errors' : 'resolved';
       setActiveTab(firstAvailable);
-    } catch (validationError) { setError((validationError as Error).message); }
+    } catch (validationError) {
+      console.error('[BBVA:CollaboratorImport] Error al validar archivo', validationError);
+      setError(readableImportError(validationError));
+    }
   };
 
   const invalidNewEmails = useMemo(() => preview?.newItems.filter((item) => !emailRe.test((emails[item.rowKey] ?? '').trim())) ?? [], [emails, preview]);
@@ -216,7 +226,10 @@ export const CollaboratorImportPage: React.FC = () => {
         return;
       }
       navigate('/bbva/collaborators', { state: { message } });
-    } catch (applyError) { setError((applyError as Error).message); }
+    } catch (applyError) {
+      console.error('[BBVA:CollaboratorImport] Error al aplicar importación', applyError);
+      setError(readableImportError(applyError));
+    }
   };
 
   const tabButton = (key: TabKey, label: string, count: number) => (

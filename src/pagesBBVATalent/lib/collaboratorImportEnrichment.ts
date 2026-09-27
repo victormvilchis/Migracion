@@ -50,7 +50,7 @@ function aliasValue(values: Record<string, string>, aliases: readonly string[]):
   for (const [header, raw] of Object.entries(values)) {
     if (!wanted.has(normalizedHeader(header))) continue;
     const value = String(raw ?? '').trim();
-    if (!value || ['#N/A', 'N/A', 'NA', 'TBD', 'NULL'].includes(normalizeValue(value))) return null;
+    if (!value || ['#N/A', 'N/A', 'NA', 'TBD', 'NULL'].includes(normalizeValue(value))) continue;
     return value;
   }
   return null;
