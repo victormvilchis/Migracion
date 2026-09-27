@@ -116,6 +116,8 @@ export interface CertificationTrackingItem {
   expirationDate: string | null;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
+  latestAttemptId: string | null;
+  latestAttemptResult: CertificationAttemptResult | null;
 }
 
 export type CertificationCommunicationContext = 'APPROVED' | 'FIRST_FAILED' | 'INTERMEDIATE_FAILED' | 'LAST_FAILED' | 'LOW' | 'DEFAULT';

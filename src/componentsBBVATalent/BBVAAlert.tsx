@@ -113,7 +113,7 @@ export const BBVAAlert: React.FC<BBVAAlertProps> = ({
 
   const toast = (
     <div
-      className="fixed right-3 top-[66px] z-[2000] w-[min(520px,calc(100vw-1.5rem))] sm:right-4"
+      className="fixed right-3 top-[66px] z-[4000] w-[min(520px,calc(100vw-1.5rem))] sm:right-4"
       role={tone === 'error' ? 'alert' : 'status'}
       aria-live={tone === 'error' ? 'assertive' : 'polite'}
       onMouseEnter={() => setPaused(true)}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
+import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { CatalogForm } from '../../componentsBBVATalent/CatalogForm';
 import { useCatalogItem, useCreateCatalogItem, useUpdateCatalogItem } from '../hooks/useCatalog';
 import { catalogConfigs, type CatalogPayload, type CatalogType } from '../types/catalog';
@@ -29,10 +30,11 @@ export const CatalogEditorPage: React.FC<{ type: CatalogType }> = ({ type }) => 
 
   if (editing && query.isLoading) return <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando registro...</div>;
   if (editing && (query.error || !selected)) return <BBVAAlert tone="error">{(query.error as Error)?.message || 'Registro no encontrado.'}</BBVAAlert>;
+  if (editing && selected?.status === 'INACTIVE') return <div className="space-y-3 animate-fade-in"><BBVAButton variant="secondary" icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate(config.route)}>Regresar</BBVAButton><BBVAAlert tone="info">Este registro está inactivo. Actívalo desde el listado para poder modificarlo.</BBVAAlert></div>;
 
   return (
     <div className="space-y-3 animate-fade-in">
-      <button type="button" onClick={() => navigate(config.route)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-xs hover:bg-slate-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200"><ArrowLeft className="h-3.5 w-3.5" />Regresar</button>
+      <BBVAButton variant="secondary" icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate(config.route)}>Regresar</BBVAButton>
       {error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}
       <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75 [.bbva-dark_&]:shadow-none">
         <CatalogForm config={config} selected={selected} saving={saving} onSubmit={(payload) => void submit(payload)} onCancel={() => navigate(config.route)} />

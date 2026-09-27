@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowRightLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
+import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
 import { BBVADatePicker } from '../../componentsBBVATalent/BBVADatePicker';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
@@ -105,7 +106,7 @@ export const CollaboratorMoveToTalentPage: React.FC = () => {
           <label className="md:col-span-12"><span className={labelClass}>Observaciones</span><textarea value={values.notes} maxLength={1000} onChange={(event) => setValues((current) => ({ ...current, notes: event.target.value }))} disabled={moveMutation.isPending} className={areaClass} placeholder="Opcional" /></label>
         </div>
 
-        <div className="mt-4 flex justify-end border-t border-slate-200 pt-4"><button type="button" onClick={requestConfirmation} disabled={moveMutation.isPending || reasonsQuery.isLoading} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-[11px] font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" />Mover a Banco de talento</button></div>
+        <div className="mt-4 flex justify-end border-t border-slate-200 pt-4"><BBVAButton type="button" variant="primary" onClick={requestConfirmation} disabled={moveMutation.isPending || reasonsQuery.isLoading} icon={<ArrowRightLeft className="h-3.5 w-3.5" />}>Mover a Banco de talento</BBVAButton></div>
       </section>
 
       <ConfirmDialog open={confirmOpen} title="Mover a Banco de talento" message={`La persona pasará a Banco de talento como ${values.affiliationType === 'INTERNAL' ? 'interna' : 'externa'}, con motivo “${selectedReason?.name ?? values.reasonCode}” y estatus “${values.talentStage === 'AVAILABLE' ? 'Disponible' : 'Desasignado'}”. Su identidad, CV, certificaciones e historial se conservarán.`} confirmLabel="Confirmar movimiento" tone="primary" busy={moveMutation.isPending} onCancel={() => setConfirmOpen(false)} onConfirm={() => void confirm()} />

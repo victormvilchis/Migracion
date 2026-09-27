@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRightLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
+import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useCatalogOptions } from '../hooks/useCatalog';
@@ -138,7 +139,7 @@ export const TalentConvertPage: React.FC = () => {
         </div>
         <div className="mt-4 flex justify-end gap-2 border-t border-slate-200 pt-4">
           <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="h-9 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">Cancelar</button>
-          <button type="button" disabled={busy || catalogsLoading} onClick={requestConfirmation} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-[11px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" />Continuar</button>
+          <BBVAButton type="button" variant="primary" disabled={busy || catalogsLoading} onClick={requestConfirmation} icon={<ArrowRightLeft className="h-3.5 w-3.5" />}>Continuar</BBVAButton>
         </div>
       </div>
       <ConfirmDialog open={confirmOpen} title="Convertir a colaborador" message="Esta persona dejará Banco de talento y será incorporada a Colaboradores conservando su identidad e historial. ¿Deseas continuar?" confirmLabel="Confirmar conversión" tone="danger" busy={busy} onConfirm={() => void confirm()} onCancel={() => setConfirmOpen(false)} />

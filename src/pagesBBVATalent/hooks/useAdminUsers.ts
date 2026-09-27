@@ -15,6 +15,7 @@ export function useCreateAdminUser(){const c=useQueryClient();return useMutation
 export function useUpdateAdminUser(){const c=useQueryClient();return useMutation({mutationFn:({id,payload}:{id:string;payload:AdminUserPayload})=>api.updateAdminUser(id,payload),onSuccess:()=>invalidate(c)});}
 export function useUpdateAdminUserStatus(){const c=useQueryClient();return useMutation({mutationFn:({id,status}:{id:string;status:AdminStatus})=>api.updateAdminUserStatus(id,status),onSuccess:()=>invalidate(c)});}
 export function useDeleteAdminUser(){const c=useQueryClient();return useMutation({mutationFn:api.deleteAdminUser,onSuccess:()=>invalidate(c)});}
+export function useReassignAdminUserDeliveryManager(){const c=useQueryClient();return useMutation({mutationFn:({id,targetUserId}:{id:string;targetUserId:string})=>api.reassignAdminUserDeliveryManager(id,targetUserId),onSuccess:()=>invalidate(c)});}
 export function useCreateAdminRole(){const c=useQueryClient();return useMutation({mutationFn:(p:AdminRolePayload)=>api.createAdminRole(p),onSuccess:()=>invalidate(c)});}
 export function useUpdateAdminRole(){const c=useQueryClient();return useMutation({mutationFn:({id,payload}:{id:string;payload:AdminRolePayload})=>api.updateAdminRole(id,payload),onSuccess:()=>invalidate(c)});}
 export function useUpdateAdminRoleStatus(){const c=useQueryClient();return useMutation({mutationFn:({id,status}:{id:string;status:AdminStatus})=>api.updateAdminRoleStatus(id,status),onSuccess:()=>invalidate(c)});}

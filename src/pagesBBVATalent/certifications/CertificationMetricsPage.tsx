@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVADatePicker } from '../../componentsBBVATalent/BBVADatePicker';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
+import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHeader';
 import { useBbvaDashboard } from '../hooks/useDashboard';
 import type { DashboardFilters } from '../types/dashboard';
 
@@ -75,16 +76,17 @@ function MetricCard({ label, value, hint, icon, onClick, tone = 'blue' }: { labe
 export const CertificationMetricsPage: React.FC = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<DashboardFilters>(initialFilters);
-  const [sort, setSort] = useState<'priority' | 'name' | 'technology'>('priority');
+  const [sort, setSort] = useState<'priority' | 'name' | 'technology' | 'valid' | 'expiring' | 'expired' | 'pending'>('priority');
+  const [direction,setDirection]=useState<'asc'|'desc'>('desc');
   const query = useBbvaDashboard(filters);
   const data = query.data;
 
   const attention = useMemo(() => {
     const rows = [...(data?.attention ?? [])];
-    if (sort === 'name') return rows.sort((a, b) => a.fullName.localeCompare(b.fullName, 'es-MX'));
-    if (sort === 'technology') return rows.sort((a, b) => a.technology.localeCompare(b.technology, 'es-MX') || a.fullName.localeCompare(b.fullName, 'es-MX'));
-    return rows.sort((a, b) => ((b.expired + b.recertificationPending) * 100 + b.expiring * 10 + b.pending) - ((a.expired + a.recertificationPending) * 100 + a.expiring * 10 + a.pending));
-  }, [data?.attention, sort]);
+    const text=(a:string,b:string)=>a.localeCompare(b,'es-MX',{sensitivity:'base',numeric:true});
+    const cmp=(a:any,b:any)=> sort==='name'?text(a.fullName,b.fullName):sort==='technology'?text(a.technology,b.technology):sort==='valid'?a.valid-b.valid:sort==='expiring'?a.expiring-b.expiring:sort==='expired'?(a.expired+a.recertificationPending)-(b.expired+b.recertificationPending):sort==='pending'?a.pending-b.pending:((a.expired+a.recertificationPending)*100+a.expiring*10+a.pending)-((b.expired+b.recertificationPending)*100+b.expiring*10+b.pending);
+    return rows.sort((a,b)=>(direction==='asc'?1:-1)*cmp(a,b));
+  }, [data?.attention, sort, direction]);
 
   if (query.error) return <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert>;
 
@@ -132,8 +134,8 @@ export const CertificationMetricsPage: React.FC = () => {
           <div className="grid gap-3 xl:grid-cols-[0.75fr_1.25fr]">
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="mb-4"><h2 className="text-sm font-semibold text-slate-950">Composición de Banco de talento</h2></div><Donut items={data.talentComposition} center={cards.talentBankActive} caption="personas" /></section>
             <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3"><div><h2 className="text-sm font-semibold text-slate-950">Colaboradores a revisar</h2></div><div className="w-48"><BBVASearchableSelect value={sort} onChange={(value) => setSort(value as typeof sort)} options={[{ value: 'priority', label: 'Ordenar por prioridad' }, { value: 'name', label: 'Ordenar por nombre' }, { value: 'technology', label: 'Ordenar por tecnología' }]} ariaLabel="Orden de tabla" /></div></div>
-              <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-[10px]"><thead className="bg-slate-50 text-[8.5px] font-semibold uppercase tracking-[0.04em] text-slate-500"><tr><th className="px-3 py-2">Colaborador</th><th className="px-3 py-2">Tecnología</th><th className="px-3 py-2 text-center">Vigentes</th><th className="px-3 py-2 text-center">Próximas</th><th className="px-3 py-2 text-center">Vencidas</th><th className="px-3 py-2 text-center">Pendientes</th><th className="px-3 py-2 text-right">Acción</th></tr></thead><tbody className="divide-y divide-slate-100">{attention.slice(0, 12).map((row) => <tr key={row.collaboratorId} className="hover:bg-slate-50"><td className="px-3 py-2"><div className="font-semibold text-slate-900">{row.fullName}</div><div className="text-[9px] text-slate-400">{row.profile}</div></td><td className="px-3 py-2 text-slate-600">{row.technology}</td><td className="px-3 py-2 text-center font-semibold text-emerald-700">{row.valid}</td><td className="px-3 py-2 text-center font-semibold text-amber-700">{row.expiring}</td><td className="px-3 py-2 text-center font-semibold text-rose-700">{row.expired + row.recertificationPending}</td><td className="px-3 py-2 text-center font-semibold text-slate-700">{row.pending}</td><td className="px-3 py-2 text-right"><button type="button" onClick={() => navigate(`/bbva/collaborators/${row.collaboratorId}/certifications`)} className="rounded-lg border border-slate-200 px-2 py-1 text-[9.5px] font-semibold text-blue-700 hover:bg-blue-50">Revisar</button></td></tr>)}</tbody></table></div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3"><div><h2 className="text-sm font-semibold text-slate-950">Colaboradores a revisar</h2></div><button type="button" onClick={()=>{setSort('priority');setDirection('desc');}} className="text-[9.5px] font-semibold text-blue-700 hover:underline">Ordenar por prioridad</button></div>
+              <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-[10px]"><thead className="bg-slate-50 text-[8.5px] font-semibold uppercase tracking-[0.04em] text-slate-500"><tr><th className="px-3 py-2"><BBVATableSortHeader label="Colaborador" active={sort==='name'} direction={direction} onClick={()=>{setDirection(sort==='name'&&direction==='asc'?'desc':'asc');setSort('name');}}/></th><th className="px-3 py-2"><BBVATableSortHeader label="Tecnología" active={sort==='technology'} direction={direction} onClick={()=>{setDirection(sort==='technology'&&direction==='asc'?'desc':'asc');setSort('technology');}}/></th><th className="px-3 py-2"><BBVATableSortHeader label="Vigentes" active={sort==='valid'} direction={direction} align="center" onClick={()=>{setDirection(sort==='valid'&&direction==='asc'?'desc':'asc');setSort('valid');}}/></th><th className="px-3 py-2"><BBVATableSortHeader label="Próximas" active={sort==='expiring'} direction={direction} align="center" onClick={()=>{setDirection(sort==='expiring'&&direction==='asc'?'desc':'asc');setSort('expiring');}}/></th><th className="px-3 py-2"><BBVATableSortHeader label="Vencidas" active={sort==='expired'} direction={direction} align="center" onClick={()=>{setDirection(sort==='expired'&&direction==='asc'?'desc':'asc');setSort('expired');}}/></th><th className="px-3 py-2"><BBVATableSortHeader label="Pendientes" active={sort==='pending'} direction={direction} align="center" onClick={()=>{setDirection(sort==='pending'&&direction==='asc'?'desc':'asc');setSort('pending');}}/></th><th className="px-3 py-2 text-right">Acción</th></tr></thead><tbody className="divide-y divide-slate-100">{attention.slice(0, 12).map((row) => <tr key={row.collaboratorId} className="hover:bg-slate-50"><td className="px-3 py-2"><div className="font-semibold text-slate-900">{row.fullName}</div><div className="text-[9px] text-slate-400">{row.profile}</div></td><td className="px-3 py-2 text-slate-600">{row.technology}</td><td className="px-3 py-2 text-center font-semibold text-emerald-700">{row.valid}</td><td className="px-3 py-2 text-center font-semibold text-amber-700">{row.expiring}</td><td className="px-3 py-2 text-center font-semibold text-rose-700">{row.expired + row.recertificationPending}</td><td className="px-3 py-2 text-center font-semibold text-slate-700">{row.pending}</td><td className="px-3 py-2 text-right"><button type="button" onClick={() => navigate(`/bbva/collaborators/${row.collaboratorId}/certifications`)} className="rounded-lg border border-slate-200 px-2 py-1 text-[9.5px] font-semibold text-blue-700 hover:bg-blue-50">Revisar</button></td></tr>)}</tbody></table></div>
             </section>
           </div>
         </>

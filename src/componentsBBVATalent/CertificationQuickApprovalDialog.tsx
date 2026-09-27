@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BBVAButton } from './BBVAButton';
 import { createPortal } from 'react-dom';
 import { CheckCircle2, X } from 'lucide-react';
 import { BBVADatePicker } from './BBVADatePicker';
@@ -29,7 +30,7 @@ export const CertificationQuickApprovalDialog: React.FC<Props> = ({ open, collab
           <button type="button" onClick={onCancel} disabled={busy} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>
         </div>
         <div className="mt-5"><div className="mb-1.5 text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500">Fecha de presentación</div><BBVADatePicker value={date} onChange={setDate} disabled={busy} ariaLabel="Fecha de presentación" /></div>
-        <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4"><button type="button" onClick={onCancel} disabled={busy} className="h-9 rounded-xl border border-slate-300 px-4 text-[11px] font-semibold text-slate-700">Cancelar</button><button type="button" onClick={() => date && onConfirm(date)} disabled={busy || !date} className="h-9 rounded-xl bg-emerald-600 px-4 text-[11px] font-semibold text-white disabled:opacity-50">{busy ? 'Guardando...' : 'Confirmar aprobación'}</button></div>
+        <div className="mt-5 flex justify-end gap-2 border-t border-slate-100 pt-4"><BBVAButton type="button" variant="secondary" onClick={onCancel} disabled={busy}>Cancelar</BBVAButton><BBVAButton type="button" variant="primary" onClick={() => date && onConfirm(date)} disabled={busy || !date}>{busy ? 'Guardando...' : 'Confirmar aprobación'}</BBVAButton></div>
       </div>
     </div>,
     document.body,

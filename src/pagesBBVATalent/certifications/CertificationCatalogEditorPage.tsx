@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
+import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { CertificationCatalogForm } from '../../componentsBBVATalent/CertificationCatalogForm';
 import { useCertificationCatalogItem, useCreateCertificationCatalogItem, useUpdateCertificationCatalogItem } from '../hooks/useCertificationCatalog';
 import type { CertificationCatalogPayload } from '../types/certificationCatalog';
@@ -30,6 +31,7 @@ export const CertificationCatalogEditorPage: React.FC = () => {
 
   if (editing && query.isLoading) return <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando certificación...</div>;
   if (editing && (query.error || !selected)) return <BBVAAlert tone="error">{(query.error as Error)?.message || 'Certificación no encontrada.'}</BBVAAlert>;
+  if (editing && selected?.status === 'INACTIVE') return <div className="space-y-3 animate-fade-in"><BBVAButton variant="secondary" icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate(route)}>Regresar</BBVAButton><BBVAAlert tone="info">Esta certificación está inactiva. Actívala desde el listado para poder modificar su configuración.</BBVAAlert></div>;
 
-  return <div className="space-y-3 animate-fade-in"><button type="button" onClick={() => navigate(route)} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-xs hover:bg-slate-50"><ArrowLeft className="h-3.5 w-3.5" />Regresar</button>{error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}<CertificationCatalogForm selected={selected} saving={saving} onSubmit={(payload) => void submit(payload)} onCancel={() => navigate(route)} /></div>;
+  return <div className="space-y-3 animate-fade-in"><BBVAButton variant="secondary" icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate(route)}>Regresar</BBVAButton>{error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}<CertificationCatalogForm selected={selected} saving={saving} onSubmit={(payload) => void submit(payload)} onCancel={() => navigate(route)} /></div>;
 };

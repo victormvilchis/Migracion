@@ -1,163 +1,38 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRightLeft, Download, Eye, FileText, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import React, { Fragment, useMemo, useState } from 'react';
+import { ArrowRightLeft, ChevronDown, ChevronUp, Download, Eye, FileText, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
+import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHeader';
 import { TalentStageBadge } from '../../componentsBBVATalent/TalentStageBadge';
+import { talentApi } from '../api/talentApi';
+import { useCatalogOptions } from '../hooks/useCatalog';
+import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
+import { useTalentList } from '../hooks/useTalent';
 import { downloadCvDocument, viewCvDocument } from '../lib/talentCv';
 import { roleDisplay, technologyDisplay } from '../lib/talentDisplay';
-import { useTalentList } from '../hooks/useTalent';
-import { useCatalogOptions } from '../hooks/useCatalog';
-import { talentApi } from '../api/talentApi';
-import {
-  TALENT_AFFILIATION_LABELS,
-  TALENT_TYPE_LABELS,
-  type Talent,
-  type TalentAffiliation,
-} from '../types/talent';
+import { TALENT_AFFILIATION_LABELS, TALENT_TYPE_LABELS, type Talent, type TalentAffiliation } from '../types/talent';
 
-interface LocationState { message?: string; }
-type TypeFilter = 'ALL' | 'ACADEMY' | 'PROSPECT' | 'FORMER_COLLABORATOR';
-type StatusFilter = 'ACTIVE' | 'DELETED' | 'ALL';
-type AffiliationFilter = 'ALL' | TalentAffiliation;
+type TypeFilter='ALL'|'ACADEMY'|'PROSPECT'|'FORMER_COLLABORATOR'; type StatusFilter='ACTIVE'|'DELETED'|'ALL'; type AffiliationFilter='ALL'|TalentAffiliation;
+type SortField='name'|'affiliation'|'status'|'origin'|'profile'|'technology';
+const defaults={search:'',typeFilter:'ALL' as TypeFilter,affiliationFilter:'ALL' as AffiliationFilter,statusFilter:'ACTIVE' as StatusFilter,profileFilter:'ALL',technologyFilter:'ALL',page:0,size:10,sort:'name' as SortField,direction:'asc' as 'asc'|'desc'};
+const typeOptions=[{value:'ALL',label:'Todos los tipos'},{value:'ACADEMY',label:'Academia'},{value:'PROSPECT',label:'Prospecto'},{value:'FORMER_COLLABORATOR',label:'Excolaborador'}] as const;
 
-const typeOptions: { value: TypeFilter; label: string }[] = [
-  { value: 'ALL', label: 'Todos los tipos' },
-  { value: 'ACADEMY', label: 'Academia' },
-  { value: 'PROSPECT', label: 'Prospecto' },
-  { value: 'FORMER_COLLABORATOR', label: 'Excolaborador' },
-];
-
-export const TalentPage: React.FC = () => {
-  const listQuery = useTalentList();
-  const profilesQuery = useCatalogOptions('profiles');
-  const technologiesQuery = useCatalogOptions('technologies');
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
-  const [affiliationFilter, setAffiliationFilter] = useState<AffiliationFilter>('ALL');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ACTIVE');
-  const [profileFilter, setProfileFilter] = useState('ALL');
-  const [technologyFilter, setTechnologyFilter] = useState('ALL');
-  const [page, setPage] = useState(0);
-  const [size, setSize] = useState(10);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>((location.state as LocationState | null)?.message ?? null);
-
-  useEffect(() => {
-    if ((location.state as LocationState | null)?.message) navigate(location.pathname, { replace: true, state: {} });
-  }, [location.pathname, location.state, navigate]);
-
-  const items = listQuery.data?.items ?? [];
-  const profileOptions = profilesQuery.data?.items ?? [];
-  const technologyOptions = technologiesQuery.data?.items ?? [];
-
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return items.filter((item) => {
-      const normalizedType = item.talentType === 'BBVA_EXIT' ? 'FORMER_COLLABORATOR' : item.talentType;
-      const values = [item.fullName, item.softtekEmail, item.bbvaEmail, item.email, item.softtekCode, item.bbvaUser, item.corporateUser, item.profile, item.technologyProfile, item.currentTechnology, item.expertise, item.lifecycleReasonName, item.lifecycleReasonCode];
-      const matchesSearch = !term || values.filter(Boolean).some((value) => String(value).toLowerCase().includes(term));
-      return matchesSearch
-        && (typeFilter === 'ALL' || normalizedType === typeFilter)
-        && (affiliationFilter === 'ALL' || item.affiliationType === affiliationFilter)
-        && (statusFilter === 'ALL' || item.recordStatus === statusFilter)
-        && (profileFilter === 'ALL' || item.profileCatalogId === profileFilter)
-        && (technologyFilter === 'ALL' || item.currentTechnologyCatalogId === technologyFilter);
-    });
-  }, [affiliationFilter, items, profileFilter, search, statusFilter, technologyFilter, typeFilter]);
-
-  useEffect(() => setPage(0), [search, typeFilter, affiliationFilter, statusFilter, profileFilter, technologyFilter, size]);
-  const paged = useMemo(() => filtered.slice(page * size, page * size + size), [filtered, page, size]);
-
-  const openCv = async (item: Talent, download: boolean) => {
-    try {
-      setActionError(null);
-      const response = await talentApi.getCv(item.id);
-      if (download) downloadCvDocument(response.document);
-      else viewCvDocument(response.document);
-    } catch (error) {
-      setActionError((error as Error).message);
-    }
-  };
-
-  return (
-    <div className="space-y-3 animate-fade-in">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <button type="button" onClick={() => navigate('/bbva/talent-bank/new')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[11px] font-semibold text-white shadow-sm transition hover:bg-blue-500">
-          <Plus className="h-3.5 w-3.5" /> Agregar talento
-        </button>
-      </div>
-
-      {message && <BBVAAlert tone="success" onClose={() => setMessage(null)}>{message}</BBVAAlert>}
-      {actionError && <BBVAAlert tone="error" onClose={() => setActionError(null)}>{actionError}</BBVAAlert>}
-
-      <div className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_170px_160px_160px_200px_200px]">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, correo o IS" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100" />
-        </div>
-        <BBVASearchableSelect value={typeFilter} onChange={(value) => setTypeFilter(value as TypeFilter)} options={typeOptions} ariaLabel="Filtrar por tipo" />
-        <BBVASearchableSelect value={affiliationFilter} onChange={(value) => setAffiliationFilter(value as AffiliationFilter)} options={[{ value: 'ALL', label: 'Internos y externos' }, { value: 'INTERNAL', label: 'Internos' }, { value: 'EXTERNAL', label: 'Externos' }]} ariaLabel="Filtrar por vinculación" />
-        <BBVASearchableSelect value={statusFilter} onChange={(value) => setStatusFilter(value as StatusFilter)} options={[{ value: 'ACTIVE', label: 'Activos' }, { value: 'DELETED', label: 'Eliminados' }, { value: 'ALL', label: 'Todos' }]} ariaLabel="Filtrar por estado" />
-        <BBVASearchableSelect value={profileFilter} onChange={setProfileFilter} options={[{ value: 'ALL', label: 'Todos los perfiles' }, ...profileOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Filtrar por perfil" />
-        <BBVASearchableSelect value={technologyFilter} onChange={setTechnologyFilter} options={[{ value: 'ALL', label: 'Todas las tecnologías' }, ...technologyOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Filtrar por tecnología" />
-      </div>
-
-      {listQuery.isLoading ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando Banco de talento...</div>
-      ) : listQuery.error ? (
-        <BBVAAlert tone="error">{(listQuery.error as Error).message}</BBVAAlert>
-      ) : (
-        <div className="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
-          <div className="overflow-x-auto overflow-y-visible">
-            <table className="w-full min-w-[1220px] table-fixed text-left text-[10.5px]">
-              <thead className="border-b border-slate-200 bg-slate-50/90 text-[9px] font-semibold uppercase tracking-[0.035em] text-slate-600">
-                <tr>
-                  <th className="w-[22%] px-2 py-1.5">Persona</th>
-                  <th className="w-[10%] px-2 py-1.5">Vinculación</th>
-                  <th className="w-[12%] px-2 py-1.5">Estatus</th>
-                  <th className="w-[17%] px-2 py-1.5">Motivo / origen</th>
-                  <th className="w-[19%] px-2 py-1.5">Perfil</th>
-                  <th className="w-[10%] px-2 py-1.5">Tecnología</th>
-                  <th className="w-[4%] px-2 py-1.5">CV</th>
-                  <th className="w-[6%] px-2 py-1.5 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {paged.map((item) => {
-                  const deleted = item.recordStatus === 'DELETED';
-                  return (
-                    <tr key={item.id} className={`h-[42px] transition hover:bg-slate-50 ${deleted ? 'opacity-70' : ''}`}>
-                      <td className="px-2 py-1.5"><div className="truncate font-semibold text-slate-900">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail || item.email}</div>{item.bbvaEmail ? <div className="truncate text-[9px] text-slate-400">BBVA: {item.bbvaEmail}</div> : null}</td>
-                      <td className="px-2 py-1.5"><span className="rounded-full bg-slate-100 px-2 py-1 text-[9.5px] font-semibold text-slate-700">{TALENT_AFFILIATION_LABELS[item.affiliationType]}</span></td>
-                      <td className="px-2 py-1.5">{deleted ? <span className="rounded-full bg-rose-50 px-2 py-1 text-[9.5px] font-semibold text-rose-700">Eliminado</span> : <TalentStageBadge stage={item.stage} />}</td>
-                      <td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{item.lifecycleReasonName || TALENT_TYPE_LABELS[item.talentType]}</div>{item.lifecycleEffectiveDate ? <div className="mt-0.5 text-[9px] text-slate-400">Desde {item.lifecycleEffectiveDate}</div> : null}</td>
-                      <td className="px-2 py-1.5 text-slate-700"><div className="line-clamp-2 leading-[1.15]">{roleDisplay(item)}</div></td>
-                      <td className="px-2 py-1.5 text-slate-700">{technologyDisplay(item)}</td>
-                      <td className="px-2 py-1.5">{item.cv ? <button type="button" onClick={() => void openCv(item, false)} className="inline-flex h-6 items-center gap-1 rounded-md px-1 text-[10px] font-medium text-blue-600 hover:bg-blue-50"><FileText className="h-3 w-3" /> Ver</button> : <span className="text-slate-400">—</span>}</td>
-                      <td className="px-2 py-1.5 text-right">
-                        <BBVAActionMenu items={[
-                          { id: 'view', label: 'Ver', icon: Eye, onClick: () => navigate(`/bbva/talent-bank/${item.id}`) },
-                          { id: 'edit', label: 'Editar', icon: Pencil, disabled: deleted, onClick: () => navigate(`/bbva/talent-bank/${item.id}/edit`) },
-                          { id: 'convert', label: 'Convertir a colaborador', icon: ArrowRightLeft, disabled: deleted, onClick: () => navigate(`/bbva/talent-bank/${item.id}/convert`) },
-                          { id: 'view-cv', label: 'Ver CV', icon: FileText, disabled: !item.cv, onClick: () => void openCv(item, false) },
-                          { id: 'download-cv', label: 'Descargar CV', icon: Download, disabled: !item.cv, onClick: () => void openCv(item, true) },
-                          { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger', disabled: deleted, onClick: () => navigate(`/bbva/talent-bank/${item.id}/delete`) },
-                        ]} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {filtered.length === 0 ? <div className="border-t border-slate-200 px-3 py-8 text-center text-xs text-slate-500">No hay registros que coincidan con los filtros.</div> : <BBVAPagination total={filtered.length} page={page} size={size} onPageChange={setPage} onSizeChange={(next) => { setSize(next); setPage(0); }} />}
-        </div>
-      )}
-    </div>
-  );
+export const TalentPage:React.FC=()=>{
+  const listQuery=useTalentList(); const profilesQuery=useCatalogOptions('profiles'); const technologiesQuery=useCatalogOptions('technologies'); const navigate=useNavigate(); const location=useLocation();
+  const memory=useBBVAListMemory('talent-bank',defaults); const {search,typeFilter,affiliationFilter,statusFilter,profileFilter,technologyFilter,page,size,sort,direction}=memory.state;
+  const [expanded,setExpanded]=useState<string|null>(null); const [actionError,setActionError]=useState<string|null>(null); const message=(location.state as {message?:string}|null)?.message??null;
+  const items=listQuery.data?.items??[];
+  const filtered=useMemo(()=>{const term=search.trim().toLocaleLowerCase('es-MX'); const rows=items.filter((item)=>{const normalizedType=item.talentType==='BBVA_EXIT'?'FORMER_COLLABORATOR':item.talentType;const values=[item.fullName,item.softtekEmail,item.bbvaEmail,item.email,item.softtekCode,item.bbvaUser,item.corporateUser,item.profile,item.technologyProfile,item.currentTechnology,item.expertise,item.lifecycleReasonName];return (!term||values.filter(Boolean).some((v)=>String(v).toLocaleLowerCase('es-MX').includes(term)))&&(typeFilter==='ALL'||normalizedType===typeFilter)&&(affiliationFilter==='ALL'||item.affiliationType===affiliationFilter)&&(statusFilter==='ALL'||item.recordStatus===statusFilter)&&(profileFilter==='ALL'||item.profileCatalogId===profileFilter)&&(technologyFilter==='ALL'||item.currentTechnologyCatalogId===technologyFilter);}); const value=(item:Talent)=>sort==='name'?item.fullName:sort==='affiliation'?TALENT_AFFILIATION_LABELS[item.affiliationType]:sort==='status'?(item.recordStatus==='DELETED'?'Eliminado':item.stage):sort==='origin'?(item.lifecycleReasonName||TALENT_TYPE_LABELS[item.talentType]):sort==='profile'?roleDisplay(item):technologyDisplay(item); return rows.sort((a,b)=>{const c=String(value(a)??'').localeCompare(String(value(b)??''),'es-MX',{sensitivity:'base',numeric:true});return direction==='asc'?c:-c;});},[affiliationFilter,direction,items,profileFilter,search,sort,statusFilter,technologyFilter,typeFilter]);
+  const safePage=Math.min(page,Math.max(0,Math.ceil(filtered.length/size)-1)); const paged=filtered.slice(safePage*size,safePage*size+size); const changeSort=(field:SortField)=>memory.patch(sort===field?{direction:direction==='asc'?'desc':'asc',page:0}:{sort:field,direction:'asc',page:0});
+  const openCv=async(item:Talent,download:boolean)=>{try{setActionError(null);const r=await talentApi.getCv(item.id);if(download)downloadCvDocument(r.document);else viewCvDocument(r.document);}catch(e){setActionError((e as Error).message);}};
+  return <div className="space-y-3 animate-fade-in">
+    <div className="flex justify-end"><button type="button" onClick={()=>navigate('/bbva/talent-bank/new')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[11px] font-semibold text-white shadow-sm hover:bg-blue-500"><Plus className="h-3.5 w-3.5"/>Agregar talento</button></div>
+    {message?<BBVAAlert tone="success" onClose={()=>navigate(location.pathname,{replace:true,state:{}})}>{message}</BBVAAlert>:null}{actionError?<BBVAAlert tone="error" onClose={()=>setActionError(null)}>{actionError}</BBVAAlert>:null}
+    <div className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_170px_160px_160px_200px_200px]"><div className="relative"><Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400"/><input value={search} onChange={(e)=>memory.patch({search:e.target.value,page:0})} placeholder="Buscar por nombre, correo o IS" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] outline-none focus:border-blue-500"/></div><BBVASearchableSelect value={typeFilter} onChange={(v)=>memory.patch({typeFilter:v as TypeFilter,page:0})} options={[...typeOptions]} ariaLabel="Tipo"/><BBVASearchableSelect value={affiliationFilter} onChange={(v)=>memory.patch({affiliationFilter:v as AffiliationFilter,page:0})} options={[{value:'ALL',label:'Internos y externos'},{value:'INTERNAL',label:'Internos'},{value:'EXTERNAL',label:'Externos'}]} ariaLabel="Vinculación"/><BBVASearchableSelect value={statusFilter} onChange={(v)=>memory.patch({statusFilter:v as StatusFilter,page:0})} options={[{value:'ACTIVE',label:'Activos'},{value:'DELETED',label:'Eliminados'},{value:'ALL',label:'Todos'}]} ariaLabel="Estado"/><BBVASearchableSelect value={profileFilter} onChange={(v)=>memory.patch({profileFilter:v,page:0})} options={[{value:'ALL',label:'Todos los perfiles'},...(profilesQuery.data?.items??[]).map((o)=>({value:o.id,label:o.name}))]} ariaLabel="Perfil"/><BBVASearchableSelect value={technologyFilter} onChange={(v)=>memory.patch({technologyFilter:v,page:0})} options={[{value:'ALL',label:'Todas las tecnologías'},...(technologiesQuery.data?.items??[]).map((o)=>({value:o.id,label:o.name}))]} ariaLabel="Tecnología"/></div>
+    {listQuery.isLoading?<div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando Banco de talento...</div>:listQuery.error?<BBVAAlert tone="error">{(listQuery.error as Error).message}</BBVAAlert>:<div className="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="w-full min-w-[1220px] table-fixed text-left text-[10.5px]"><thead className="border-b border-slate-200 bg-slate-50/90 text-[9px] font-semibold uppercase text-slate-600"><tr><th className="w-[22%] px-2 py-1.5"><BBVATableSortHeader label="Persona" active={sort==='name'} direction={direction} onClick={()=>changeSort('name')}/></th><th className="w-[10%] px-2 py-1.5"><BBVATableSortHeader label="Vinculación" active={sort==='affiliation'} direction={direction} onClick={()=>changeSort('affiliation')}/></th><th className="w-[12%] px-2 py-1.5"><BBVATableSortHeader label="Estatus" active={sort==='status'} direction={direction} onClick={()=>changeSort('status')}/></th><th className="w-[17%] px-2 py-1.5"><BBVATableSortHeader label="Motivo / origen" active={sort==='origin'} direction={direction} onClick={()=>changeSort('origin')}/></th><th className="w-[19%] px-2 py-1.5"><BBVATableSortHeader label="Perfil" active={sort==='profile'} direction={direction} onClick={()=>changeSort('profile')}/></th><th className="w-[10%] px-2 py-1.5"><BBVATableSortHeader label="Tecnología" active={sort==='technology'} direction={direction} onClick={()=>changeSort('technology')}/></th><th className="w-[4%] px-2 py-1.5">CV</th><th className="w-[6%] px-2 py-1.5 text-right">Acciones</th></tr></thead><tbody className="divide-y divide-slate-200">{paged.map((item)=>{const deleted=item.recordStatus==='DELETED';const open=expanded===item.id;return <Fragment key={item.id}><tr onClick={()=>setExpanded(open?null:item.id)} className={`h-[42px] cursor-pointer transition hover:bg-blue-50/35 ${deleted?'opacity-70':''}`}><td className="px-2 py-1.5"><div className="flex gap-1.5">{open?<ChevronUp className="mt-0.5 h-3 w-3 text-blue-600"/>:<ChevronDown className="mt-0.5 h-3 w-3 text-slate-400"/>}<div className="min-w-0"><div className="truncate font-semibold text-slate-900">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></div></td><td className="px-2 py-1.5"><span className="rounded-full bg-slate-100 px-2 py-1 text-[9.5px] font-semibold text-slate-700">{TALENT_AFFILIATION_LABELS[item.affiliationType]}</span></td><td className="px-2 py-1.5">{deleted?<span className="rounded-full bg-rose-50 px-2 py-1 text-[9.5px] font-semibold text-rose-700">Eliminado</span>:<TalentStageBadge stage={item.stage}/>}</td><td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{item.lifecycleReasonName||TALENT_TYPE_LABELS[item.talentType]}</div></td><td className="px-2 py-1.5 text-slate-700"><div className="line-clamp-2">{roleDisplay(item)}</div></td><td className="px-2 py-1.5 text-slate-700">{technologyDisplay(item)}</td><td className="px-2 py-1.5" onClick={(e)=>e.stopPropagation()}>{item.cv?<button type="button" onClick={()=>void openCv(item,false)} className="inline-flex h-6 items-center gap-1 text-[10px] font-medium text-blue-600"><FileText className="h-3 w-3"/>Ver</button>:<span className="text-slate-400">—</span>}</td><td className="px-2 py-1.5 text-right" onClick={(e)=>e.stopPropagation()}><BBVAActionMenu items={[{id:'view',label:'Ver',icon:Eye,onClick:()=>navigate(`/bbva/talent-bank/${item.id}`)},{id:'edit',label:'Editar',icon:Pencil,disabled:deleted,onClick:()=>navigate(`/bbva/talent-bank/${item.id}/edit`)},{id:'convert',label:'Convertir a colaborador',icon:ArrowRightLeft,disabled:deleted,onClick:()=>navigate(`/bbva/talent-bank/${item.id}/convert`)},{id:'view-cv',label:'Ver CV',icon:FileText,disabled:!item.cv,onClick:()=>void openCv(item,false)},{id:'download-cv',label:'Descargar CV',icon:Download,disabled:!item.cv,onClick:()=>void openCv(item,true)},{id:'delete',label:'Eliminar',icon:Trash2,tone:'danger',disabled:deleted,onClick:()=>navigate(`/bbva/talent-bank/${item.id}/delete`)}]}/></td></tr>{open?<tr className="bg-slate-50/70"><td colSpan={8} className="px-6 py-3"><div className="grid gap-x-6 gap-y-2 text-[10px] sm:grid-cols-2 xl:grid-cols-4"><Info label="IS" value={item.softtekCode}/><Info label="Usuario BBVA / XM" value={item.bbvaUser||item.corporateUser}/><Info label="Correo BBVA" value={item.bbvaEmail}/><Info label="Alta BBVA" value={item.bbvaStartDate}/><Info label="Perfil tecnológico" value={item.technologyProfile}/><Info label="Nivel" value={item.expertise}/><Info label="Ingreso al banco" value={item.entryDate}/><Info label="Notas" value={item.notes}/></div></td></tr>:null}</Fragment>;})}</tbody></table></div>{filtered.length===0?<div className="p-8 text-center text-xs text-slate-500">No hay registros que coincidan con los filtros.</div>:<BBVAPagination total={filtered.length} page={safePage} size={size} onPageChange={(v)=>memory.patch({page:v})} onSizeChange={(v)=>memory.patch({size:v,page:0})}/>}</div>}
+  </div>;
 };
+const Info:React.FC<{label:string;value:string|null|undefined}>=({label,value})=><div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">{label}</div><div className="mt-0.5 break-words font-medium text-slate-700">{value||'—'}</div></div>;

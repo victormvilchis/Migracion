@@ -15,8 +15,11 @@ const buttonBase = 'inline-flex h-7 min-w-7 items-center justify-center rounded-
 export const BBVAPagination: React.FC<BBVAPaginationProps> = ({ total, page, size, onPageChange, onSizeChange }) => {
   const totalPages = Math.max(1, Math.ceil(total / size));
   const currentPage = Math.min(page, totalPages - 1);
-  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index);
-  const pagesToRender = pageNumbers.filter((index) => index === 0 || index === totalPages - 1 || Math.abs(index - currentPage) <= 1);
+  const visibleCount = Math.min(7, totalPages);
+  const half = Math.floor(visibleCount / 2);
+  let start = Math.max(0, currentPage - half);
+  if (start + visibleCount > totalPages) start = Math.max(0, totalPages - visibleCount);
+  const pagesToRender = Array.from({ length: visibleCount }, (_, index) => start + index);
 
   return (
     <div className="flex flex-col gap-2 border-t border-slate-200 px-3 py-2 [.bbva-dark_&]:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
@@ -25,11 +28,8 @@ export const BBVAPagination: React.FC<BBVAPaginationProps> = ({ total, page, siz
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => onPageChange(0)} disabled={currentPage === 0} className={buttonBase} aria-label="Primera página"><ChevronsLeft className="h-3.5 w-3.5" /></button>
           <button type="button" onClick={() => onPageChange(Math.max(currentPage - 1, 0))} disabled={currentPage === 0} className={buttonBase} aria-label="Página anterior"><ChevronLeft className="h-3.5 w-3.5" /></button>
-          {pagesToRender.map((index, idx) => (
-            <React.Fragment key={index}>
-              {idx > 0 && index - pagesToRender[idx - 1] > 1 ? <span className="px-1 text-[10px] text-slate-400">…</span> : null}
-              <button type="button" onClick={() => onPageChange(index)} className={`${buttonBase} ${index === currentPage ? 'border-blue-500 bg-blue-50 text-blue-700 [.bbva-dark_&]:bg-blue-500/10 [.bbva-dark_&]:text-blue-200' : ''}`}>{index + 1}</button>
-            </React.Fragment>
+          {pagesToRender.map((index) => (
+            <button key={index} type="button" onClick={() => onPageChange(index)} className={`${buttonBase} ${index === currentPage ? 'border-blue-500 bg-blue-50 text-blue-700 [.bbva-dark_&]:bg-blue-500/10 [.bbva-dark_&]:text-blue-200' : ''}`}>{index + 1}</button>
           ))}
           <button type="button" onClick={() => onPageChange(Math.min(currentPage + 1, totalPages - 1))} disabled={currentPage >= totalPages - 1} className={buttonBase} aria-label="Página siguiente"><ChevronRight className="h-3.5 w-3.5" /></button>
           <button type="button" onClick={() => onPageChange(totalPages - 1)} disabled={currentPage >= totalPages - 1} className={buttonBase} aria-label="Última página"><ChevronsRight className="h-3.5 w-3.5" /></button>
