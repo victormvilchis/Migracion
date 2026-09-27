@@ -14,9 +14,11 @@ function certificationStatus(row: DashboardCertificationRow, today: Date): strin
   if (!row.expirationDate) return 'VALID';
   const expiration = new Date(`${row.expirationDate}T23:59:59Z`);
   if (expiration.getTime() < today.getTime()) return row.recertificationEnabled ? 'RECERTIFICATION_PENDING' : 'EXPIRED';
-  const threshold = new Date(today);
-  threshold.setUTCDate(threshold.getUTCDate() + (row.expiringSoonDays ?? 90));
-  if (expiration.getTime() <= threshold.getTime()) return 'EXPIRING';
+  if (row.expiringSoonDays != null) {
+    const threshold = new Date(today);
+    threshold.setUTCDate(threshold.getUTCDate() + row.expiringSoonDays);
+    if (expiration.getTime() <= threshold.getTime()) return 'EXPIRING';
+  }
   return 'VALID';
 }
 

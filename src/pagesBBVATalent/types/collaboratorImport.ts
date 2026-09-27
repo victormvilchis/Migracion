@@ -1,5 +1,6 @@
 export type ImportChangeDecision = 'APPLY_EXCEL' | 'KEEP_CURRENT';
 export type ImportLowDecision = 'DEACTIVATE' | 'KEEP_ACTIVE' | 'IGNORE' | 'REVIEW';
+export type ImportCertificationBlock = 'DEVELOPMENT_SECURITY' | 'TECHNOLOGICAL' | 'ONE' | 'NORMATIVE_TESTING' | 'AGILE' | 'JIRA' | 'GITHUB';
 
 export interface ImportSourceRow {
   rowNumber: number;
@@ -14,6 +15,37 @@ export interface ImportFieldChange {
   excelValue: string | null;
   decision: ImportChangeDecision;
   resolvedPreviously: boolean;
+}
+
+
+export interface ImportCertificationFieldComparison {
+  field: 'applicable' | 'certificationStatus' | 'examStatus' | 'applicationDate' | 'score10' | 'administrativeAttempt' | 'lifecycle' | 'initialDueDate' | 'expirationDate' | 'lastApproval';
+  label: string;
+  currentValue: string | null;
+  excelValue: string | null;
+  calculatedValue: string | null;
+  origin: string | null;
+}
+
+export interface ImportCertificationIssue { code: string; message: string; blocking: boolean; }
+
+export interface ImportCertificationPreview {
+  block: ImportCertificationBlock;
+  label: string;
+  certificationId: string | null;
+  certificationName: string | null;
+  resolutionKey: string;
+  sourceFingerprint: string;
+  decision: ImportChangeDecision;
+  resolvedPreviously: boolean;
+  hasChanges: boolean;
+  currentSource: string | null;
+  currentStatus: string | null;
+  excelStatus: string | null;
+  calculatedStatus: string | null;
+  ruleGap: string | null;
+  fields: ImportCertificationFieldComparison[];
+  issues: ImportCertificationIssue[];
 }
 
 export interface ImportCatalogAction {
@@ -35,6 +67,7 @@ export interface ImportNewCandidate {
   expertise: string | null;
   startDate: string | null;
   catalogActions: ImportCatalogAction[];
+  certifications: ImportCertificationPreview[];
 }
 
 export interface ImportChangedCandidate {
@@ -46,6 +79,7 @@ export interface ImportChangedCandidate {
   reactivationRequired: boolean;
   changes: ImportFieldChange[];
   catalogActions: ImportCatalogAction[];
+  certifications: ImportCertificationPreview[];
 }
 
 export interface ImportPossibleLow {
@@ -63,6 +97,15 @@ export interface ImportConflict {
   rowNumber: number;
   fullName: string;
   message: string;
+  resolutionKey?: string;
+  decision?: ImportChangeDecision;
+  certificationBlock?: ImportCertificationBlock;
+  certificationLabel?: string;
+  issueCode?: string;
+  currentValue?: string | null;
+  excelValue?: string | null;
+  calculatedValue?: string | null;
+  resolvedPreviously?: boolean;
 }
 
 export interface ImportErrorItem extends ImportConflict {}
@@ -72,7 +115,8 @@ export interface ImportResolvedItem {
   rowNumber: number;
   collaboratorId: string;
   fullName: string;
-  change: ImportFieldChange;
+  change?: ImportFieldChange;
+  certification?: ImportCertificationPreview;
 }
 
 export interface ImportPreviewResponse {
@@ -84,6 +128,9 @@ export interface ImportPreviewResponse {
   conflicts: ImportConflict[];
   errors: ImportErrorItem[];
   resolvedPreviously: ImportResolvedItem[];
+  certificationChanges: number;
+  certificationResults: number;
+  certificationRuleGaps: string[];
 }
 
 export interface ImportApplyPayload {
@@ -99,5 +146,8 @@ export interface ImportApplyResult {
   reactivated: number;
   movedToTalentBank: number;
   skipped: number;
+  certificationUpdated: number;
+  resultsRegistered: number;
+  reusedDecisions: number;
   errors: Array<{ rowNumber: number | null; name: string; message: string }>;
 }

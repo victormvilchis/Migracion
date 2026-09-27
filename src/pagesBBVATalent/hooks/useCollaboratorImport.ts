@@ -15,6 +15,7 @@ export function useApplyCollaboratorImport() {
       void client.invalidateQueries({ queryKey: ['talent-bank'] });
       void client.invalidateQueries({ queryKey: ['bbva-dashboard'] });
       void client.invalidateQueries({ queryKey: ['certification-tracking'] });
+      void client.invalidateQueries({ queryKey: ['collaborator-certifications'] });
     },
   });
 }

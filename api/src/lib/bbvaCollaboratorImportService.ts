@@ -13,6 +13,8 @@ import type {
   ImportPreviewResponse,
   ImportResolvedItem,
   ImportSourceRow,
+  ImportCertificationPreview,
+  ImportCertificationBlock,
 } from './bbvaCollaboratorImportDomain.js';
 import {
   CollaboratorImportRepository,
@@ -20,10 +22,21 @@ import {
   type ImportPersonRecord,
 } from './bbvaCollaboratorImportRepository.js';
 import { CollaboratorCertificationService } from './bbvaCollaboratorCertificationService.js';
+import { CollaboratorCertificationRepository } from './bbvaCollaboratorCertificationRepository.js';
+import {
+  IMPORT_CERTIFICATION_BLOCKS,
+  certificationBlockLabel,
+  importCertificationResolutionKey,
+  parseCertificationEvidence,
+  type ImportCertificationCatalogConfig,
+  type ImportCertificationCurrentState,
+  type ParsedCertificationEvidence,
+} from './bbvaCollaboratorImportCertificationDomain.js';
 import { PersonLifecycleService } from './bbvaPersonLifecycleService.js';
 
 const repository = new CollaboratorImportRepository();
 const certificationService = new CollaboratorCertificationService();
+const certificationRepository = new CollaboratorCertificationRepository();
 const lifecycleService = new PersonLifecycleService();
 
 const HEADER_ALIASES = {
@@ -323,9 +336,190 @@ async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, 
 function collectAllChanges(preview: ImportPreviewResponse): Map<string, ImportFieldChange[]> {
   const grouped = new Map<string, ImportFieldChange[]>();
   for (const item of preview.changedItems) grouped.set(item.rowKey, [...item.changes]);
-  for (const item of preview.resolvedPreviously) grouped.set(item.rowKey, [...(grouped.get(item.rowKey) ?? []), item.change]);
+  for (const item of preview.resolvedPreviously) if (item.change) grouped.set(item.rowKey, [...(grouped.get(item.rowKey) ?? []), item.change]);
   return grouped;
 }
+
+
+interface PreparedCertification {
+  preview: ImportCertificationPreview;
+  evidence: ParsedCertificationEvidence;
+  config: ImportCertificationCatalogConfig | null;
+  conflictKeys: Array<{ key: string; code: string; message: string }>;
+}
+
+function formatBoolean(value: boolean | null): string | null {
+  return value === null ? null : value ? 'Sí' : 'No';
+}
+
+function formatNumber(value: number | null): string | null {
+  return value === null ? null : String(value);
+}
+
+function catalogNameForBlock(block: ImportCertificationBlock): string | null {
+  if (block === 'DEVELOPMENT_SECURITY') return 'DESARROLLO SEGURO';
+  if (block === 'NORMATIVE_TESTING') return 'NORMATIVA & TESTING';
+  if (block === 'ONE') return 'ONE';
+  if (block === 'AGILE') return 'AGILE';
+  if (block === 'JIRA') return 'JIRA';
+  if (block === 'GITHUB') return 'GITHUB';
+  return null;
+}
+
+function chooseCertificationConfig(
+  block: ImportCertificationBlock,
+  row: NormalizedRow,
+  person: ImportPersonRecord | null,
+  catalog: ImportCertificationCatalogConfig[],
+  currentStates: ImportCertificationCurrentState[],
+): { config: ImportCertificationCatalogConfig | null; issue: string | null } {
+  if (block !== 'TECHNOLOGICAL') {
+    const name = catalogNameForBlock(block);
+    const config = catalog.find((item) => normalizeKey(item.name) === normalizeKey(name)) ?? null;
+    return { config, issue: config ? null : `No existe una configuración activa de catálogo para ${certificationBlockLabel(block)}.` };
+  }
+  if (!row.currentTechnology) return { config: null, issue: 'La fila no informa TECNOLOGÍA EN LA QUE SE CERTIFICA.' };
+  const candidates = catalog.filter((item) => item.certificationType === 'TECHNOLOGICAL' && normalizeKey(item.technologyName) === normalizeKey(row.currentTechnology));
+  if (!candidates.length) return { config: null, issue: `No existe una certificación tecnológica activa asociada a ${row.currentTechnology}.` };
+  if (candidates.length === 1) return { config: candidates[0], issue: null };
+
+  const exact = candidates.filter((item) => normalizeKey(item.name) === normalizeKey(row.currentTechnology));
+  if (exact.length === 1) return { config: exact[0], issue: null };
+
+  const activeCurrent = candidates.filter((candidate) => currentStates.some((state) => state.certificationId === candidate.id && state.applicable && state.baseStatus !== 'NOT_APPLICABLE'));
+  if (activeCurrent.length === 1) return { config: activeCurrent[0], issue: null };
+
+  const profileText = normalizeKey(`${row.profile ?? ''} ${row.technologyProfile ?? ''} ${person?.profile ?? ''}`);
+  const profileMatches = candidates.filter((candidate) => {
+    const candidateName = normalizeKey(candidate.name);
+    const technology = normalizeKey(row.currentTechnology);
+    const discriminator = candidateName.replace(technology, '').trim();
+    return discriminator.length >= 3 && profileText.includes(discriminator);
+  });
+  if (profileMatches.length === 1) return { config: profileMatches[0], issue: null };
+
+  return { config: null, issue: `La tecnología ${row.currentTechnology} tiene más de una certificación aplicable (${candidates.map((item) => item.name).join(', ')}) y el perfil no permite elegir una de forma inequívoca.` };
+}
+
+function rawStatusToCalculated(rawStatus: string | null): string | null {
+  const key = normalizeKey(rawStatus);
+  if (!key) return null;
+  if (key === 'NO APLICA') return 'NOT_APPLICABLE';
+  if (key === 'VIGENTE - REGULAR') return 'VALID';
+  if (key === 'VIGENTE - PROXIMO A VENCER') return 'EXPIRING';
+  if (key === 'VENCIDO' || key === 'VENCIDA') return 'EXPIRED';
+  if (key.startsWith('SIN PRESENTAR')) return 'PENDING';
+  if (['APROBADO','APROBADA','SI','FORMADO'].includes(key)) return 'VALID';
+  if (key === 'PENDIENTE DE FORMACION' || key === 'PENDIENTE') return 'PENDING';
+  return null;
+}
+
+function currentForConfig(states: ImportCertificationCurrentState[], config: ImportCertificationCatalogConfig | null): ImportCertificationCurrentState | null {
+  if (!config) return null;
+  return states.find((state) => state.certificationId === config.id) ?? null;
+}
+
+function hasApproval(state: ImportCertificationCurrentState | null): boolean {
+  return Boolean(state && (state.baseStatus === 'APPROVED' || state.approvedDate || state.attempts.some((attempt) => attempt.result === 'APPROVED')));
+}
+
+function buildCertificationFields(current: ImportCertificationCurrentState | null, evidence: ParsedCertificationEvidence) {
+  return [
+    { field:'applicable' as const,label:'Aplicabilidad',currentValue:current ? formatBoolean(current.applicable) : null,excelValue:formatBoolean(evidence.applicable),calculatedValue:formatBoolean(evidence.applicable),origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'certificationStatus' as const,label:'Estado de certificación',currentValue:current?.importedCertificationStatus ?? current?.calculatedStatus ?? null,excelValue:evidence.rawCertificationStatus,calculatedValue:evidence.calculatedStatus,origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'examStatus' as const,label:'Estado del examen',currentValue:current?.importedExamStatus ?? null,excelValue:evidence.rawExamStatus,calculatedValue:evidence.baseStatus,origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'applicationDate' as const,label:'Fecha de aplicación',currentValue:current?.applicationDate ?? null,excelValue:evidence.applicationDate,calculatedValue:evidence.applicationDate,origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'score10' as const,label:'Promedio',currentValue:formatNumber(current?.lastScore10 ?? null),excelValue:formatNumber(evidence.score10),calculatedValue:formatNumber(evidence.score10),origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'administrativeAttempt' as const,label:'Intento administrativo',currentValue:formatNumber(current?.importedAttemptNumber ?? null),excelValue:formatNumber(evidence.administrativeAttempt),calculatedValue:evidence.administrativeAttempt === 0 ? 'Aprobación sin intento formal #0' : formatNumber(evidence.administrativeAttempt),origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'lifecycle' as const,label:'Proceso',currentValue:hasApproval(current) ? 'RECERTIFICATION' : current ? 'INITIAL' : null,excelValue:null,calculatedValue:evidence.lifecycle,origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'initialDueDate' as const,label:'Fecha límite inicial',currentValue:current?.initialDueDate ?? null,excelValue:evidence.normativeLimitDate,calculatedValue:evidence.initialDueDate,origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'expirationDate' as const,label:'Vencimiento',currentValue:current?.expirationDate ?? null,excelValue:null,calculatedValue:evidence.expirationDate,origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'lastApproval' as const,label:'Última aprobación',currentValue:current?.approvedDate ?? null,excelValue:evidence.baseStatus === 'APPROVED' ? evidence.applicationDate : null,calculatedValue:evidence.approvedDate,origin:current?.lastDataSource ?? current?.source ?? null },
+  ];
+}
+
+function effectiveEvidenceChanged(current: ImportCertificationCurrentState | null, evidence: ParsedCertificationEvidence): boolean {
+  if (!current) return true;
+  if (current.lastImportFingerprint === evidence.fingerprint
+    && current.applicable === (evidence.applicable !== false)
+    && current.baseStatus === (evidence.baseStatus ?? (evidence.applicable === false ? 'NOT_APPLICABLE' : 'PENDING'))
+    && current.applicationDate === (evidence.applicable === false ? null : evidence.applicationDate)
+    && current.initialDueDate === evidence.initialDueDate
+    && current.lastScore10 === evidence.score10
+    && current.importedAttemptNumber === evidence.administrativeAttempt) return false;
+  return true;
+}
+
+function prepareCertifications(
+  row: NormalizedRow,
+  person: ImportPersonRecord | null,
+  catalog: ImportCertificationCatalogConfig[],
+  stateMap: Map<string, ImportCertificationCurrentState[]>,
+): PreparedCertification[] {
+  const states = person ? (stateMap.get(person.personId) ?? []) : [];
+  const prepared: PreparedCertification[] = [];
+  for (const block of IMPORT_CERTIFICATION_BLOCKS as readonly ImportCertificationBlock[]) {
+    const selected = chooseCertificationConfig(block, row, person, catalog, states);
+    const current = currentForConfig(states, selected.config);
+    const evidence = parseCertificationEvidence({
+      source: row.source,
+      block,
+      startDate: row.startDate ?? person?.startDate ?? null,
+      config: selected.config,
+      hadPreviousApproval: hasApproval(current),
+    });
+    if (!evidence) continue;
+    const issues = [...evidence.issues];
+    const nonApplicableWithoutCatalog = !selected.config && evidence.applicable === false;
+    if (selected.issue && !nonApplicableWithoutCatalog) {
+      issues.push({ code: 'INVALID_CATALOG_MAPPING', message: selected.issue, blocking: true });
+    }
+    const hasChanges = selected.config
+      ? effectiveEvidenceChanged(current, evidence)
+      : issues.some((issue) => issue.blocking && issue.code !== 'INVALID_CATALOG_MAPPING');
+    if ((current?.source === 'MANUAL' || current?.lastDataSource === 'MANUAL') && hasChanges) {
+      issues.push({ code:'MANUAL_HISTORY_DIFFERENCE', message:`${evidence.label} contiene información manual y el Excel propone valores diferentes.`, blocking:true });
+    }
+    if (current && evidence.administrativeAttempt !== null && evidence.administrativeAttempt > 0 && evidence.applicationDate && evidence.baseStatus && ['APPROVED','FAILED'].includes(evidence.baseStatus)) {
+      const manualAttempt = current.attempts.find((attempt) => attempt.cycleNumber === current.currentCycle && attempt.attemptNumber === evidence.administrativeAttempt && attempt.source === 'MANUAL');
+      if (manualAttempt) {
+        const expectedResult = evidence.baseStatus === 'APPROVED' ? 'APPROVED' : 'FAILED';
+        const sameManualEvidence = manualAttempt.applicationDate === evidence.applicationDate
+          && manualAttempt.result === expectedResult
+          && (manualAttempt.score10 === null || evidence.score10 === null || manualAttempt.score10 === evidence.score10);
+        if (!sameManualEvidence) issues.push({ code:'MANUAL_ATTEMPT_DIFFERENCE', message:`${evidence.label} intenta ocupar el intento ${evidence.administrativeAttempt}, pero ya existe un intento manual diferente.`, blocking:true });
+      }
+    }
+    const excelCalculated = rawStatusToCalculated(evidence.rawCertificationStatus);
+    let ruleGap: string | null = null;
+    if (evidence.expirationDate && selected.config?.expiringSoonDays == null && normalizeKey(evidence.rawCertificationStatus).includes('PROXIMO A VENCER')) {
+      ruleGap = `${evidence.label}: ExpiringSoonDays no está configurado; el umbral no se infirió del Excel.`;
+    } else if (excelCalculated && evidence.calculatedStatus && excelCalculated !== evidence.calculatedStatus && selected.config?.expiringSoonDays != null) {
+      issues.push({ code:'EXCEL_STATUS_DIFFERS_FROM_CALCULATION', message:`${evidence.label}: el estado del Excel (${evidence.rawCertificationStatus}) difiere del estado calculado (${evidence.calculatedStatus}).`, blocking:true });
+    }
+
+    const resolutionKey = importCertificationResolutionKey({ rowIdentity: row.rowKey, block, issueCode:'RECONCILE', sourceFingerprint:evidence.fingerprint, calculatedStatus:evidence.calculatedStatus });
+    const conflictKeys = issues.filter((issue) => issue.blocking && !issue.code.startsWith('INVALID_')).map((issue) => ({
+      key: importCertificationResolutionKey({ rowIdentity: row.rowKey, block, issueCode:issue.code, sourceFingerprint:evidence.fingerprint, calculatedStatus:evidence.calculatedStatus }),
+      code: issue.code,
+      message: issue.message,
+    }));
+    prepared.push({
+      config:selected.config,
+      evidence,
+      conflictKeys,
+      preview:{
+        block,label:evidence.label,certificationId:selected.config?.id ?? null,certificationName:selected.config?.name ?? null,
+        resolutionKey,sourceFingerprint:evidence.fingerprint,decision:'APPLY_EXCEL',resolvedPreviously:false,hasChanges,
+        currentSource:current?.lastDataSource ?? current?.source ?? null,currentStatus:current?.calculatedStatus ?? null,
+        excelStatus:evidence.rawCertificationStatus,calculatedStatus:evidence.calculatedStatus,ruleGap,
+        fields:buildCertificationFields(current,evidence),issues,
+      },
+    });
+  }
+  return prepared;
+}
+
 
 export class CollaboratorImportService {
   async preview(payload: ImportPreviewRequest): Promise<ImportPreviewResponse> {
@@ -348,13 +542,18 @@ export class CollaboratorImportService {
     const duplicateRows = new Set<number>();
     for (const group of duplicateKeys.values()) if (group.length > 1) group.forEach((row) => duplicateRows.add(row.rowNumber));
 
-    const people = await repository.listPeople();
+    const [people, certificationCatalog, certificationStates] = await Promise.all([
+      repository.listPeople(),
+      certificationRepository.listImportCatalog(),
+      certificationRepository.listImportStates(),
+    ]);
     const matches = matchRows(rows, people);
     const newItems: ImportNewCandidate[] = [];
     const changedItems: ImportChangedCandidate[] = [];
     const conflicts: ImportPreviewResponse['conflicts'] = [];
     const matchedPersonIds = new Set<string>();
     const allChanges: Array<{ row: NormalizedRow; person: ImportPersonRecord; change: ImportFieldChange }> = [];
+    const preparedByRow = new Map<string, PreparedCertification[]>();
 
     for (const match of matches) {
       if (duplicateRows.has(match.row.rowNumber)) {
@@ -365,20 +564,21 @@ export class CollaboratorImportService {
         conflicts.push({ rowKey: match.row.rowKey, rowNumber: match.row.rowNumber, fullName: match.row.fullName, message: match.conflict });
         continue;
       }
+
+      const prepared = prepareCertifications(match.row, match.person, certificationCatalog, certificationStates);
+      preparedByRow.set(match.row.rowKey, prepared);
+      for (const cert of prepared) {
+        for (const issue of cert.preview.issues.filter((candidate) => candidate.code.startsWith('INVALID_'))) {
+          errors.push({ rowKey:match.row.rowKey,rowNumber:match.row.rowNumber,fullName:match.row.fullName,message:issue.message });
+        }
+      }
+
       if (!match.person) {
         newItems.push({
-          rowKey: match.row.rowKey,
-          rowNumber: match.row.rowNumber,
-          fullName: match.row.fullName,
-          email: match.row.email,
-          softtekCode: match.row.softtekCode,
-          corporateUser: match.row.corporateUser,
-          profile: match.row.profile,
-          technologyProfile: match.row.technologyProfile,
-          currentTechnology: match.row.currentTechnology,
-          expertise: match.row.expertise,
-          startDate: match.row.startDate,
-          catalogActions: await catalogActions(match.row),
+          rowKey: match.row.rowKey,rowNumber: match.row.rowNumber,fullName: match.row.fullName,email: match.row.email,
+          softtekCode: match.row.softtekCode,corporateUser: match.row.corporateUser,profile: match.row.profile,
+          technologyProfile: match.row.technologyProfile,currentTechnology: match.row.currentTechnology,expertise: match.row.expertise,
+          startDate: match.row.startDate,catalogActions: await catalogActions(match.row),certifications: prepared.map((item) => item.preview),
         });
         continue;
       }
@@ -391,56 +591,85 @@ export class CollaboratorImportService {
         if (lifecycle) changes.push(lifecycle);
       }
       changes.forEach((change) => allChanges.push({ row: match.row, person: match.person as ImportPersonRecord, change }));
-      if (changes.length > 0) {
+      if (changes.length > 0 || prepared.some((item) => item.preview.hasChanges)) {
         changedItems.push({
-          rowKey: match.row.rowKey,
-          rowNumber: match.row.rowNumber,
-          collaboratorId: match.person.collaboratorId ?? '',
-          personId: match.person.personId,
-          fullName: match.row.fullName,
-          reactivationRequired: match.person.collaboratorStatus !== 'ACTIVE',
-          changes,
-          catalogActions: await catalogActions(match.row),
+          rowKey: match.row.rowKey,rowNumber: match.row.rowNumber,collaboratorId: match.person.collaboratorId ?? '',personId: match.person.personId,
+          fullName: match.row.fullName,reactivationRequired: match.person.collaboratorStatus !== 'ACTIVE',changes,
+          catalogActions: await catalogActions(match.row),certifications: prepared.map((item) => item.preview),
         });
       }
     }
 
-    const stored = await repository.getStoredDecisions(allChanges.map((item) => item.change.resolutionKey));
+    const certResolutionKeys = [...preparedByRow.values()].flatMap((items) => items.flatMap((item) => [item.preview.resolutionKey, ...item.conflictKeys.map((conflict) => conflict.key)]));
+    const stored = await repository.getStoredDecisions([...allChanges.map((item) => item.change.resolutionKey), ...certResolutionKeys]);
     const resolvedPreviously: ImportResolvedItem[] = [];
+
     for (const item of changedItems) {
       const unresolved: ImportFieldChange[] = [];
       for (const change of item.changes) {
         const decision = stored.get(change.resolutionKey);
-        if (decision) {
-          const resolved = { ...change, decision, resolvedPreviously: true };
-          resolvedPreviously.push({ rowKey: item.rowKey, rowNumber: item.rowNumber, collaboratorId: item.collaboratorId, fullName: item.fullName, change: resolved });
-        } else unresolved.push(change);
+        if (decision) resolvedPreviously.push({ rowKey:item.rowKey,rowNumber:item.rowNumber,collaboratorId:item.collaboratorId,fullName:item.fullName,change:{...change,decision,resolvedPreviously:true} });
+        else unresolved.push(change);
       }
       item.changes = unresolved;
+    }
+
+    for (const candidate of [...newItems, ...changedItems]) {
+      const prepared = preparedByRow.get(candidate.rowKey) ?? [];
+      for (const cert of prepared) {
+        if (!cert.preview.hasChanges && cert.conflictKeys.length === 0) continue;
+        const certDecision = stored.get(cert.preview.resolutionKey);
+        const storedConflictDecisions = cert.conflictKeys.map((conflict) => stored.get(conflict.key));
+        const allConflictsResolved = cert.conflictKeys.length > 0 && storedConflictDecisions.every(Boolean);
+        const previouslyResolved = Boolean(certDecision) || allConflictsResolved;
+        if (previouslyResolved) {
+          const resolvedDecision = certDecision
+            ?? (storedConflictDecisions.some((decision) => decision === 'KEEP_CURRENT') ? 'KEEP_CURRENT' : 'APPLY_EXCEL');
+          resolvedPreviously.push({
+            rowKey:candidate.rowKey,rowNumber:candidate.rowNumber,
+            collaboratorId:'collaboratorId' in candidate ? candidate.collaboratorId : '',fullName:candidate.fullName,
+            certification:{...cert.preview,decision:resolvedDecision,resolvedPreviously:true},
+          });
+          cert.preview.decision = resolvedDecision;
+          cert.preview.resolvedPreviously = true;
+          cert.preview.hasChanges = false;
+          continue;
+        }
+        for (const conflict of cert.conflictKeys) {
+          conflicts.push({
+            rowKey:candidate.rowKey,rowNumber:candidate.rowNumber,fullName:candidate.fullName,message:conflict.message,
+            resolutionKey:conflict.key,decision:'KEEP_CURRENT',certificationBlock:cert.preview.block,certificationLabel:cert.preview.label,
+            issueCode:conflict.code,currentValue:cert.preview.currentStatus,excelValue:cert.preview.excelStatus,calculatedValue:cert.preview.calculatedStatus,
+          });
+        }
+      }
+      if ('changes' in candidate) {
+        const techChange = candidate.changes.find((change) => change.field === 'currentTechnology' && change.currentValue && change.excelValue);
+        if (techChange) conflicts.push({
+          rowKey:candidate.rowKey,rowNumber:candidate.rowNumber,fullName:candidate.fullName,
+          message:`La tecnología principal actual (${techChange.currentValue}) difiere de la del Excel (${techChange.excelValue}).`,
+          resolutionKey:techChange.resolutionKey,decision:'KEEP_CURRENT',issueCode:'PRIMARY_TECHNOLOGY_MISMATCH',
+          currentValue:techChange.currentValue,excelValue:techChange.excelValue,calculatedValue:techChange.excelValue,
+        });
+      }
     }
 
     const explicitLows = new Set(matches.filter((item) => item.person && resourceIsLow(item.row.resourceStatus)).map((item) => item.person?.personId as string));
     const possibleLows: ImportPossibleLow[] = people
       .filter((person) => person.collaboratorStatus === 'ACTIVE' && (!matchedPersonIds.has(person.personId) || explicitLows.has(person.personId)))
-      .map((person) => ({
-        collaboratorId: person.collaboratorId as string,
-        personId: person.personId,
-        fullName: person.fullName,
-        email: person.email,
-        profile: person.profile,
-        currentTechnology: person.currentTechnology,
-        decision: 'REVIEW',
-      }));
+      .map((person) => ({ collaboratorId:person.collaboratorId as string,personId:person.personId,fullName:person.fullName,email:person.email,profile:person.profile,currentTechnology:person.currentTechnology,decision:'REVIEW' }));
 
+    const certPreviews = [...newItems.flatMap((item) => item.certifications), ...changedItems.flatMap((item) => item.certifications)];
     return {
-      totalRowsAnalyzed: rows.length,
-      ignoredRows: Math.max(0, inputRows.length - rows.length - errors.length),
-      newItems,
-      changedItems: changedItems.filter((item) => item.changes.length > 0 || item.reactivationRequired),
-      possibleLows,
-      conflicts,
-      errors,
-      resolvedPreviously,
+      totalRowsAnalyzed:rows.length,ignoredRows:Math.max(0,inputRows.length-rows.length-errors.length),newItems,
+      changedItems:changedItems.filter((item) => item.changes.length > 0 || item.reactivationRequired || item.certifications.some((cert) => cert.hasChanges)),
+      possibleLows,conflicts,errors,resolvedPreviously,
+      certificationChanges:certPreviews.filter((item) => item.hasChanges).length,
+      certificationResults:certPreviews.filter((item) => {
+        const exam = item.fields.find((field) => field.field === 'examStatus');
+        return item.hasChanges && Boolean(exam?.excelValue) && ['APPROVED','FAILED'].includes(exam?.calculatedValue ?? '');
+      }).length,
+      certificationRuleGaps:[...new Set(certPreviews.map((item) => item.ruleGap).filter((item): item is string => Boolean(item)))],
     };
   }
 
@@ -455,83 +684,119 @@ export class CollaboratorImportService {
     const peopleById = new Map(people.map((person) => [person.personId, person]));
     const changesByRow = collectAllChanges(preview);
     const decisions = new Map<string, ImportChangeDecision>();
-    for (const changes of changesByRow.values()) {
-      for (const change of changes) decisions.set(change.resolutionKey, payload.decisions?.[change.resolutionKey] ?? change.decision);
-    }
+    for (const changes of changesByRow.values()) for (const change of changes) decisions.set(change.resolutionKey,payload.decisions?.[change.resolutionKey] ?? change.decision);
 
-    const result: ImportApplyResult = { created: 0, updated: 0, reactivated: 0, movedToTalentBank: 0, skipped: preview.conflicts.length + preview.errors.length, errors: [] };
+    const unresolvedRows = new Set<string>();
+    for (const conflict of preview.conflicts) {
+      if (!conflict.resolutionKey || !payload.decisions?.[conflict.resolutionKey]) unresolvedRows.add(conflict.rowKey);
+      else decisions.set(conflict.resolutionKey,payload.decisions[conflict.resolutionKey]);
+    }
+    const errorRows = new Set(preview.errors.map((item) => item.rowKey));
+    const result: ImportApplyResult = {
+      created:0,updated:0,reactivated:0,movedToTalentBank:0,skipped:0,certificationUpdated:0,resultsRegistered:0,
+      reusedDecisions:preview.resolvedPreviously.length,errors:[],
+    };
+
+    const [certificationCatalog, certificationStates] = await Promise.all([certificationRepository.listImportCatalog(),certificationRepository.listImportStates()]);
+
+    const applyCertifications = async (row: NormalizedRow, person: ImportPersonRecord | null, personId: string) => {
+      const prepared = prepareCertifications(row, person, certificationCatalog, certificationStates);
+      for (const cert of prepared) {
+        if (!cert.preview.hasChanges) continue;
+        const storedCertDecisions = await repository.getStoredDecisions([
+          cert.preview.resolutionKey,
+          ...cert.conflictKeys.map((conflict) => conflict.key),
+        ]);
+        const certDecision = payload.decisions?.[cert.preview.resolutionKey]
+          ?? storedCertDecisions.get(cert.preview.resolutionKey)
+          ?? cert.preview.decision;
+        const blocking = cert.conflictKeys;
+        const conflictDecision = (key: string): ImportChangeDecision => payload.decisions?.[key] ?? storedCertDecisions.get(key) ?? 'KEEP_CURRENT';
+        const keepBecauseConflict = blocking.some((conflict) => conflictDecision(conflict.key) === 'KEEP_CURRENT');
+        if (certDecision === 'KEEP_CURRENT' || keepBecauseConflict) {
+          for (const conflict of blocking) await repository.saveDecision(conflict.key,conflictDecision(conflict.key),actorEmail);
+          await repository.saveDecision(cert.preview.resolutionKey,'KEEP_CURRENT',actorEmail);
+          continue;
+        }
+        if (!cert.config) {
+          for (const conflict of blocking) await repository.saveDecision(conflict.key,conflictDecision(conflict.key),actorEmail);
+          await repository.saveDecision(cert.preview.resolutionKey,'APPLY_EXCEL',actorEmail);
+          continue;
+        }
+        const applied = await certificationRepository.applyImportedEvidence({ personId,config:cert.config,block:cert.preview.block,evidence:cert.evidence,actorEmail });
+        for (const conflict of blocking) await repository.saveDecision(conflict.key,conflictDecision(conflict.key),actorEmail);
+        await repository.saveDecision(cert.preview.resolutionKey,'APPLY_EXCEL',actorEmail);
+        if (applied.changed) result.certificationUpdated += 1;
+        if (applied.resultRegistered) result.resultsRegistered += 1;
+      }
+    };
 
     for (const item of preview.newItems) {
       const row = normalizedRows.get(item.rowKey);
       if (!row) continue;
+      if (unresolvedRows.has(item.rowKey) || errorRows.has(item.rowKey)) { result.skipped += 1; continue; }
       try {
-        const input = await toInput(row, null, actorEmail, payload.emails?.[item.rowKey] ?? item.email);
-        const created = await repository.create(input, actorEmail);
-        await certificationService.synchronize(created.collaboratorId, actorEmail);
+        const input = await toInput(row,null,actorEmail,payload.emails?.[item.rowKey] ?? item.email);
+        const created = await repository.create(input,actorEmail);
+        await certificationService.synchronize(created.collaboratorId,actorEmail);
+        await applyCertifications(row,null,created.personId);
         result.created += 1;
       } catch (error) {
         result.skipped += 1;
-        result.errors.push({ rowNumber: item.rowNumber, name: item.fullName, message: (error as Error).message });
+        result.errors.push({ rowNumber:item.rowNumber,name:item.fullName,message:(error as Error).message });
       }
     }
 
-    const changedGroups = new Map<string, { rowNumber: number; fullName: string; personId: string; collaboratorId: string; reactivationRequired: boolean }>();
-    for (const item of preview.changedItems) changedGroups.set(item.rowKey, { rowNumber: item.rowNumber, fullName: item.fullName, personId: item.personId, collaboratorId: item.collaboratorId, reactivationRequired: item.reactivationRequired });
+    const changedGroups = new Map<string, { rowNumber:number; fullName:string; personId:string; collaboratorId:string; reactivationRequired:boolean }>();
+    for (const item of preview.changedItems) changedGroups.set(item.rowKey,{ rowNumber:item.rowNumber,fullName:item.fullName,personId:item.personId,collaboratorId:item.collaboratorId,reactivationRequired:item.reactivationRequired });
     for (const item of preview.resolvedPreviously) {
-      if (!changedGroups.has(item.rowKey)) {
-        const person = people.find((candidate) => candidate.collaboratorId === item.collaboratorId);
-        if (person) changedGroups.set(item.rowKey, { rowNumber: item.rowNumber, fullName: item.fullName, personId: person.personId, collaboratorId: item.collaboratorId, reactivationRequired: person.collaboratorStatus !== 'ACTIVE' });
-      }
+      if (!item.collaboratorId || changedGroups.has(item.rowKey)) continue;
+      const person = people.find((candidate) => candidate.collaboratorId === item.collaboratorId);
+      if (person) changedGroups.set(item.rowKey,{ rowNumber:item.rowNumber,fullName:item.fullName,personId:person.personId,collaboratorId:item.collaboratorId,reactivationRequired:person.collaboratorStatus !== 'ACTIVE' });
     }
 
-    for (const [rowKey, group] of changedGroups) {
+    for (const [rowKey,group] of changedGroups) {
       const row = normalizedRows.get(rowKey);
       const person = peopleById.get(group.personId);
       if (!row || !person) continue;
+      if (unresolvedRows.has(rowKey) || errorRows.has(rowKey)) { result.skipped += 1; continue; }
       try {
         const changes = changesByRow.get(rowKey) ?? [];
+        for (const change of changes) decisions.set(change.resolutionKey,payload.decisions?.[change.resolutionKey] ?? change.decision);
         const lifecycleChange = changes.find((change) => change.field === 'lifecycleState');
         const shouldReactivate = group.reactivationRequired && (!lifecycleChange || (decisions.get(lifecycleChange.resolutionKey) ?? lifecycleChange.decision) === 'APPLY_EXCEL');
         const hasDataChange = changes.some((change) => change.field !== 'lifecycleState' && (decisions.get(change.resolutionKey) ?? change.decision) === 'APPLY_EXCEL');
-        for (const change of changes) await repository.saveDecision(change.resolutionKey, decisions.get(change.resolutionKey) ?? change.decision, actorEmail);
-        if (!shouldReactivate && !hasDataChange) continue;
-
-        const input = await toInput(row, person, actorEmail, null, decisions, changes);
+        for (const change of changes) await repository.saveDecision(change.resolutionKey,decisions.get(change.resolutionKey) ?? change.decision,actorEmail);
         let collaboratorId = person.collaboratorId;
-        if (shouldReactivate) {
-          collaboratorId = await repository.reactivate(person, input, actorEmail);
-          result.reactivated += 1;
-        } else if (person.collaboratorStatus === 'ACTIVE') {
-          await repository.update(person, input, actorEmail);
-          result.updated += 1;
-        } else {
-          result.skipped += 1;
-          continue;
+        if (shouldReactivate || hasDataChange) {
+          const input = await toInput(row,person,actorEmail,null,decisions,changes);
+          if (shouldReactivate) {
+            collaboratorId = await repository.reactivate(person,input,actorEmail);
+            result.reactivated += 1;
+          } else if (person.collaboratorStatus === 'ACTIVE') {
+            await repository.update(person,input,actorEmail);
+            result.updated += 1;
+          }
+          if (collaboratorId) await certificationService.synchronize(collaboratorId,actorEmail);
         }
-        if (collaboratorId) await certificationService.synchronize(collaboratorId, actorEmail);
+        await applyCertifications(row,person,person.personId);
       } catch (error) {
         result.skipped += 1;
-        result.errors.push({ rowNumber: group.rowNumber, name: group.fullName, message: (error as Error).message });
+        result.errors.push({ rowNumber:group.rowNumber,name:group.fullName,message:(error as Error).message });
       }
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toISOString().slice(0,10);
     for (const low of preview.possibleLows) {
       const decision = payload.lowDecisions?.[low.collaboratorId] ?? 'REVIEW';
       if (decision !== 'DEACTIVATE') continue;
       try {
-        await lifecycleService.moveCollaboratorToTalent(low.collaboratorId, {
-          reasonCode: 'UNASSIGNED',
-          effectiveDate: today,
-          talentStage: 'UNASSIGNED',
-          notes: 'Movimiento generado desde la importación Excel de colaboradores.',
-        }, actorEmail);
+        await lifecycleService.moveCollaboratorToTalent(low.collaboratorId,{ reasonCode:'UNASSIGNED',effectiveDate:today,talentStage:'UNASSIGNED',notes:'Movimiento generado desde la importación Excel de colaboradores.' },actorEmail);
         result.movedToTalentBank += 1;
       } catch (error) {
-        result.errors.push({ rowNumber: null, name: low.fullName, message: (error as Error).message });
+        result.errors.push({ rowNumber:null,name:low.fullName,message:(error as Error).message });
       }
     }
-
     return result;
   }
 }

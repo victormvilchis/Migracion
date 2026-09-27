@@ -26,6 +26,14 @@ export interface CollaboratorCertificationRecord {
   mandatory: boolean;
   applicable: boolean;
   source: 'AUTO' | 'MANUAL';
+  initialDueDate: string | null;
+  importedCertificationStatus: string | null;
+  importedExamStatus: string | null;
+  lastScore10: number | null;
+  importedAttemptNumber: number | null;
+  lastDataSource: 'MANUAL' | 'IMPORT' | 'AUTO' | null;
+  lastImportFingerprint: string | null;
+  lastImportedAt: string | null;
   currentCycle: number;
   baseStatus: 'PENDING' | 'SCHEDULED' | 'APPLIED' | 'FAILED' | 'APPROVED' | 'NOT_APPLICABLE';
   status: CollaboratorCertificationStatus;
@@ -66,6 +74,9 @@ export interface CollaboratorCertificationAttemptRecord {
   costAmount: number | null;
   costCurrency: string | null;
   notes: string | null;
+  score10: number | null;
+  source: 'MANUAL' | 'IMPORT';
+  importFingerprint: string | null;
   createdAt: string;
   createdByEmail: string;
 }
@@ -75,6 +86,7 @@ export interface CertificationHistoryRecord {
   certificationRecordId: string;
   eventType: string;
   description: string;
+  source: 'MANUAL' | 'IMPORT' | 'AUTO';
   createdAt: string;
   createdByEmail: string;
 }

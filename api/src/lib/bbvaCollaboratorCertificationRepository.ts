@@ -10,13 +10,20 @@ import type {
   CollaboratorCertificationRecord,
   CollaboratorCertificationSummary,
 } from './bbvaCollaboratorCertificationDomain.js';
+import type {
+  ImportCertificationCatalogConfig,
+  ImportCertificationCurrentState,
+  ParsedCertificationEvidence,
+  ImportCertificationBlock,
+} from './bbvaCollaboratorImportCertificationDomain.js';
+import { importCertificationAttemptFingerprint } from './bbvaCollaboratorImportCertificationDomain.js';
 
 const STATUS_CASE = `
   CASE
     WHEN pc.Applicable=0 OR pc.BaseStatus=N'NOT_APPLICABLE' THEN N'NOT_APPLICABLE'
     WHEN pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=1 THEN N'RECERTIFICATION_PENDING'
     WHEN pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) THEN N'EXPIRED'
-    WHEN pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate <= DATEADD(day,ISNULL(cc.ExpiringSoonDays,90),CONVERT(date,SYSUTCDATETIME())) THEN N'EXPIRING'
+    WHEN pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND cc.ExpiringSoonDays IS NOT NULL AND pc.ExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,CONVERT(date,SYSUTCDATETIME())) THEN N'EXPIRING'
     WHEN pc.BaseStatus=N'APPROVED' THEN N'VALID'
     WHEN pc.BaseStatus=N'FAILED' THEN N'FAILED'
     WHEN pc.BaseStatus=N'APPLIED' THEN N'APPLIED'
@@ -38,6 +45,14 @@ const BASE_SELECT = `
     pc.Mandatory AS mandatory,
     pc.Applicable AS applicable,
     pc.Source AS source,
+    CONVERT(VARCHAR(10),pc.InitialDueDate,23) AS initialDueDate,
+    pc.ImportedCertificationStatus AS importedCertificationStatus,
+    pc.ImportedExamStatus AS importedExamStatus,
+    pc.LastScore10 AS lastScore10,
+    pc.ImportedAttemptNumber AS importedAttemptNumber,
+    pc.LastDataSource AS lastDataSource,
+    pc.LastImportFingerprint AS lastImportFingerprint,
+    CONVERT(VARCHAR(33),pc.LastImportedAt,127) AS lastImportedAt,
     pc.CurrentCycle AS currentCycle,
     pc.BaseStatus AS baseStatus,
     ${STATUS_CASE} AS status,
@@ -68,6 +83,8 @@ function toRecord(row: any): CollaboratorCertificationRecord {
     attemptCount: Number(row.attemptCount),
     validityMonths: row.validityMonths === null ? null : Number(row.validityMonths),
     expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
+    lastScore10: row.lastScore10 === null ? null : Number(row.lastScore10),
+    importedAttemptNumber: row.importedAttemptNumber === null ? null : Number(row.importedAttemptNumber),
     recertificationEnabled: Boolean(row.recertificationEnabled),
     requiresAttempts: Boolean(row.requiresAttempts),
     requiresApplicationDate: Boolean(row.requiresApplicationDate),
@@ -241,6 +258,7 @@ export class CollaboratorCertificationRepository {
              CONVERT(VARCHAR(10),a.ApplicationDate,23) AS applicationDate,
              a.Result AS result,CONVERT(VARCHAR(10),a.ResultDate,23) AS resultDate,
              a.CostAmount AS costAmount,a.CostCurrency AS costCurrency,a.Notes AS notes,
+             a.Score10 AS score10,a.Source AS source,a.ImportFingerprint AS importFingerprint,
              CONVERT(VARCHAR(33),a.CreatedAt,127) AS createdAt,a.CreatedByEmail AS createdByEmail
       FROM bbva.PersonCertificationAttempt a
       WHERE a.PersonCertificationId=@recordId
@@ -249,7 +267,7 @@ export class CollaboratorCertificationRepository {
     const history = await pool.request().input('recordId', sql.UniqueIdentifier, recordId).query(`
       SELECT CAST(h.Id AS NVARCHAR(36)) AS id,
              CAST(h.PersonCertificationId AS NVARCHAR(36)) AS certificationRecordId,
-             h.EventType AS eventType,h.Description AS description,
+             h.EventType AS eventType,h.Description AS description,h.Source AS source,
              CONVERT(VARCHAR(33),h.CreatedAt,127) AS createdAt,h.CreatedByEmail AS createdByEmail
       FROM bbva.PersonCertificationHistory h
       WHERE h.PersonCertificationId=@recordId
@@ -263,6 +281,7 @@ export class CollaboratorCertificationRepository {
         cycleNumber: Number(row.cycleNumber),
         attemptNumber: Number(row.attemptNumber),
         costAmount: row.costAmount === null ? null : Number(row.costAmount),
+        score10: row.score10 === null ? null : Number(row.score10),
       })) as CollaboratorCertificationAttemptRecord[],
       history: history.recordset as CertificationHistoryRecord[],
     };
@@ -293,7 +312,7 @@ export class CollaboratorCertificationRepository {
           .input('id', sql.UniqueIdentifier, recordId)
           .input('mandatory', sql.Bit, Boolean(catalog.recordset[0].mandatory))
           .input('actorEmail', sql.NVarChar(255), actorEmail)
-          .query(`UPDATE bbva.PersonCertification SET Applicable=1,Mandatory=@mandatory,Source=N'MANUAL',BaseStatus=CASE WHEN BaseStatus=N'NOT_APPLICABLE' THEN N'PENDING' ELSE BaseStatus END,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;`);
+          .query(`UPDATE bbva.PersonCertification SET Applicable=1,Mandatory=@mandatory,Source=N'MANUAL',LastDataSource=N'MANUAL',BaseStatus=CASE WHEN BaseStatus=N'NOT_APPLICABLE' THEN N'PENDING' ELSE BaseStatus END,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;`);
       } else {
         const created = await new sql.Request(transaction)
           .input('personId', sql.UniqueIdentifier, personId)
@@ -332,7 +351,7 @@ export class CollaboratorCertificationRepository {
       .input('actorEmail', sql.NVarChar(255), actorEmail)
       .query(`
         UPDATE bbva.PersonCertification
-        SET ApplicationDate=@applicationDate,Notes=@notes,Mandatory=@mandatory,
+        SET ApplicationDate=@applicationDate,Notes=@notes,Mandatory=@mandatory,LastDataSource=N'MANUAL',
             BaseStatus=CASE
               WHEN BaseStatus=N'PENDING' AND @applicationDate IS NOT NULL THEN N'SCHEDULED'
               WHEN BaseStatus=N'SCHEDULED' AND @applicationDate IS NULL THEN N'PENDING'
@@ -404,7 +423,7 @@ export class CollaboratorCertificationRepository {
               ApprovedDate=CASE WHEN @result=N'APPROVED' THEN @approvedDate ELSE ApprovedDate END,
               ExpirationDate=CASE WHEN @result=N'APPROVED' AND @validityMonths IS NOT NULL THEN DATEADD(month,@validityMonths,@approvedDate)
                                   WHEN @result=N'APPROVED' THEN NULL ELSE ExpirationDate END,
-              UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+              LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
           WHERE Id=@recordId;
         `);
 
@@ -442,7 +461,7 @@ export class CollaboratorCertificationRepository {
       .query(`
         UPDATE bbva.PersonCertification
         SET CurrentCycle=CurrentCycle+1,BaseStatus=N'PENDING',ApplicationDate=NULL,ApprovedDate=NULL,ExpirationDate=NULL,
-            Applicable=1,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+            Applicable=1,LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
         WHERE Id=@recordId;
         INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
         VALUES(@recordId,N'RECERTIFICATION_STARTED',N'Se inició un nuevo ciclo de recertificación.',@actorEmail);
@@ -459,11 +478,207 @@ export class CollaboratorCertificationRepository {
       .input('actorEmail', sql.NVarChar(255), actorEmail)
       .query(`
         UPDATE bbva.PersonCertification
-        SET Applicable=0,BaseStatus=N'NOT_APPLICABLE',Source=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+        SET Applicable=0,BaseStatus=N'NOT_APPLICABLE',Source=N'MANUAL',LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
         WHERE Id=@recordId;
         INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
         VALUES(@recordId,N'NOT_APPLICABLE',N'La certificación fue marcada como No aplica.',@actorEmail);
       `);
     return (await this.detail(collaboratorId, recordId))?.item ?? null;
   }
+
+  async listImportCatalog(): Promise<ImportCertificationCatalogConfig[]> {
+    const pool = await getDbConnection();
+    const result = await pool.request().query(`
+      SELECT CAST(cc.Id AS NVARCHAR(36)) AS id,cc.Name AS name,cc.CertificationType AS certificationType,
+             t.Name AS technologyName,cc.ValidityMonths AS validityMonths,
+             cc.InitialCompletionMonths AS initialCompletionMonths,cc.ExpiringSoonDays AS expiringSoonDays,
+             cc.RecertificationEnabled AS recertificationEnabled,cc.RequiresAttempts AS requiresAttempts,
+             cc.RequiresApplicationDate AS requiresApplicationDate
+      FROM bbva.CertificationCatalog cc
+      LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
+      WHERE cc.Status=N'ACTIVE'
+      ORDER BY cc.CertificationType,cc.Name;
+    `);
+    return result.recordset.map((row: any) => ({
+      ...row,
+      validityMonths: row.validityMonths === null ? null : Number(row.validityMonths),
+      initialCompletionMonths: row.initialCompletionMonths === null ? null : Number(row.initialCompletionMonths),
+      expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
+      recertificationEnabled: Boolean(row.recertificationEnabled),
+      requiresAttempts: Boolean(row.requiresAttempts),
+      requiresApplicationDate: Boolean(row.requiresApplicationDate),
+    })) as ImportCertificationCatalogConfig[];
+  }
+
+  async listImportStates(): Promise<Map<string, ImportCertificationCurrentState[]>> {
+    const pool = await getDbConnection();
+    const records = await pool.request().query(`
+      SELECT CAST(pc.Id AS NVARCHAR(36)) AS recordId,CAST(pc.PersonId AS NVARCHAR(36)) AS personId,
+             CAST(pc.CertificationId AS NVARCHAR(36)) AS certificationId,cc.Name AS certificationName,
+             cc.CertificationType AS certificationType,t.Name AS technologyName,pc.Source AS source,
+             pc.Applicable AS applicable,pc.BaseStatus AS baseStatus,${STATUS_CASE} AS calculatedStatus,
+             pc.CurrentCycle AS currentCycle,CONVERT(VARCHAR(10),pc.ApplicationDate,23) AS applicationDate,
+             CONVERT(VARCHAR(10),pc.ApprovedDate,23) AS approvedDate,CONVERT(VARCHAR(10),pc.ExpirationDate,23) AS expirationDate,
+             CONVERT(VARCHAR(10),pc.InitialDueDate,23) AS initialDueDate,
+             pc.ImportedCertificationStatus AS importedCertificationStatus,pc.ImportedExamStatus AS importedExamStatus,
+             pc.LastScore10 AS lastScore10,pc.ImportedAttemptNumber AS importedAttemptNumber,
+             pc.LastDataSource AS lastDataSource,pc.LastImportFingerprint AS lastImportFingerprint
+      FROM bbva.PersonCertification pc
+      INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+      LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId;
+    `);
+    const attempts = await pool.request().query(`
+      SELECT CAST(a.Id AS NVARCHAR(36)) AS id,CAST(a.PersonCertificationId AS NVARCHAR(36)) AS recordId,
+             a.CycleNumber AS cycleNumber,a.AttemptNumber AS attemptNumber,
+             CONVERT(VARCHAR(10),a.ApplicationDate,23) AS applicationDate,a.Result AS result,
+             CONVERT(VARCHAR(10),a.ResultDate,23) AS resultDate,a.Score10 AS score10,
+             a.Source AS source,a.ImportFingerprint AS importFingerprint
+      FROM bbva.PersonCertificationAttempt a;
+    `);
+    const attemptsByRecord = new Map<string, ImportCertificationCurrentState['attempts']>();
+    for (const row of attempts.recordset as any[]) {
+      const list = attemptsByRecord.get(String(row.recordId)) ?? [];
+      list.push({
+        id: String(row.id), cycleNumber:Number(row.cycleNumber), attemptNumber:Number(row.attemptNumber),
+        applicationDate:row.applicationDate ?? null, result:String(row.result), resultDate:row.resultDate ?? null,
+        score10:row.score10 === null ? null : Number(row.score10), source:row.source ?? null, importFingerprint:row.importFingerprint ?? null,
+      });
+      attemptsByRecord.set(String(row.recordId), list);
+    }
+    const byPerson = new Map<string, ImportCertificationCurrentState[]>();
+    for (const row of records.recordset as any[]) {
+      const state: ImportCertificationCurrentState = {
+        recordId:String(row.recordId), certificationId:String(row.certificationId), certificationName:String(row.certificationName),
+        certificationType:String(row.certificationType), technologyName:row.technologyName ?? null, source:row.source,
+        applicable:Boolean(row.applicable), baseStatus:String(row.baseStatus), calculatedStatus:String(row.calculatedStatus),
+        currentCycle:Number(row.currentCycle), applicationDate:row.applicationDate ?? null, approvedDate:row.approvedDate ?? null,
+        expirationDate:row.expirationDate ?? null, initialDueDate:row.initialDueDate ?? null,
+        importedCertificationStatus:row.importedCertificationStatus ?? null, importedExamStatus:row.importedExamStatus ?? null,
+        lastScore10:row.lastScore10 === null ? null : Number(row.lastScore10),
+        importedAttemptNumber:row.importedAttemptNumber === null ? null : Number(row.importedAttemptNumber),
+        lastDataSource:row.lastDataSource ?? null, lastImportFingerprint:row.lastImportFingerprint ?? null,
+        attempts:attemptsByRecord.get(String(row.recordId)) ?? [],
+      };
+      byPerson.set(String(row.personId), [...(byPerson.get(String(row.personId)) ?? []), state]);
+    }
+    return byPerson;
+  }
+
+  async applyImportedEvidence(args: {
+    personId: string;
+    config: ImportCertificationCatalogConfig;
+    block: ImportCertificationBlock;
+    evidence: ParsedCertificationEvidence;
+    actorEmail: string;
+  }): Promise<{ changed: boolean; resultRegistered: boolean }> {
+    const { personId, config, block, evidence, actorEmail } = args;
+    const pool = await getDbConnection();
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const currentResult = await new sql.Request(transaction)
+        .input('personId', sql.UniqueIdentifier, personId)
+        .input('certificationId', sql.UniqueIdentifier, config.id)
+        .query(`SELECT TOP 1 CAST(Id AS NVARCHAR(36)) AS id,CurrentCycle,Source,BaseStatus,LastImportFingerprint
+                FROM bbva.PersonCertification WHERE PersonId=@personId AND CertificationId=@certificationId;`);
+      let recordId = currentResult.recordset[0]?.id ? String(currentResult.recordset[0].id) : '';
+      const currentCycle = Number(currentResult.recordset[0]?.CurrentCycle ?? 1);
+      if (!recordId) {
+        recordId = crypto.randomUUID();
+        await new sql.Request(transaction)
+          .input('id',sql.UniqueIdentifier,recordId).input('personId',sql.UniqueIdentifier,personId)
+          .input('certificationId',sql.UniqueIdentifier,config.id).input('actorEmail',sql.NVarChar(255),actorEmail)
+          .query(`INSERT INTO bbva.PersonCertification(Id,PersonId,CertificationId,Applicable,Mandatory,Source,CurrentCycle,BaseStatus,CreatedByEmail,UpdatedByEmail)
+                  VALUES(@id,@personId,@certificationId,1,0,N'AUTO',1,N'PENDING',@actorEmail,@actorEmail);`);
+      }
+
+      const before = await new sql.Request(transaction).input('id',sql.UniqueIdentifier,recordId).query(`
+        SELECT Applicable,BaseStatus,CONVERT(VARCHAR(10),ApplicationDate,23) AS ApplicationDate,
+               CONVERT(VARCHAR(10),ApprovedDate,23) AS ApprovedDate,CONVERT(VARCHAR(10),ExpirationDate,23) AS ExpirationDate,
+               CONVERT(VARCHAR(10),InitialDueDate,23) AS InitialDueDate,ImportedCertificationStatus,ImportedExamStatus,
+               LastScore10,ImportedAttemptNumber,LastImportFingerprint
+        FROM bbva.PersonCertification WHERE Id=@id;
+      `);
+      const previous = before.recordset[0] as any;
+      const targetApplicable = evidence.applicable !== false;
+      const targetApplicationDate = targetApplicable ? evidence.applicationDate : null;
+      const targetApprovedDate = targetApplicable ? evidence.approvedDate : null;
+      const targetExpirationDate = targetApplicable ? evidence.expirationDate : null;
+      const targetBaseStatus = evidence.baseStatus ?? (targetApplicable ? 'PENDING' : 'NOT_APPLICABLE');
+      const sameFingerprint = String(previous?.LastImportFingerprint ?? '') === evidence.fingerprint;
+      const sameEffective = Boolean(previous)
+        && Boolean(previous.Applicable) === targetApplicable
+        && String(previous.BaseStatus) === targetBaseStatus
+        && (previous.ApplicationDate ?? null) === targetApplicationDate
+        && (previous.ApprovedDate ?? null) === targetApprovedDate
+        && (previous.ExpirationDate ?? null) === targetExpirationDate
+        && (previous.InitialDueDate ?? null) === evidence.initialDueDate
+        && (previous.LastScore10 === null ? null : Number(previous.LastScore10)) === evidence.score10
+        && (previous.ImportedAttemptNumber === null ? null : Number(previous.ImportedAttemptNumber)) === evidence.administrativeAttempt;
+
+      const hasFormalResultEvidence = Boolean(evidence.rawExamStatus) || config.requiresAttempts || config.requiresApplicationDate;
+      let resultRegistered = hasFormalResultEvidence && (!sameEffective || !sameFingerprint) && ['APPROVED','FAILED'].includes(targetBaseStatus);
+      if (!sameEffective || !sameFingerprint) {
+        await new sql.Request(transaction)
+          .input('id',sql.UniqueIdentifier,recordId).input('applicable',sql.Bit,targetApplicable)
+          .input('baseStatus',sql.NVarChar(24),targetBaseStatus).input('applicationDate',sql.Date,targetApplicationDate)
+          .input('approvedDate',sql.Date,targetApprovedDate).input('expirationDate',sql.Date,targetExpirationDate)
+          .input('initialDueDate',sql.Date,evidence.initialDueDate)
+          .input('importedCertificationStatus',sql.NVarChar(80),evidence.rawCertificationStatus)
+          .input('importedExamStatus',sql.NVarChar(60),evidence.rawExamStatus)
+          .input('lastScore10',sql.Decimal(5,2),evidence.score10)
+          .input('importedAttemptNumber',sql.Int,evidence.administrativeAttempt)
+          .input('fingerprint',sql.Char(64),evidence.fingerprint).input('actorEmail',sql.NVarChar(255),actorEmail)
+          .query(`UPDATE bbva.PersonCertification SET Applicable=@applicable,BaseStatus=@baseStatus,
+                    ApplicationDate=@applicationDate,ApprovedDate=CASE WHEN @baseStatus=N'APPROVED' THEN @approvedDate ELSE ApprovedDate END,
+                    ExpirationDate=CASE WHEN @baseStatus=N'APPROVED' THEN @expirationDate WHEN @baseStatus=N'NOT_APPLICABLE' THEN NULL ELSE ExpirationDate END,
+                    InitialDueDate=@initialDueDate,ImportedCertificationStatus=@importedCertificationStatus,
+                    ImportedExamStatus=@importedExamStatus,LastScore10=@lastScore10,ImportedAttemptNumber=@importedAttemptNumber,
+                    LastDataSource=N'IMPORT',LastImportFingerprint=@fingerprint,LastImportedAt=SYSUTCDATETIME(),
+                    UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;`);
+      }
+
+      if (config.requiresAttempts && evidence.administrativeAttempt !== null && evidence.administrativeAttempt > 0 && evidence.applicationDate && evidence.baseStatus && ['APPROVED','FAILED'].includes(evidence.baseStatus)) {
+        const result = evidence.baseStatus === 'APPROVED' ? 'APPROVED' : 'FAILED';
+        const attemptFingerprint = importCertificationAttemptFingerprint({ block, applicationDate:evidence.applicationDate, result, score10:evidence.score10, administrativeAttempt:evidence.administrativeAttempt });
+        const existingAttempt = await new sql.Request(transaction)
+          .input('recordId',sql.UniqueIdentifier,recordId).input('fingerprint',sql.Char(64),attemptFingerprint)
+          .query(`SELECT TOP 1 1 AS ok FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND ImportFingerprint=@fingerprint;`);
+        if (!existingAttempt.recordset[0]?.ok) {
+          const attemptNumber = Math.max(1, evidence.administrativeAttempt);
+          const slot = await new sql.Request(transaction)
+            .input('recordId',sql.UniqueIdentifier,recordId).input('cycle',sql.Int,currentCycle).input('attemptNumber',sql.Int,attemptNumber)
+            .query(`SELECT TOP 1 Source,CONVERT(VARCHAR(10),ApplicationDate,23) AS ApplicationDate,Result,Score10
+                    FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle AND AttemptNumber=@attemptNumber;`);
+          const occupied = slot.recordset[0] as any;
+          if (!occupied) {
+            await new sql.Request(transaction)
+              .input('recordId',sql.UniqueIdentifier,recordId).input('cycle',sql.Int,currentCycle).input('attemptNumber',sql.Int,attemptNumber)
+              .input('applicationDate',sql.Date,evidence.applicationDate).input('result',sql.NVarChar(16),result)
+              .input('score10',sql.Decimal(5,2),evidence.score10).input('fingerprint',sql.Char(64),attemptFingerprint)
+              .input('actorEmail',sql.NVarChar(255),actorEmail)
+              .query(`INSERT INTO bbva.PersonCertificationAttempt(PersonCertificationId,CycleNumber,AttemptNumber,ApplicationDate,Result,ResultDate,Score10,Source,ImportFingerprint,CreatedByEmail)
+                      VALUES(@recordId,@cycle,@attemptNumber,@applicationDate,@result,@applicationDate,@score10,N'IMPORT',@fingerprint,@actorEmail);`);
+            resultRegistered = true;
+          }
+        }
+      }
+
+      if ((!sameEffective || !sameFingerprint) || resultRegistered) {
+        const description = `Importación Excel: ${config.name} (${evidence.lifecycle ?? 'sin ciclo'}), estado=${evidence.rawCertificationStatus ?? 'vacío'}, examen=${evidence.rawExamStatus ?? 'vacío'}, fecha=${evidence.applicationDate ?? 'vacía'}, intento=${evidence.administrativeAttempt ?? 'vacío'}.`;
+        await new sql.Request(transaction)
+          .input('recordId',sql.UniqueIdentifier,recordId).input('description',sql.NVarChar(600),description.slice(0,600))
+          .input('actorEmail',sql.NVarChar(255),actorEmail)
+          .query(`INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,Source,CreatedByEmail)
+                  VALUES(@recordId,N'IMPORTED_RECONCILIATION',@description,N'IMPORT',@actorEmail);`);
+      }
+
+      await transaction.commit();
+      return { changed: !sameEffective || !sameFingerprint, resultRegistered };
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
 }

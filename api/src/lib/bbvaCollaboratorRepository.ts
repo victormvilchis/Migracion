@@ -38,8 +38,8 @@ const COLLABORATOR_SELECT = `
   OUTER APPLY (
     SELECT
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus<>N'NOT_APPLICABLE' THEN 1 END) AS applicable,
-      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND (pc.ExpirationDate IS NULL OR pc.ExpirationDate > DATEADD(day,ISNULL(cc.ExpiringSoonDays,90),CONVERT(date,SYSUTCDATETIME()))) THEN 1 END) AS validCount,
-      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate >= CONVERT(date,SYSUTCDATETIME()) AND pc.ExpirationDate <= DATEADD(day,ISNULL(cc.ExpiringSoonDays,90),CONVERT(date,SYSUTCDATETIME())) THEN 1 END) AS expiringCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND (pc.ExpirationDate IS NULL OR (pc.ExpirationDate >= CONVERT(date,SYSUTCDATETIME()) AND (cc.ExpiringSoonDays IS NULL OR pc.ExpirationDate > DATEADD(day,cc.ExpiringSoonDays,CONVERT(date,SYSUTCDATETIME()))))) THEN 1 END) AS validCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND cc.ExpiringSoonDays IS NOT NULL AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate >= CONVERT(date,SYSUTCDATETIME()) AND pc.ExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,CONVERT(date,SYSUTCDATETIME())) THEN 1 END) AS expiringCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=0 THEN 1 END) AS expiredCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus IN (N'PENDING',N'SCHEDULED',N'APPLIED',N'FAILED') THEN 1 END) AS pendingCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=1 THEN 1 END) AS recertificationPendingCount
