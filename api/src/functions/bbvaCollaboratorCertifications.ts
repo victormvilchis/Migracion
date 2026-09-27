@@ -81,6 +81,17 @@ export async function collaboratorCertificationRecertifyHandler(request: HttpReq
   }
 }
 
+
+export async function certificationTrackingHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+  try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, 'COLLABORATOR_READ');
+    return { status: 200, jsonBody: { items: await service.tracking() } };
+  } catch (error) {
+    return bbvaErrorResponse(error, context, 'CollaboratorCertifications');
+  }
+}
+
 app.http('bbvaCollaboratorCertificationCollection', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
@@ -108,3 +119,5 @@ app.http('bbvaCollaboratorCertificationRecertify', {
   route: 'bbva/collaborators/{id}/certifications/{certificationRecordId}/recertify',
   handler: collaboratorCertificationRecertifyHandler,
 });
+
+app.http('bbvaCertificationTracking', { methods: ['GET'], authLevel: 'anonymous', route: 'bbva/certifications/tracking-items', handler: certificationTrackingHandler });

@@ -39,6 +39,7 @@ export interface CollaboratorCertificationRecord {
   status: CollaboratorCertificationStatus;
   attemptCount: number;
   applicationDate: string | null;
+  scheduledDate: string | null;
   approvedDate: string | null;
   expirationDate: string | null;
   validityMonths: number | null;
@@ -97,6 +98,30 @@ export interface CollaboratorCertificationDetail {
 export interface CollaboratorCertificationListResult {
   items: CollaboratorCertificationRecord[];
   summary: CollaboratorCertificationSummary;
+}
+
+
+export interface CertificationTrackingRecord {
+  collaboratorId: string;
+  personId: string;
+  collaboratorName: string;
+  profile: string | null;
+  technology: string | null;
+  certificationRecordId: string;
+  certificationId: string;
+  certificationName: string;
+  certificationType: string;
+  technologyName: string | null;
+  status: CollaboratorCertificationStatus;
+  currentCycle: number;
+  attemptCount: number;
+  nextAttemptNumber: number;
+  scheduledDate: string | null;
+  lastApplicationDate: string | null;
+  approvedDate: string | null;
+  expirationDate: string | null;
+  recertificationEnabled: boolean;
+  requiresAttempts: boolean;
 }
 
 export interface CertificationAttemptInput {

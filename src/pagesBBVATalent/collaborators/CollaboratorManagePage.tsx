@@ -139,14 +139,14 @@ export const CollaboratorManagePage: React.FC = () => {
               </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-500 [.bbva-dark_&]:text-slate-400">
                 <span className="inline-flex items-center gap-1"><User className="h-3 w-3" />IS {item.softtekCode || 'No disponible'}</span>
-                <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{item.email}</span>
+                <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" />{item.softtekEmail || item.email}</span>
                 <span className="inline-flex items-center gap-1"><Briefcase className="h-3 w-3" />{[item.currentTechnology, item.expertise].filter(Boolean).join(' · ') || 'Tecnología no disponible'}</span>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => navigate(`/bbva/collaborators/${item.id}/edit`)} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-[10.5px] font-semibold text-slate-700 transition hover:bg-slate-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"><Pencil className="h-3.5 w-3.5" />Editar</button>
-              <button type="button" onClick={() => navigate(`/bbva/collaborators/${item.id}/certifications`)} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-[10.5px] font-semibold text-slate-700 transition hover:bg-slate-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"><Award className="h-3.5 w-3.5" />Certificaciones</button>
+              <button type="button" onClick={() => navigate(`/bbva/collaborators/${item.id}/certifications`, { state: { returnTo: `/bbva/collaborators/${item.id}/manage` } })} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-[10.5px] font-semibold text-slate-700 transition hover:bg-slate-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"><Award className="h-3.5 w-3.5" />Certificaciones</button>
               <button type="button" onClick={() => navigate(`/bbva/collaborators/${item.id}/move-to-talent`)} disabled={item.status !== 'ACTIVE'} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-[10.5px] font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><ArrowRightLeft className="h-3.5 w-3.5" />Mover a Banco de talento</button>
             </div>
           </div>
@@ -184,9 +184,11 @@ export const CollaboratorManagePage: React.FC = () => {
                 <DataItem label="Perfil tecnológico" value={item.technologyProfile} />
                 <DataItem label="Tecnología principal" value={item.currentTechnology} />
                 <DataItem label="Nivel de experiencia" value={item.expertise} />
-                <DataItem label="Usuario corporativo" value={item.corporateUser} />
-                <DataItem label="Fecha de alta" value={formatDate(item.startDate)} />
-                <DataItem label="Fecha de contratación" value={formatDate(item.hireDate)} />
+                <DataItem label="Usuario BBVA" value={item.bbvaUser ?? item.corporateUser} />
+                <DataItem label="Fecha de alta BBVA" value={formatDate(item.bbvaStartDate ?? item.startDate)} />
+                <DataItem label="Contratación Softtek" value={formatDate(item.softtekHireDate ?? item.hireDate)} />
+                <DataItem label="Correo Softtek" value={item.softtekEmail || item.email} />
+                <DataItem label="Correo BBVA" value={item.bbvaEmail} />
                 <DataItem label="Estado" value={item.status === 'ACTIVE' ? 'Activo' : 'Inactivo'} />
               </div>
             </section>
@@ -197,14 +199,14 @@ export const CollaboratorManagePage: React.FC = () => {
                   <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100"><Award className="h-4 w-4 text-emerald-600" />Certificaciones</div>
                   <div className="mt-0.5 text-[9.5px] text-slate-500">Primero se muestran las certificaciones que requieren atención.</div>
                 </div>
-                <button type="button" onClick={() => navigate(`/bbva/collaborators/${item.id}/certifications`)} className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 hover:underline [.bbva-dark_&]:text-blue-300">Gestionar todas <ArrowRight className="h-3 w-3" /></button>
+                <button type="button" onClick={() => navigate(`/bbva/collaborators/${item.id}/certifications`, { state: { returnTo: `/bbva/collaborators/${item.id}/manage` } })} className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 hover:underline [.bbva-dark_&]:text-blue-300">Gestionar todas <ArrowRight className="h-3 w-3" /></button>
               </div>
               {certificationsQuery.isLoading ? (
                 <div className="px-4 py-6 text-center text-[10.5px] text-slate-500">Cargando certificaciones...</div>
               ) : certificationsQuery.error ? (
                 <div className="px-4 py-5 text-[10.5px] text-rose-600">{(certificationsQuery.error as Error).message}</div>
               ) : relevantCertifications.length ? (
-                relevantCertifications.map((cert) => <CertificationRow key={cert.id} item={cert} onOpen={() => navigate(`/bbva/collaborators/${item.id}/certifications/${cert.id}`)} />)
+                relevantCertifications.map((cert) => <CertificationRow key={cert.id} item={cert} onOpen={() => navigate(`/bbva/collaborators/${item.id}/certifications/${cert.id}`, { state: { returnTo: `/bbva/collaborators/${item.id}/manage` } })} />)
               ) : (
                 <div className="px-4 py-6 text-center text-[10.5px] text-slate-500">Sin certificaciones aplicables registradas.</div>
               )}

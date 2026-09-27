@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { lifecycleApi } from '../api/lifecycleApi';
 import type { MoveCollaboratorToTalentPayload } from '../types/lifecycle';
+import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 
 export function useLifecycleReasons() {
   return useQuery({ queryKey: ['bbva-lifecycle-reasons'], queryFn: lifecycleApi.reasons });
@@ -31,6 +32,7 @@ export function useMoveCollaboratorToTalent() {
       void queryClient.invalidateQueries({ queryKey: ['collaborators', variables.id] });
       void queryClient.invalidateQueries({ queryKey: ['collaborators', variables.id, 'lifecycle'] });
       void queryClient.invalidateQueries({ queryKey: ['talent'] });
+      publishBbvaDataChange(['talent','collaborators','dashboard','certifications']);
     },
   });
 }

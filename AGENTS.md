@@ -618,3 +618,10 @@ The objective is not to reproduce another application's source code.
 The objective is to build BFS faster while preserving the proven business, integrity and security behavior that is applicable to BFS.
 
 BFS remains its own product, architecture and source of truth.
+## BBVA Workspace — persistencia explícita y concurrencia
+
+- No implementar autoguardado de información funcional en BBVA Workspace. Cambios de datos maestros, catálogos, certificaciones, Talent Bank, ciclo de vida, observaciones o cualquier otro dato persistente requieren una acción explícita `Guardar`, `Confirmar`, `Aplicar` o equivalente.
+- Los controles `onChange`, filtros, búsqueda, paginación, tabs y estados puramente visuales pueden actualizar UI local, pero nunca deben persistir por sí solos.
+- Toda mutación BBVA debe invalidar/publicar el cambio para mantener coherencia entre vistas y pestañas abiertas.
+- Los casos de edición de entidades mutables deben utilizar control optimista de versión/`UpdatedAt` cuando el repositorio lo soporte; ante una escritura obsoleta se debe rechazar con conflicto y solicitar recarga, nunca sobrescribir silenciosamente.
+- Estas reglas aplican a módulos existentes y futuros de BBVA Workspace.

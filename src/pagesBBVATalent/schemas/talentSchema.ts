@@ -1,17 +1,16 @@
 import { z } from 'zod';
 import { TALENT_AFFILIATIONS, TALENT_STAGES, TALENT_TYPES } from '../types/talent';
 
-const optionalDate = z.union([
-  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida.'),
-  z.literal(''),
-]);
+const optionalDate = z.union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida.'), z.literal('')]);
+const optionalEmail = z.union([z.string().trim().email('Correo inválido.').max(255), z.literal('')]);
 
 export const talentSchema = z.object({
   talentType: z.enum(TALENT_TYPES),
   affiliationType: z.enum(TALENT_AFFILIATIONS),
   softtekCode: z.string().trim().max(80),
-  corporateUser: z.string().trim().max(100),
-  email: z.string().trim().email('Correo inválido.').max(255),
+  bbvaUser: z.string().trim().max(100),
+  softtekEmail: z.string().trim().email('Correo Softtek inválido.').max(255),
+  bbvaEmail: optionalEmail,
   firstName: z.string().trim().min(2, 'El nombre es obligatorio.').max(120),
   lastName: z.string().trim().min(2, 'Los apellidos son obligatorios.').max(180),
   profile: z.string().trim().max(120),
@@ -23,10 +22,11 @@ export const talentSchema = z.object({
   expertise: z.string().trim().max(40),
   stage: z.enum(TALENT_STAGES),
   active: z.boolean(),
-  platformStartDate: optionalDate,
-  hireDate: optionalDate,
+  bbvaStartDate: optionalDate,
+  softtekHireDate: optionalDate,
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha de alta inválida.'),
   notes: z.string().trim().max(2000),
+  expectedUpdatedAt: z.string().optional(),
 }).superRefine((value, ctx) => {
   if (value.talentType === 'ACADEMY') {
     if (!value.softtekCode) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['softtekCode'], message: 'El IS es obligatorio para Academia.' });

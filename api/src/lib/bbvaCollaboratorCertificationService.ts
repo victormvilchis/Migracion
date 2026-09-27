@@ -38,6 +38,10 @@ export class CollaboratorCertificationService {
     return repository.detail(collaboratorId, recordId);
   }
 
+  tracking() {
+    return repository.tracking();
+  }
+
   async addManual(collaboratorId: string, payload: unknown, actorEmail: string) {
     const certificationId = String(valueOf(payload, 'certificationId') ?? '').trim();
     if (!certificationId) throw Object.assign(new Error('La certificación es obligatoria.'), { statusCode: 400 });

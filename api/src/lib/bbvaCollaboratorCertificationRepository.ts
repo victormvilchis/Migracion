@@ -9,6 +9,7 @@ import type {
   CollaboratorCertificationListResult,
   CollaboratorCertificationRecord,
   CollaboratorCertificationSummary,
+  CertificationTrackingRecord,
 } from './bbvaCollaboratorCertificationDomain.js';
 import type {
   ImportCertificationCatalogConfig,
@@ -58,6 +59,7 @@ const BASE_SELECT = `
     ${STATUS_CASE} AS status,
     (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt a WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle) AS attemptCount,
     CONVERT(VARCHAR(10),pc.ApplicationDate,23) AS applicationDate,
+    CONVERT(VARCHAR(10),pc.NextScheduledDate,23) AS scheduledDate,
     CONVERT(VARCHAR(10),effectiveDates.EffectiveApprovedDate,23) AS approvedDate,
     CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
     cc.ValidityMonths AS validityMonths,
@@ -370,7 +372,7 @@ export class CollaboratorCertificationRepository {
       .input('actorEmail', sql.NVarChar(255), actorEmail)
       .query(`
         UPDATE bbva.PersonCertification
-        SET ApplicationDate=@applicationDate,Notes=@notes,Mandatory=@mandatory,LastDataSource=N'MANUAL',
+        SET NextScheduledDate=@applicationDate,Notes=@notes,Mandatory=@mandatory,LastDataSource=N'MANUAL',
             BaseStatus=CASE
               WHEN BaseStatus=N'PENDING' AND @applicationDate IS NOT NULL THEN N'SCHEDULED'
               WHEN BaseStatus=N'SCHEDULED' AND @applicationDate IS NULL THEN N'PENDING'
@@ -388,6 +390,9 @@ export class CollaboratorCertificationRepository {
     const current = await this.detail(collaboratorId, recordId);
     if (!current) return null;
     if (!current.item.applicable) throw Object.assign(new Error('La certificación no está marcada como aplicable.'), { statusCode: 409 });
+    if (current.item.baseStatus === 'APPROVED') {
+      throw Object.assign(new Error('El ciclo actual ya está aprobado. Para registrar una nueva presentación inicia primero la recertificación.'), { statusCode: 409 });
+    }
 
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
@@ -437,7 +442,7 @@ export class CollaboratorCertificationRepository {
               ApprovedDate=CASE WHEN @result=N'APPROVED' THEN @approvedDate ELSE ApprovedDate END,
               ExpirationDate=CASE WHEN @result=N'APPROVED' AND @validityMonths IS NOT NULL THEN DATEADD(month,@validityMonths,@approvedDate)
                                   WHEN @result=N'APPROVED' THEN NULL ELSE ExpirationDate END,
-              LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+              NextScheduledDate=NULL,LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
           WHERE Id=@recordId;
         `);
 
@@ -474,7 +479,7 @@ export class CollaboratorCertificationRepository {
       .input('actorEmail', sql.NVarChar(255), actorEmail)
       .query(`
         UPDATE bbva.PersonCertification
-        SET CurrentCycle=CurrentCycle+1,BaseStatus=N'PENDING',ApplicationDate=NULL,ApprovedDate=NULL,ExpirationDate=NULL,
+        SET CurrentCycle=CurrentCycle+1,BaseStatus=N'PENDING',ApplicationDate=NULL,NextScheduledDate=NULL,ApprovedDate=NULL,ExpirationDate=NULL,
             Applicable=1,LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
         WHERE Id=@recordId;
         INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
@@ -495,9 +500,64 @@ export class CollaboratorCertificationRepository {
         SET Applicable=0,BaseStatus=N'NOT_APPLICABLE',Source=N'MANUAL',LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
         WHERE Id=@recordId;
         INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
-        VALUES(@recordId,N'NOT_APPLICABLE',N'La certificación fue marcada como No aplica.',@actorEmail);
+        VALUES(@recordId,N'NOT_APPLICABLE',N'La certificación fue quitada del seguimiento.',@actorEmail);
       `);
     return (await this.detail(collaboratorId, recordId))?.item ?? null;
+  }
+
+  async tracking(): Promise<CertificationTrackingRecord[]> {
+    const pool = await getDbConnection();
+    const result = await pool.request().query(`
+      SELECT
+        CAST(c.Id AS NVARCHAR(36)) AS collaboratorId,
+        CAST(p.Id AS NVARCHAR(36)) AS personId,
+        LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS collaboratorName,
+        p.Profile AS profile,
+        p.CurrentTechnology AS technology,
+        CAST(pc.Id AS NVARCHAR(36)) AS certificationRecordId,
+        CAST(cc.Id AS NVARCHAR(36)) AS certificationId,
+        cc.Name AS certificationName,
+        cc.CertificationType AS certificationType,
+        tech.Name AS technologyName,
+        ${STATUS_CASE} AS status,
+        pc.CurrentCycle AS currentCycle,
+        (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt a WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle) AS attemptCount,
+        (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt a WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle) + 1 AS nextAttemptNumber,
+        CONVERT(VARCHAR(10),pc.NextScheduledDate,23) AS scheduledDate,
+        CONVERT(VARCHAR(10),pc.ApplicationDate,23) AS lastApplicationDate,
+        CONVERT(VARCHAR(10),effectiveDates.EffectiveApprovedDate,23) AS approvedDate,
+        CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
+        cc.RecertificationEnabled AS recertificationEnabled,
+        cc.RequiresAttempts AS requiresAttempts
+      FROM bbva.PersonCertification pc
+      INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+      INNER JOIN bbva.Person p ON p.Id=pc.PersonId
+      INNER JOIN bbva.Collaborator c ON c.PersonId=p.Id AND c.Status=N'ACTIVE'
+      LEFT JOIN bbva.CatalogTechnology tech ON tech.Id=cc.TechnologyId
+      OUTER APPLY (
+        SELECT MAX(a.ApplicationDate) AS LatestApprovedAttemptDate
+        FROM bbva.PersonCertificationAttempt a
+        WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle AND a.Result=N'APPROVED'
+      ) latestApproval
+      CROSS APPLY (
+        SELECT
+          CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END AS EffectiveApprovedDate,
+          CASE WHEN pc.BaseStatus=N'APPROVED' AND cc.ValidityMonths IS NOT NULL AND (CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END) IS NOT NULL
+            THEN DATEADD(month,cc.ValidityMonths,(CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END)) ELSE pc.ExpirationDate END AS EffectiveExpirationDate
+      ) effectiveDates
+      WHERE pc.Applicable=1 AND pc.BaseStatus<>N'NOT_APPLICABLE' AND cc.Status=N'ACTIVE'
+      ORDER BY CASE ${STATUS_CASE} WHEN N'EXPIRED' THEN 1 WHEN N'RECERTIFICATION_PENDING' THEN 1 WHEN N'EXPIRING' THEN 2 WHEN N'FAILED' THEN 3 WHEN N'SCHEDULED' THEN 4 WHEN N'PENDING' THEN 5 ELSE 6 END,
+               effectiveDates.EffectiveExpirationDate ASC,pc.NextScheduledDate ASC,p.FirstName ASC,cc.Name ASC;
+    `);
+    const rows = result.recordset.map((row: any) => ({
+      ...row,
+      currentCycle: Number(row.currentCycle),
+      attemptCount: Number(row.attemptCount),
+      nextAttemptNumber: Number(row.nextAttemptNumber),
+      recertificationEnabled: Boolean(row.recertificationEnabled),
+      requiresAttempts: Boolean(row.requiresAttempts),
+    })) as CertificationTrackingRecord[];
+    return rows.filter((row) => row.status !== 'VALID' && row.status !== 'NOT_APPLICABLE');
   }
 
   async listImportCatalog(): Promise<ImportCertificationCatalogConfig[]> {

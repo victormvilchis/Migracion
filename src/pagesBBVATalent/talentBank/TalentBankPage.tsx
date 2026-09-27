@@ -59,7 +59,7 @@ export const TalentPage: React.FC = () => {
     const term = search.trim().toLowerCase();
     return items.filter((item) => {
       const normalizedType = item.talentType === 'BBVA_EXIT' ? 'FORMER_COLLABORATOR' : item.talentType;
-      const values = [item.fullName, item.email, item.softtekCode, item.corporateUser, item.profile, item.technologyProfile, item.currentTechnology, item.expertise, item.lifecycleReasonName, item.lifecycleReasonCode];
+      const values = [item.fullName, item.softtekEmail, item.bbvaEmail, item.email, item.softtekCode, item.bbvaUser, item.corporateUser, item.profile, item.technologyProfile, item.currentTechnology, item.expertise, item.lifecycleReasonName, item.lifecycleReasonCode];
       const matchesSearch = !term || values.filter(Boolean).some((value) => String(value).toLowerCase().includes(term));
       return matchesSearch
         && (typeFilter === 'ALL' || normalizedType === typeFilter)
@@ -132,7 +132,7 @@ export const TalentPage: React.FC = () => {
                   const deleted = item.recordStatus === 'DELETED';
                   return (
                     <tr key={item.id} className={`h-[42px] transition hover:bg-slate-50 ${deleted ? 'opacity-70' : ''}`}>
-                      <td className="px-2 py-1.5"><div className="truncate font-semibold text-slate-900">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500">{item.email}</div></td>
+                      <td className="px-2 py-1.5"><div className="truncate font-semibold text-slate-900">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail || item.email}</div>{item.bbvaEmail ? <div className="truncate text-[9px] text-slate-400">BBVA: {item.bbvaEmail}</div> : null}</td>
                       <td className="px-2 py-1.5"><span className="rounded-full bg-slate-100 px-2 py-1 text-[9.5px] font-semibold text-slate-700">{TALENT_AFFILIATION_LABELS[item.affiliationType]}</span></td>
                       <td className="px-2 py-1.5">{deleted ? <span className="rounded-full bg-rose-50 px-2 py-1 text-[9.5px] font-semibold text-rose-700">Eliminado</span> : <TalentStageBadge stage={item.stage} />}</td>
                       <td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{item.lifecycleReasonName || TALENT_TYPE_LABELS[item.talentType]}</div>{item.lifecycleEffectiveDate ? <div className="mt-0.5 text-[9px] text-slate-400">Desde {item.lifecycleEffectiveDate}</div> : null}</td>
@@ -146,7 +146,7 @@ export const TalentPage: React.FC = () => {
                           { id: 'convert', label: 'Convertir a colaborador', icon: ArrowRightLeft, disabled: deleted, onClick: () => navigate(`/bbva/talent-bank/${item.id}/convert`) },
                           { id: 'view-cv', label: 'Ver CV', icon: FileText, disabled: !item.cv, onClick: () => void openCv(item, false) },
                           { id: 'download-cv', label: 'Descargar CV', icon: Download, disabled: !item.cv, onClick: () => void openCv(item, true) },
-                          { id: 'delete', label: 'Eliminar lógicamente', icon: Trash2, tone: 'danger', disabled: deleted, onClick: () => navigate(`/bbva/talent-bank/${item.id}/delete`) },
+                          { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger', disabled: deleted, onClick: () => navigate(`/bbva/talent-bank/${item.id}/delete`) },
                         ]} />
                       </td>
                     </tr>

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 import {
   createCertificationCatalogItem,
   deleteCertificationCatalogItem,
@@ -24,17 +25,17 @@ export function useCertificationCatalogItem(id?: string) {
 }
 export function useCreateCertificationCatalogItem() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: createCertificationCatalogItem, onSuccess: () => client.invalidateQueries({ queryKey: key }) });
+  return useMutation({ mutationFn: createCertificationCatalogItem, onSuccess: () => { void client.invalidateQueries({ queryKey: key }); publishBbvaDataChange(['certification-catalog','certifications']); } });
 }
 export function useUpdateCertificationCatalogItem() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: ({ id, payload }: { id: string; payload: CertificationCatalogPayload }) => updateCertificationCatalogItem(id, payload), onSuccess: () => client.invalidateQueries({ queryKey: key }) });
+  return useMutation({ mutationFn: ({ id, payload }: { id: string; payload: CertificationCatalogPayload }) => updateCertificationCatalogItem(id, payload), onSuccess: () => { void client.invalidateQueries({ queryKey: key }); publishBbvaDataChange(['certification-catalog','certifications']); } });
 }
 export function useUpdateCertificationCatalogStatus() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: ({ id, status }: { id: string; status: CertificationCatalogStatus }) => updateCertificationCatalogStatus(id, status), onSuccess: () => client.invalidateQueries({ queryKey: key }) });
+  return useMutation({ mutationFn: ({ id, status }: { id: string; status: CertificationCatalogStatus }) => updateCertificationCatalogStatus(id, status), onSuccess: () => { void client.invalidateQueries({ queryKey: key }); publishBbvaDataChange(['certification-catalog','certifications']); } });
 }
 export function useDeleteCertificationCatalogItem() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: deleteCertificationCatalogItem, onSuccess: () => client.invalidateQueries({ queryKey: key }) });
+  return useMutation({ mutationFn: deleteCertificationCatalogItem, onSuccess: () => { void client.invalidateQueries({ queryKey: key }); publishBbvaDataChange(['certification-catalog','certifications']); } });
 }

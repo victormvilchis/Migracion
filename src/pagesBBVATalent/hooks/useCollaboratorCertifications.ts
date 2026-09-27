@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { collaboratorCertificationApi } from '../api/collaboratorCertificationApi';
 import type { CertificationAttemptResult } from '../types/collaboratorCertification';
+import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 
 export function useCollaboratorCertifications(collaboratorId?: string) {
   return useQuery({ queryKey: ['collaborator-certifications', collaboratorId], queryFn: () => collaboratorCertificationApi.list(collaboratorId as string), enabled: Boolean(collaboratorId) });
@@ -17,6 +18,8 @@ function useInvalidate(collaboratorId: string) {
     void client.invalidateQueries({ queryKey: ['collaborators', collaboratorId] });
     void client.invalidateQueries({ queryKey: ['collaborators'] });
     void client.invalidateQueries({ queryKey: ['bbva-dashboard'] });
+    void client.invalidateQueries({ queryKey: ['certification-tracking'] });
+    publishBbvaDataChange(['certifications','collaborators','dashboard']);
   };
 }
 
@@ -43,4 +46,8 @@ export function useRecertifyCollaboratorCertification(collaboratorId: string) {
 export function useMarkCertificationNotApplicable(collaboratorId: string) {
   const invalidate = useInvalidate(collaboratorId);
   return useMutation({ mutationFn: (recordId: string) => collaboratorCertificationApi.markNotApplicable(collaboratorId, recordId), onSuccess: invalidate });
+}
+
+export function useCertificationTracking() {
+  return useQuery({ queryKey: ['certification-tracking'], queryFn: collaboratorCertificationApi.tracking });
 }

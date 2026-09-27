@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { talentApi } from '../api/talentApi';
 import type { TalentCvPayload, TalentPayload, TalentStage } from '../types/talent';
+import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 
 export function useTalentList() {
   return useQuery({ queryKey: ['talent'], queryFn: talentApi.list });
@@ -26,7 +27,7 @@ export function useCreateTalent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: TalentPayload) => talentApi.create(payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['talent'] }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['talent'] }); publishBbvaDataChange(['talent','collaborators','dashboard']); },
   });
 }
 
@@ -37,6 +38,7 @@ export function useUpdateTalent() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['talent'] });
       queryClient.invalidateQueries({ queryKey: ['talent', variables.id] });
+      publishBbvaDataChange(['talent','collaborators','dashboard']);
     },
   });
 }
@@ -49,6 +51,7 @@ export function useUpdateTalentStage() {
       queryClient.invalidateQueries({ queryKey: ['talent'] });
       queryClient.invalidateQueries({ queryKey: ['talent', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['talent', variables.id, 'history'] });
+      publishBbvaDataChange(['talent','collaborators','dashboard']);
     },
   });
 }
@@ -60,6 +63,7 @@ export function useConvertTalent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['talent'] });
       queryClient.invalidateQueries({ queryKey: ['collaborators'] });
+      publishBbvaDataChange(['talent','collaborators','dashboard','certifications']);
     },
   });
 }
@@ -68,7 +72,7 @@ export function useDeleteTalent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => talentApi.remove(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['talent'] }),
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['talent'] }); publishBbvaDataChange(['talent','collaborators','dashboard']); },
   });
 }
 
@@ -80,6 +84,7 @@ export function useSaveTalentCv() {
       queryClient.invalidateQueries({ queryKey: ['talent'] });
       queryClient.invalidateQueries({ queryKey: ['talent', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['talent', variables.id, 'history'] });
+      publishBbvaDataChange(['talent','collaborators','dashboard']);
     },
   });
 }

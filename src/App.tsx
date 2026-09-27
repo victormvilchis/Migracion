@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Header } from './components/layout/Header';
@@ -7,6 +7,7 @@ import { BBVALayout } from './componentsBBVATalent/BBVALayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { SampleCrudPage } from './pages/SampleCrudPage';
 import { SampleAiPage } from './pages/SampleAiPage';
+import { subscribeBbvaDataChange } from './pagesBBVATalent/lib/bbvaDataSync';
 
 const BBVADashboardPage = React.lazy(() => import('./pagesBBVATalent/dashboard/BBVADashboardPage').then((m) => ({ default: m.BBVADashboardPage })));
 const CollaboratorCertificationsPage = React.lazy(() => import('./pagesBBVATalent/collaboratorCertifications/CollaboratorCertificationsPage').then((m) => ({ default: m.CollaboratorCertificationsPage })));
@@ -55,6 +56,15 @@ interface RoutedAppProps {
 const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
   const location = useLocation();
   const isBbvaRoute = location.pathname.startsWith('/bbva/');
+
+  useEffect(() => {
+    if (!isBbvaRoute) return undefined;
+    const refresh = () => { void queryClient.invalidateQueries({ refetchType: 'active' }); };
+    const unsubscribe = subscribeBbvaDataChange(refresh);
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+    return () => { unsubscribe(); window.removeEventListener('focus', onFocus); };
+  }, [isBbvaRoute]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900 selection:bg-blue-600 selection:text-white">

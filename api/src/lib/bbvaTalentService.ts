@@ -62,8 +62,10 @@ function normalizeDate(value: unknown, field: string, required = false): string 
 
 async function normalizePayload(payload: any): Promise<TalentInput> {
   const talentType = normalizeType(payload?.talentType);
-  const email = requiredText(payload?.email, 'El correo electrónico', 255).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('El correo electrónico no tiene un formato válido.');
+  const softtekEmail = requiredText(payload?.softtekEmail ?? payload?.email, 'El correo Softtek', 255).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(softtekEmail)) throw new Error('El correo Softtek no tiene un formato válido.');
+  const bbvaEmail = cleanText(payload?.bbvaEmail, 255)?.toLowerCase() ?? null;
+  if (bbvaEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bbvaEmail)) throw new Error('El correo BBVA no tiene un formato válido.');
 
   const firstName = requiredText(payload?.firstName, 'El nombre', 120);
   const lastName = requiredText(payload?.lastName, 'Los apellidos', 180);
@@ -80,14 +82,15 @@ async function normalizePayload(payload: any): Promise<TalentInput> {
     if (!catalogs.currentTechnologyCatalogId) throw new Error('La tecnología actual es obligatoria y debe seleccionarse del catálogo.');
   }
 
-  const platformStartDate = normalizeDate(payload?.platformStartDate, 'Inicio de vigencia');
+  const bbvaStartDate = normalizeDate(payload?.bbvaStartDate ?? payload?.platformStartDate, 'Fecha de alta BBVA');
 
   return {
     talentType,
     affiliationType: normalizeAffiliation(payload?.affiliationType),
     softtekCode,
-    corporateUser: cleanText(payload?.corporateUser, 100)?.toUpperCase() ?? null,
-    email,
+    bbvaUser: cleanText(payload?.bbvaUser ?? payload?.corporateUser, 100)?.toUpperCase() ?? null,
+    softtekEmail,
+    bbvaEmail,
     firstName,
     lastName,
     profile: catalogs.profile,
@@ -99,10 +102,11 @@ async function normalizePayload(payload: any): Promise<TalentInput> {
     expertise: cleanText(payload?.expertise, 40)?.toUpperCase() ?? catalogs.profileSeniority,
     stage: normalizeStage(payload?.stage, talentType),
     active: payload?.active === undefined ? true : Boolean(payload.active),
-    platformStartDate,
-    hireDate: normalizeDate(payload?.hireDate, 'Fecha de contratación'),
+    bbvaStartDate,
+    softtekHireDate: normalizeDate(payload?.softtekHireDate ?? payload?.hireDate, 'Fecha de contratación Softtek'),
     entryDate: normalizeDate(payload?.entryDate, 'Fecha de alta en Talent Bank', true) as string,
     notes: cleanText(payload?.notes, 2000),
+    expectedUpdatedAt: cleanText(payload?.expectedUpdatedAt, 64),
   };
 }
 

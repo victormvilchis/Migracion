@@ -12,8 +12,11 @@ const TALENT_SELECT = `
     CONVERT(VARCHAR(33), t.DeletedAt, 127) AS deletedAt,
     t.DeletedByEmail AS deletedByEmail,
     p.SofttekCode AS softtekCode,
-    p.CorporateUser AS corporateUser,
-    p.Email AS email,
+    COALESCE(p.BbvaUser,p.CorporateUser) AS bbvaUser,
+    COALESCE(p.SofttekEmail,p.Email) AS softtekEmail,
+    p.BbvaEmail AS bbvaEmail,
+    COALESCE(p.BbvaUser,p.CorporateUser) AS corporateUser,
+    COALESCE(p.SofttekEmail,p.Email) AS email,
     p.FirstName AS firstName,
     p.LastName AS lastName,
     LTRIM(RTRIM(CONCAT(p.FirstName, N' ', ISNULL(p.LastName, N'')))) AS fullName,
@@ -26,6 +29,8 @@ const TALENT_SELECT = `
     p.Expertise AS expertise,
     t.Stage AS stage,
     t.Active AS active,
+    CONVERT(VARCHAR(10), t.PlatformStartDate, 23) AS bbvaStartDate,
+    CONVERT(VARCHAR(10), p.HireDate, 23) AS softtekHireDate,
     CONVERT(VARCHAR(10), t.PlatformStartDate, 23) AS platformStartDate,
     CONVERT(VARCHAR(10), p.HireDate, 23) AS hireDate,
     CONVERT(VARCHAR(10), t.EntryDate, 23) AS entryDate,
@@ -84,8 +89,9 @@ function mapTalent(row: TalentRow): TalentRecord {
 function bindPerson(request: sql.Request, input: TalentInput) {
   return request
     .input('softtekCode', sql.NVarChar(80), input.softtekCode || null)
-    .input('corporateUser', sql.NVarChar(100), input.corporateUser || null)
-    .input('email', sql.NVarChar(255), input.email)
+    .input('bbvaUser', sql.NVarChar(100), input.bbvaUser || null)
+    .input('softtekEmail', sql.NVarChar(255), input.softtekEmail)
+    .input('bbvaEmail', sql.NVarChar(255), input.bbvaEmail || null)
     .input('firstName', sql.NVarChar(120), input.firstName)
     .input('lastName', sql.NVarChar(180), input.lastName || null)
     .input('profile', sql.NVarChar(120), input.profile || null)
@@ -95,7 +101,7 @@ function bindPerson(request: sql.Request, input: TalentInput) {
     .input('currentTechnology', sql.NVarChar(120), input.currentTechnology || null)
     .input('currentTechnologyCatalogId', sql.UniqueIdentifier, input.currentTechnologyCatalogId || null)
     .input('expertise', sql.NVarChar(40), input.expertise || null)
-    .input('hireDate', sql.Date, input.hireDate || null)
+    .input('softtekHireDate', sql.Date, input.softtekHireDate || null)
     .input('notes', sql.NVarChar(2000), input.notes || null);
 }
 
@@ -105,7 +111,7 @@ function bindEntry(request: sql.Request, input: TalentInput) {
     .input('affiliationType', sql.NVarChar(16), input.affiliationType)
     .input('stage', sql.NVarChar(30), input.stage)
     .input('active', sql.Bit, input.active)
-    .input('platformStartDate', sql.Date, input.platformStartDate || null)
+    .input('bbvaStartDate', sql.Date, input.bbvaStartDate || null)
     .input('entryDate', sql.Date, input.entryDate);
 }
 
@@ -150,13 +156,13 @@ export class TalentRepository {
       const personRequest = bindPerson(new sql.Request(transaction), input).input('actorEmail', sql.NVarChar(255), actorEmail);
       const personResult = await personRequest.query(`
         INSERT INTO bbva.Person (
-          SofttekCode, CorporateUser, Email, FirstName, LastName, Profile, ProfileCatalogId, TechnologyProfile, TechnologyProfileCatalogId,
+          SofttekCode, CorporateUser, Email, BbvaUser, SofttekEmail, BbvaEmail, FirstName, LastName, Profile, ProfileCatalogId, TechnologyProfile, TechnologyProfileCatalogId,
           CurrentTechnology, CurrentTechnologyCatalogId, Expertise, HireDate, Notes, CreatedByEmail, UpdatedByEmail
         )
         OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
         VALUES (
-          @softtekCode, @corporateUser, @email, @firstName, @lastName, @profile, @profileCatalogId, @technologyProfile, @technologyProfileCatalogId,
-          @currentTechnology, @currentTechnologyCatalogId, @expertise, @hireDate, @notes, @actorEmail, @actorEmail
+          @softtekCode, @bbvaUser, @softtekEmail, @bbvaUser, @softtekEmail, @bbvaEmail, @firstName, @lastName, @profile, @profileCatalogId, @technologyProfile, @technologyProfileCatalogId,
+          @currentTechnology, @currentTechnologyCatalogId, @expertise, @softtekHireDate, @notes, @actorEmail, @actorEmail
         );
       `);
       const personId = String(personResult.recordset[0].id);
@@ -171,7 +177,7 @@ export class TalentRepository {
         )
         OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
         VALUES (
-          @personId, @talentType, @affiliationType, @stage, @active, @platformStartDate,
+          @personId, @talentType, @affiliationType, @stage, @active, @bbvaStartDate,
           @entryDate, @actorEmail, @actorEmail
         );
       `);
@@ -204,21 +210,32 @@ export class TalentRepository {
   async update(id: string, input: TalentInput, actorEmail: string): Promise<TalentRecord | null> {
     const current = await this.findById(id);
     if (!current) return null;
-    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado lógicamente y sólo puede consultarse.');
+    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado y sólo puede consultarse.');
 
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
+      const lock = await new sql.Request(transaction)
+        .input('id', sql.UniqueIdentifier, id)
+        .query(`SELECT Stage,DeletedAt,CONVERT(VARCHAR(33),UpdatedAt,127) AS updatedAt FROM bbva.TalentBankEntry WITH (UPDLOCK,HOLDLOCK) WHERE Id=@id;`);
+      const locked = lock.recordset[0] as { Stage?: string; DeletedAt?: Date | null; updatedAt?: string } | undefined;
+      if (!locked || locked.DeletedAt || locked.Stage === 'CONVERTED') {
+        throw Object.assign(new Error('El talento cambió de estado en otra vista. Actualiza la pantalla antes de continuar.'), { statusCode: 409 });
+      }
+      if (input.expectedUpdatedAt && locked.updatedAt !== input.expectedUpdatedAt) {
+        throw Object.assign(new Error('La información cambió en otra vista. Actualiza la pantalla antes de guardar para evitar sobrescribir cambios recientes.'), { statusCode: 409 });
+      }
+
       await bindPerson(new sql.Request(transaction), input)
         .input('personId', sql.UniqueIdentifier, current.personId)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.Person
-          SET SofttekCode=@softtekCode, CorporateUser=@corporateUser, Email=@email,
+          SET SofttekCode=@softtekCode, CorporateUser=@bbvaUser, Email=@softtekEmail, BbvaUser=@bbvaUser, SofttekEmail=@softtekEmail, BbvaEmail=@bbvaEmail,
               FirstName=@firstName, LastName=@lastName, Profile=@profile, ProfileCatalogId=@profileCatalogId,
               TechnologyProfile=@technologyProfile, TechnologyProfileCatalogId=@technologyProfileCatalogId, CurrentTechnology=@currentTechnology,
-              CurrentTechnologyCatalogId=@currentTechnologyCatalogId, Expertise=@expertise, HireDate=@hireDate, Notes=@notes,
+              CurrentTechnologyCatalogId=@currentTechnologyCatalogId, Expertise=@expertise, HireDate=@softtekHireDate, Notes=@notes,
               UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
           WHERE Id=@personId;
         `);
@@ -229,7 +246,7 @@ export class TalentRepository {
         .query(`
           UPDATE bbva.TalentBankEntry
           SET TalentType=@talentType, AffiliationType=@affiliationType, Stage=@stage, Active=@active,
-              PlatformStartDate=@platformStartDate,
+              PlatformStartDate=@bbvaStartDate,
               EntryDate=@entryDate, UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
           WHERE Id=@id;
         `);
@@ -250,7 +267,7 @@ export class TalentRepository {
   async updateStage(id: string, stage: TalentStage, actorEmail: string): Promise<TalentRecord | null> {
     const current = await this.findById(id);
     if (!current) return null;
-    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado lógicamente y sólo puede consultarse.');
+    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado y sólo puede consultarse.');
 
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
@@ -296,14 +313,14 @@ export class TalentRepository {
           WHERE Id=@entryId AND DeletedAt IS NULL;
 
           INSERT INTO bbva.TalentHistory (TalentBankEntryId, EventType, Description, CreatedByEmail)
-          VALUES (@entryId, N'LOGICALLY_DELETED', N'El registro fue eliminado lógicamente de Banco de talento.', @actorEmail);
+          VALUES (@entryId, N'LOGICALLY_DELETED', N'El registro fue eliminado de Banco de talento.', @actorEmail);
         `);
       await new sql.Request(transaction)
         .input('personId', sql.UniqueIdentifier, current.personId)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           INSERT INTO bbva.PersonLifecycleHistory (PersonId,EventType,Description,CreatedByEmail)
-          VALUES (@personId,N'TALENT_LOGICAL_DELETE',N'El registro de Banco de talento fue eliminado lógicamente.',@actorEmail);
+          VALUES (@personId,N'TALENT_LOGICAL_DELETE',N'El registro de Banco de talento fue eliminado.',@actorEmail);
         `);
       await transaction.commit();
       return true;
@@ -327,7 +344,7 @@ export class TalentRepository {
   async saveCv(id: string, cv: TalentCvInput, actorEmail: string): Promise<TalentRecord | null> {
     const current = await this.findById(id);
     if (!current) return null;
-    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado lógicamente y no puede modificarse.');
+    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado y no puede modificarse.');
 
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);

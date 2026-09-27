@@ -25,7 +25,7 @@ export const TalentDetailPage: React.FC<TalentDetailPageProps> = ({ mode = 'view
     setError(null);
     try {
       await deleteMutation.mutateAsync(id);
-      navigate('/bbva/talent-bank', { state: { message: 'El registro fue eliminado lógicamente. Su identidad e historial se conservaron.' } });
+      navigate('/bbva/talent-bank', { state: { message: 'El registro fue eliminado. Su identidad e historial se conservaron.' } });
     } catch (deleteError) {
       setError((deleteError as Error).message);
     }
@@ -40,8 +40,8 @@ export const TalentDetailPage: React.FC<TalentDetailPageProps> = ({ mode = 'view
         <BBVAFormBackButton onBack={() => navigate('/bbva/talent-bank')} disabled={deleteMutation.isPending} />
       </div>
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
-      {talent.recordStatus === 'DELETED' ? <BBVAAlert tone="warning">Registro eliminado lógicamente. Se conserva únicamente para consulta y trazabilidad.</BBVAAlert> : null}
-      {mode === 'delete' ? <BBVAAlert tone="warning">La eliminación será lógica: la persona, CV, certificaciones e historial no se borrarán.</BBVAAlert> : null}
+      {talent.recordStatus === 'DELETED' ? <BBVAAlert tone="warning">Registro eliminado. Se conserva únicamente para consulta y trazabilidad.</BBVAAlert> : null}
+      {mode === 'delete' ? <BBVAAlert tone="warning">Al eliminar, el registro dejará de estar disponible en la operación normal. Su historial se conservará para trazabilidad.</BBVAAlert> : null}
       {mode === 'view' && (talent.talentType === 'FORMER_COLLABORATOR' || talent.talentType === 'BBVA_EXIT') ? (
         <section className="grid gap-2 rounded-2xl border border-blue-100 bg-blue-50/45 p-3 text-[10.5px] [.bbva-dark_&]:border-blue-500/20 [.bbva-dark_&]:bg-blue-500/5 sm:grid-cols-4">
           <div><div className="text-[8.5px] font-semibold uppercase tracking-[0.05em] text-slate-400">Motivo del movimiento</div><div className="mt-1 font-semibold text-slate-800 [.bbva-dark_&]:text-slate-200">{talent.lifecycleReasonName || 'No disponible'}</div></div>

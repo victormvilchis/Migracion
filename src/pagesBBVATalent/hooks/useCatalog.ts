@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 import {
   createCatalogItem,
   deleteCatalogItem,
@@ -27,14 +28,14 @@ export function useCatalogOptions(type: CatalogType) {
 
 export function useCreateCatalogItem(type: CatalogType) {
   const client = useQueryClient();
-  return useMutation({ mutationFn: (payload: CatalogPayload) => createCatalogItem(type, payload), onSuccess: () => client.invalidateQueries({ queryKey: key(type) }) });
+  return useMutation({ mutationFn: (payload: CatalogPayload) => createCatalogItem(type, payload), onSuccess: () => { void client.invalidateQueries({ queryKey: key(type) }); publishBbvaDataChange(['catalogs']); } });
 }
 
 export function useUpdateCatalogItem(type: CatalogType) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: CatalogPayload }) => updateCatalogItem(type, id, payload),
-    onSuccess: () => client.invalidateQueries({ queryKey: key(type) }),
+    onSuccess: () => { void client.invalidateQueries({ queryKey: key(type) }); publishBbvaDataChange(['catalogs']); },
   });
 }
 
@@ -42,11 +43,11 @@ export function useUpdateCatalogStatus(type: CatalogType) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ id, status }: { id: string; status: CatalogStatus }) => updateCatalogStatus(type, id, status),
-    onSuccess: () => client.invalidateQueries({ queryKey: key(type) }),
+    onSuccess: () => { void client.invalidateQueries({ queryKey: key(type) }); publishBbvaDataChange(['catalogs']); },
   });
 }
 
 export function useDeleteCatalogItem(type: CatalogType) {
   const client = useQueryClient();
-  return useMutation({ mutationFn: (id: string) => deleteCatalogItem(type, id), onSuccess: () => client.invalidateQueries({ queryKey: key(type) }) });
+  return useMutation({ mutationFn: (id: string) => deleteCatalogItem(type, id), onSuccess: () => { void client.invalidateQueries({ queryKey: key(type) }); publishBbvaDataChange(['catalogs']); } });
 }

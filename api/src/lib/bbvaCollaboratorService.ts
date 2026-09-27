@@ -25,9 +25,11 @@ function normalizeDate(value: unknown, field: string): string | null {
 }
 
 async function normalizePayload(payload: any): Promise<CollaboratorInput> {
-  const email = requiredText(payload?.email, 'El correo electrónico', 255).toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('El correo electrónico no tiene un formato válido.');
-  const startDate = normalizeDate(payload?.startDate, 'Fecha de alta');
+  const softtekEmail = requiredText(payload?.softtekEmail ?? payload?.email, 'El correo Softtek', 255).toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(softtekEmail)) throw new Error('El correo Softtek no tiene un formato válido.');
+  const bbvaEmailRaw = cleanText(payload?.bbvaEmail, 255)?.toLowerCase() ?? null;
+  if (bbvaEmailRaw && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bbvaEmailRaw)) throw new Error('El correo BBVA no tiene un formato válido.');
+  const bbvaStartDate = normalizeDate(payload?.bbvaStartDate ?? payload?.startDate, 'Fecha de alta BBVA');
   const catalogs = await resolveProfessionalCatalogReferences(payload ?? {});
   if (!catalogs.profileCatalogId) throw new Error('El perfil es obligatorio y debe seleccionarse del catálogo.');
   if (!catalogs.technologyProfileCatalogId) throw new Error('El perfil tecnológico es obligatorio y debe seleccionarse del catálogo.');
@@ -35,8 +37,9 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
 
   return {
     softtekCode: cleanText(payload?.softtekCode, 80)?.toUpperCase() ?? null,
-    corporateUser: cleanText(payload?.corporateUser, 100)?.toUpperCase() ?? null,
-    email,
+    bbvaUser: cleanText(payload?.bbvaUser ?? payload?.corporateUser, 100)?.toUpperCase() ?? null,
+    softtekEmail,
+    bbvaEmail: bbvaEmailRaw,
     firstName: requiredText(payload?.firstName, 'El nombre', 120),
     lastName: requiredText(payload?.lastName, 'Los apellidos', 180),
     profile: catalogs.profile,
@@ -46,9 +49,10 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
     currentTechnology: catalogs.currentTechnology,
     currentTechnologyCatalogId: catalogs.currentTechnologyCatalogId,
     expertise: cleanText(payload?.expertise, 40)?.toUpperCase() ?? catalogs.profileSeniority,
-    startDate,
-    hireDate: normalizeDate(payload?.hireDate, 'Fecha de contratación'),
+    bbvaStartDate,
+    softtekHireDate: normalizeDate(payload?.softtekHireDate ?? payload?.hireDate, 'Fecha de contratación Softtek'),
     notes: cleanText(payload?.notes, 2000),
+    expectedUpdatedAt: cleanText(payload?.expectedUpdatedAt, 64),
   };
 }
 

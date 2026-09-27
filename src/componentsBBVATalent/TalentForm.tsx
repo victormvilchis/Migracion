@@ -56,12 +56,12 @@ function toFormValues(
   return {
     talentType: talent?.talentType ?? initialType,
     affiliationType: talent?.affiliationType ?? 'INTERNAL',
-    softtekCode: talent?.softtekCode ?? '', corporateUser: talent?.corporateUser ?? '', email: talent?.email ?? '', firstName: talent?.firstName ?? '', lastName: talent?.lastName ?? '',
+    softtekCode: talent?.softtekCode ?? '', bbvaUser: talent?.bbvaUser ?? talent?.corporateUser ?? '', softtekEmail: talent?.softtekEmail ?? talent?.email ?? '', bbvaEmail: talent?.bbvaEmail ?? '', firstName: talent?.firstName ?? '', lastName: talent?.lastName ?? '',
     profile: talent?.profile ?? '', profileCatalogId: optionId(profiles, talent?.profileCatalogId, talent?.profile),
     technologyProfile: talent?.technologyProfile ?? '', technologyProfileCatalogId: optionId(technologyProfiles, talent?.technologyProfileCatalogId, talent?.technologyProfile),
     currentTechnology: talent?.currentTechnology ?? '', currentTechnologyCatalogId: optionId(technologies, talent?.currentTechnologyCatalogId, talent?.currentTechnology),
     expertise: talent?.expertise ?? '', stage: talent?.stage ?? defaultStage(initialType), active: talent?.active ?? true,
-    platformStartDate: talent?.platformStartDate ?? '', hireDate: talent?.hireDate ?? '', entryDate: talent?.entryDate ?? today(), notes: talent?.notes ?? '',
+    bbvaStartDate: talent?.bbvaStartDate ?? talent?.platformStartDate ?? '', softtekHireDate: talent?.softtekHireDate ?? talent?.hireDate ?? '', entryDate: talent?.entryDate ?? today(), notes: talent?.notes ?? '', expectedUpdatedAt: talent?.updatedAt,
   };
 }
 
@@ -97,8 +97,8 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
   const currentTechnologyCatalogId = watch('currentTechnologyCatalogId');
   const expertise = watch('expertise');
   const stage = watch('stage');
-  const platformStartDate = watch('platformStartDate');
-  const hireDate = watch('hireDate');
+  const bbvaStartDate = watch('bbvaStartDate');
+  const softtekHireDate = watch('softtekHireDate');
   const entryDate = watch('entryDate');
   const fullForm = talentType !== 'ACADEMY';
   const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading;
@@ -125,12 +125,12 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
   };
 
   const hydrateFromDirectory = (record: IdentityDirectoryRecord) => {
-    if (record.corporateUser) setValue('corporateUser', record.corporateUser, { shouldDirty: true, shouldValidate: true });
-    if (record.email) setValue('email', record.email, { shouldDirty: true, shouldValidate: true });
+    if (record.bbvaUser || record.corporateUser) setValue('bbvaUser', record.bbvaUser || record.corporateUser || '', { shouldDirty: true, shouldValidate: true });
+    if (record.softtekEmail || record.email) setValue('softtekEmail', record.softtekEmail || record.email || '', { shouldDirty: true, shouldValidate: true });
     if (record.firstName) setValue('firstName', record.firstName, { shouldDirty: true, shouldValidate: true });
     if (record.lastName) setValue('lastName', record.lastName, { shouldDirty: true, shouldValidate: true });
     if (record.expertise) setValue('expertise', record.expertise, { shouldDirty: true, shouldValidate: true });
-    if (record.hireDate) setValue('hireDate', record.hireDate, { shouldDirty: true, shouldValidate: true });
+    if (record.softtekHireDate || record.hireDate) setValue('softtekHireDate', record.softtekHireDate || record.hireDate || '', { shouldDirty: true, shouldValidate: true });
     if (record.profile) setValue('profileCatalogId', optionId(profiles, null, record.profile), { shouldDirty: true, shouldValidate: true });
     if (record.technologyProfile) setValue('technologyProfileCatalogId', optionId(technologyProfiles, null, record.technologyProfile), { shouldDirty: true, shouldValidate: true });
     if (record.currentTechnology) setValue('currentTechnologyCatalogId', optionId(technologies, null, record.currentTechnology), { shouldDirty: true, shouldValidate: true });
@@ -160,8 +160,9 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
       <input type="hidden" {...register('currentTechnologyCatalogId')} />
       <input type="hidden" {...register('expertise')} />
       <input type="hidden" {...register('stage')} />
-      <input type="hidden" {...register('platformStartDate')} />
-      <input type="hidden" {...register('hireDate')} />
+      <input type="hidden" {...register('bbvaStartDate')} />
+      <input type="hidden" {...register('softtekHireDate')} />
+      <input type="hidden" {...register('expectedUpdatedAt')} />
       <input type="hidden" {...register('entryDate')} />
 
       {selected?.talentType === 'FORMER_COLLABORATOR' || selected?.talentType === 'BBVA_EXIT' ? <BBVAAlert tone="info">Excolaborador en Banco de talento. El movimiento conserva su motivo, etapa y trazabilidad histórica.</BBVAAlert> : null}
@@ -174,8 +175,9 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
         </div>
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-3"><span className={labelClass}>IS</span><ISLookupField value={isValue ?? ''} onChange={(value) => setValue('softtekCode', value, { shouldDirty: true })} onResolved={hydrateFromDirectory} disabled={saving || readOnly} /></label>
-          {fullForm ? <label className="md:col-span-2"><span className={labelClass}>Usuario corporativo</span><input {...register('corporateUser')} disabled={readOnly || saving} className={fieldClass} /></label> : null}
-          <label className={fullForm ? 'md:col-span-3' : 'md:col-span-4'}><span className={labelClass}>Correo electrónico</span><input {...register('email')} type="email" disabled={readOnly || saving} className={fieldClass} /></label>
+          {fullForm ? <label className="md:col-span-2"><span className={labelClass}>Usuario BBVA</span><input {...register('bbvaUser')} disabled={readOnly || saving} className={fieldClass} /></label> : null}
+          <label className={fullForm ? 'md:col-span-3' : 'md:col-span-4'}><span className={labelClass}>Correo Softtek</span><input {...register('softtekEmail')} type="email" disabled={readOnly || saving} className={fieldClass} /></label>
+          {fullForm ? <label className="md:col-span-3"><span className={labelClass}>Correo BBVA</span><input {...register('bbvaEmail')} type="email" disabled={readOnly || saving} className={fieldClass} /></label> : null}
           <label className="md:col-span-2"><span className={labelClass}>Nombre</span><input {...register('firstName')} disabled={readOnly || saving} className={fieldClass} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Apellidos</span><input {...register('lastName')} disabled={readOnly || saving} className={fieldClass} /></label>
         </div>
@@ -216,8 +218,8 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
       <section className={sectionClass}>
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Fechas y estado</h3>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-2"><span className={labelClass}>Inicio vigencia</span><BBVADatePicker value={platformStartDate} onChange={(value) => setValue('platformStartDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Inicio de vigencia" /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Fecha de alta BBVA</span><BBVADatePicker value={bbvaStartDate} onChange={(value) => setValue('bbvaStartDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta BBVA" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Contratación Softtek</span><BBVADatePicker value={softtekHireDate} onChange={(value) => setValue('softtekHireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación Softtek" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Alta Banco de talento</span><BBVADatePicker value={entryDate} onChange={(value) => setValue('entryDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta en Banco de talento" /></label>
           <label className="md:col-span-2">
             <span className={labelClass}>Vinculación</span>

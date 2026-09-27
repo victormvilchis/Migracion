@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { collaboratorImportApi } from '../api/collaboratorImportApi';
 import type { ImportApplyPayload, ImportSourceRow } from '../types/collaboratorImport';
+import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 
 export function usePreviewCollaboratorImport() {
   return useMutation({ mutationFn: (rows: ImportSourceRow[]) => collaboratorImportApi.preview(rows) });
@@ -16,6 +17,7 @@ export function useApplyCollaboratorImport() {
       void client.invalidateQueries({ queryKey: ['bbva-dashboard'] });
       void client.invalidateQueries({ queryKey: ['certification-tracking'] });
       void client.invalidateQueries({ queryKey: ['collaborator-certifications'] });
+      publishBbvaDataChange(['collaborators','talent','dashboard','certifications','catalogs']);
     },
   });
 }

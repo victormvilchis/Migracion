@@ -57,8 +57,8 @@ const PERSON_IMPORT_SELECT = `
     c.Status AS collaboratorStatus,
     CAST(tb.Id AS NVARCHAR(36)) AS activeTalentId,
     p.SofttekCode AS softtekCode,
-    p.CorporateUser AS corporateUser,
-    p.Email AS email,
+    COALESCE(p.BbvaUser,p.CorporateUser) AS corporateUser,
+    COALESCE(p.SofttekEmail,p.Email) AS email,
     p.FirstName AS firstName,
     p.LastName AS lastName,
     LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS fullName,
@@ -194,11 +194,11 @@ export class CollaboratorImportRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           INSERT INTO bbva.Person(
-            Id,SofttekCode,CorporateUser,Email,FirstName,LastName,Profile,ProfileCatalogId,
+            Id,SofttekCode,CorporateUser,BbvaUser,Email,SofttekEmail,FirstName,LastName,Profile,ProfileCatalogId,
             TechnologyProfile,TechnologyProfileCatalogId,CurrentTechnology,CurrentTechnologyCatalogId,
             Expertise,HireDate,Notes,CreatedByEmail,UpdatedByEmail
           ) VALUES(
-            @personId,@softtekCode,@corporateUser,@email,@firstName,@lastName,@profile,@profileCatalogId,
+            @personId,@softtekCode,@corporateUser,@corporateUser,@email,@email,@firstName,@lastName,@profile,@profileCatalogId,
             @technologyProfile,@technologyProfileCatalogId,@currentTechnology,@currentTechnologyCatalogId,
             @expertise,@hireDate,@notes,@actorEmail,@actorEmail
           );
@@ -235,7 +235,7 @@ export class CollaboratorImportRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.Person SET
-            SofttekCode=@softtekCode,CorporateUser=@corporateUser,Email=@email,FirstName=@firstName,LastName=@lastName,
+            SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,FirstName=@firstName,LastName=@lastName,
             Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,
             TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,
             CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,
@@ -268,7 +268,7 @@ export class CollaboratorImportRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.Person SET
-            SofttekCode=@softtekCode,CorporateUser=@corporateUser,Email=@email,FirstName=@firstName,LastName=@lastName,
+            SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,FirstName=@firstName,LastName=@lastName,
             Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,
             TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,
             CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,

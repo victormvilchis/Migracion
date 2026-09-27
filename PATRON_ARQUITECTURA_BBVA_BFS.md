@@ -314,3 +314,7 @@ Banco de talento y Colaboradores representan estados operativos de una misma per
 - Después de crear, actualizar o reactivar un colaborador se sincronizan sus certificaciones aplicables con las reglas persistidas del catálogo.
 - La carga no modifica componentes globales de BaseBFS; su UX y sus selectores permanecen encapsulados dentro de BBVA Workspace.
 - No se incorporan mensajes promocionales ni encabezados redundantes: breadcrumb, botón `Regresar`, carga, resumen, resolución y confirmación son suficientes para orientar el flujo.
+
+## Regla transversal: sin autoguardado y paralelismo
+
+BBVA Workspace no utiliza autoguardado para datos persistentes. La edición ocurre localmente y sólo se persiste mediante una acción explícita del usuario (`Guardar`, `Confirmar`, `Aplicar`). Las mutaciones deben propagar invalidación de datos entre vistas/pestañas BBVA y, para entidades editables concurrentemente, validar la versión esperada (`UpdatedAt` o equivalente) para evitar escrituras perdidas.

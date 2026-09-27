@@ -7,8 +7,11 @@ const COLLABORATOR_SELECT = `
     CAST(c.Id AS NVARCHAR(36)) AS id,
     CAST(p.Id AS NVARCHAR(36)) AS personId,
     p.SofttekCode AS softtekCode,
-    p.CorporateUser AS corporateUser,
-    p.Email AS email,
+    COALESCE(p.BbvaUser,p.CorporateUser) AS bbvaUser,
+    COALESCE(p.SofttekEmail,p.Email) AS softtekEmail,
+    p.BbvaEmail AS bbvaEmail,
+    COALESCE(p.BbvaUser,p.CorporateUser) AS corporateUser,
+    COALESCE(p.SofttekEmail,p.Email) AS email,
     p.FirstName AS firstName,
     p.LastName AS lastName,
     LTRIM(RTRIM(CONCAT(p.FirstName, N' ', ISNULL(p.LastName, N'')))) AS fullName,
@@ -20,6 +23,8 @@ const COLLABORATOR_SELECT = `
     CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS currentTechnologyCatalogId,
     p.Expertise AS expertise,
     c.Status AS status,
+    CONVERT(VARCHAR(10), c.StartDate, 23) AS bbvaStartDate,
+    CONVERT(VARCHAR(10), p.HireDate, 23) AS softtekHireDate,
     CONVERT(VARCHAR(10), c.StartDate, 23) AS startDate,
     CONVERT(VARCHAR(10), p.HireDate, 23) AS hireDate,
     p.Notes AS notes,
@@ -52,8 +57,9 @@ const COLLABORATOR_SELECT = `
 function bindPerson(request: sql.Request, input: CollaboratorInput) {
   return request
     .input('softtekCode', sql.NVarChar(80), input.softtekCode)
-    .input('corporateUser', sql.NVarChar(100), input.corporateUser)
-    .input('email', sql.NVarChar(255), input.email)
+    .input('bbvaUser', sql.NVarChar(100), input.bbvaUser)
+    .input('softtekEmail', sql.NVarChar(255), input.softtekEmail)
+    .input('bbvaEmail', sql.NVarChar(255), input.bbvaEmail)
     .input('firstName', sql.NVarChar(120), input.firstName)
     .input('lastName', sql.NVarChar(180), input.lastName)
     .input('profile', sql.NVarChar(120), input.profile)
@@ -63,7 +69,7 @@ function bindPerson(request: sql.Request, input: CollaboratorInput) {
     .input('currentTechnology', sql.NVarChar(120), input.currentTechnology)
     .input('currentTechnologyCatalogId', sql.UniqueIdentifier, input.currentTechnologyCatalogId)
     .input('expertise', sql.NVarChar(40), input.expertise)
-    .input('hireDate', sql.Date, input.hireDate)
+    .input('softtekHireDate', sql.Date, input.softtekHireDate)
     .input('notes', sql.NVarChar(2000), input.notes);
 }
 
@@ -90,25 +96,28 @@ export class CollaboratorRepository {
       await bindPerson(new sql.Request(transaction), input)
         .input('personId', sql.UniqueIdentifier, personId)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`INSERT INTO bbva.Person (Id, SofttekCode, CorporateUser, Email, FirstName, LastName, Profile, ProfileCatalogId, TechnologyProfile, TechnologyProfileCatalogId, CurrentTechnology, CurrentTechnologyCatalogId, Expertise, HireDate, Notes, CreatedByEmail, UpdatedByEmail)
-                VALUES (@personId,@softtekCode,@corporateUser,@email,@firstName,@lastName,@profile,@profileCatalogId,@technologyProfile,@technologyProfileCatalogId,@currentTechnology,@currentTechnologyCatalogId,@expertise,@hireDate,@notes,@actorEmail,@actorEmail);`);
+        .query(`INSERT INTO bbva.Person (Id,SofttekCode,CorporateUser,Email,BbvaUser,SofttekEmail,BbvaEmail,FirstName,LastName,Profile,ProfileCatalogId,TechnologyProfile,TechnologyProfileCatalogId,CurrentTechnology,CurrentTechnologyCatalogId,Expertise,HireDate,Notes,CreatedByEmail,UpdatedByEmail)
+                VALUES (@personId,@softtekCode,@bbvaUser,@softtekEmail,@bbvaUser,@softtekEmail,@bbvaEmail,@firstName,@lastName,@profile,@profileCatalogId,@technologyProfile,@technologyProfileCatalogId,@currentTechnology,@currentTechnologyCatalogId,@expertise,@softtekHireDate,@notes,@actorEmail,@actorEmail);`);
       await new sql.Request(transaction)
         .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
         .input('personId', sql.UniqueIdentifier, personId)
         .input('status', sql.NVarChar(20), 'ACTIVE')
-        .input('startDate', sql.Date, input.startDate)
+        .input('bbvaStartDate', sql.Date, input.bbvaStartDate)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`INSERT INTO bbva.Collaborator (Id,PersonId,Status,StartDate,CreatedByEmail,UpdatedByEmail) VALUES (@collaboratorId,@personId,@status,@startDate,@actorEmail,@actorEmail);
+        .query(`INSERT INTO bbva.Collaborator (Id,PersonId,Status,StartDate,CreatedByEmail,UpdatedByEmail) VALUES (@collaboratorId,@personId,@status,@bbvaStartDate,@actorEmail,@actorEmail);
                 INSERT INTO bbva.CollaboratorHistory (CollaboratorId,EventType,Description,CreatedByEmail) VALUES (@collaboratorId,N'CREATED',N'El colaborador fue registrado.',@actorEmail);`);
       await new sql.Request(transaction)
         .input('personId', sql.UniqueIdentifier, personId)
-        .input('effectiveDate', sql.Date, input.startDate || null)
+        .input('effectiveDate', sql.Date, input.bbvaStartDate || null)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`INSERT INTO bbva.PersonLifecycleHistory (PersonId,EventType,ToState,EffectiveDate,Description,CreatedByEmail)
                 VALUES (@personId,N'ENTERED_COLLABORATOR',N'COLLABORATOR',@effectiveDate,N'La persona ingresó a Colaboradores.',@actorEmail);`);
       await transaction.commit();
       return (await this.findById(collaboratorId)) as CollaboratorRecord;
-    } catch (error) { await transaction.rollback(); throw error; }
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   async update(id: string, input: CollaboratorInput, actorEmail: string): Promise<CollaboratorRecord | null> {
@@ -118,19 +127,33 @@ export class CollaboratorRepository {
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
+      const lock = await new sql.Request(transaction)
+        .input('id', sql.UniqueIdentifier, id)
+        .query(`SELECT Status,CONVERT(VARCHAR(33),UpdatedAt,127) AS updatedAt FROM bbva.Collaborator WITH (UPDLOCK,HOLDLOCK) WHERE Id=@id;`);
+      const locked = lock.recordset[0] as { Status?: string; updatedAt?: string } | undefined;
+      if (!locked || locked.Status !== 'ACTIVE') {
+        throw Object.assign(new Error('El colaborador cambió de estado en otra vista. Actualiza la pantalla antes de continuar.'), { statusCode: 409 });
+      }
+      if (input.expectedUpdatedAt && locked.updatedAt !== input.expectedUpdatedAt) {
+        throw Object.assign(new Error('La información cambió en otra vista. Actualiza la pantalla antes de guardar para evitar sobrescribir cambios recientes.'), { statusCode: 409 });
+      }
+
       await bindPerson(new sql.Request(transaction), input)
         .input('personId', sql.UniqueIdentifier, current.personId)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`UPDATE bbva.Person SET SofttekCode=@softtekCode,CorporateUser=@corporateUser,Email=@email,FirstName=@firstName,LastName=@lastName,Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@personId;`);
+        .query(`UPDATE bbva.Person SET SofttekCode=@softtekCode,CorporateUser=@bbvaUser,Email=@softtekEmail,BbvaUser=@bbvaUser,SofttekEmail=@softtekEmail,BbvaEmail=@bbvaEmail,FirstName=@firstName,LastName=@lastName,Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@softtekHireDate,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@personId;`);
       await new sql.Request(transaction)
         .input('id', sql.UniqueIdentifier, id)
-        .input('startDate', sql.Date, input.startDate)
+        .input('bbvaStartDate', sql.Date, input.bbvaStartDate)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`UPDATE bbva.Collaborator SET StartDate=@startDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;
+        .query(`UPDATE bbva.Collaborator SET StartDate=@bbvaStartDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id AND Status=N'ACTIVE';
                 INSERT INTO bbva.CollaboratorHistory (CollaboratorId,EventType,Description,CreatedByEmail) VALUES (@id,N'UPDATED',N'La información del colaborador fue actualizada.',@actorEmail);`);
       await transaction.commit();
       return this.findById(id);
-    } catch (error) { await transaction.rollback(); throw error; }
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
   }
 
   async delete(id: string): Promise<boolean> {

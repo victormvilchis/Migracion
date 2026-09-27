@@ -2,8 +2,9 @@ export type CollaboratorStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface CollaboratorPayload {
   softtekCode: string;
-  corporateUser: string;
-  email: string;
+  bbvaUser: string;
+  softtekEmail: string;
+  bbvaEmail: string;
   firstName: string;
   lastName: string;
   profile: string;
@@ -13,17 +14,24 @@ export interface CollaboratorPayload {
   currentTechnology: string;
   currentTechnologyCatalogId: string;
   expertise: string;
-  startDate: string;
-  hireDate: string;
+  bbvaStartDate: string;
+  softtekHireDate: string;
   notes: string;
+  expectedUpdatedAt?: string;
+  /** Compatibilidad temporal con contratos anteriores. */
+  corporateUser?: string;
+  email?: string;
+  startDate?: string;
+  hireDate?: string;
 }
 
 export interface Collaborator {
   id: string;
   personId: string;
   softtekCode: string | null;
-  corporateUser: string | null;
-  email: string;
+  bbvaUser: string | null;
+  softtekEmail: string;
+  bbvaEmail: string | null;
   firstName: string;
   lastName: string | null;
   fullName: string;
@@ -35,8 +43,8 @@ export interface Collaborator {
   currentTechnologyCatalogId: string | null;
   expertise: string | null;
   status: CollaboratorStatus;
-  startDate: string | null;
-  hireDate: string | null;
+  bbvaStartDate: string | null;
+  softtekHireDate: string | null;
   notes: string | null;
   hasCv: boolean;
   certificationApplicable: number;
@@ -47,4 +55,9 @@ export interface Collaborator {
   certificationRecertificationPending: number;
   createdAt: string;
   updatedAt: string;
+  /** Alias de compatibilidad durante la migración de identidad. */
+  corporateUser: string | null;
+  email: string;
+  startDate: string | null;
+  hireDate: string | null;
 }

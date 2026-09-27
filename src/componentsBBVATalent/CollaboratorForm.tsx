@@ -38,11 +38,19 @@ const expertiseOptions: BBVASearchableSelectOption[] = [
 
 function values(item: Collaborator | null | undefined, profiles: CatalogOption[], technologyProfiles: CatalogOption[], technologies: CatalogOption[]): CollaboratorPayload {
   return {
-    softtekCode: item?.softtekCode ?? '', corporateUser: item?.corporateUser ?? '', email: item?.email ?? '', firstName: item?.firstName ?? '', lastName: item?.lastName ?? '',
+    softtekCode: item?.softtekCode ?? '',
+    bbvaUser: item?.bbvaUser ?? item?.corporateUser ?? '',
+    softtekEmail: item?.softtekEmail ?? item?.email ?? '',
+    bbvaEmail: item?.bbvaEmail ?? '',
+    firstName: item?.firstName ?? '', lastName: item?.lastName ?? '',
     profile: item?.profile ?? '', profileCatalogId: optionId(profiles, item?.profileCatalogId, item?.profile),
     technologyProfile: item?.technologyProfile ?? '', technologyProfileCatalogId: optionId(technologyProfiles, item?.technologyProfileCatalogId, item?.technologyProfile),
     currentTechnology: item?.currentTechnology ?? '', currentTechnologyCatalogId: optionId(technologies, item?.currentTechnologyCatalogId, item?.currentTechnology),
-    expertise: item?.expertise ?? '', startDate: item?.startDate ?? '', hireDate: item?.hireDate ?? '', notes: item?.notes ?? '',
+    expertise: item?.expertise ?? '',
+    bbvaStartDate: item?.bbvaStartDate ?? item?.startDate ?? '',
+    softtekHireDate: item?.softtekHireDate ?? item?.hireDate ?? '',
+    notes: item?.notes ?? '',
+    expectedUpdatedAt: item?.updatedAt,
   };
 }
 
@@ -82,16 +90,16 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
   const technologyProfileCatalogId = watch('technologyProfileCatalogId');
   const currentTechnologyCatalogId = watch('currentTechnologyCatalogId');
   const expertise = watch('expertise');
-  const startDate = watch('startDate');
-  const hireDate = watch('hireDate');
+  const bbvaStartDate = watch('bbvaStartDate');
+  const softtekHireDate = watch('softtekHireDate');
 
   const hydrateFromDirectory = (record: IdentityDirectoryRecord) => {
-    if (record.corporateUser) setValue('corporateUser', record.corporateUser, { shouldDirty: true, shouldValidate: true });
-    if (record.email) setValue('email', record.email, { shouldDirty: true, shouldValidate: true });
+    if (record.bbvaUser || record.corporateUser) setValue('bbvaUser', record.bbvaUser || record.corporateUser || '', { shouldDirty: true, shouldValidate: true });
+    if (record.softtekEmail || record.email) setValue('softtekEmail', record.softtekEmail || record.email || '', { shouldDirty: true, shouldValidate: true });
     if (record.firstName) setValue('firstName', record.firstName, { shouldDirty: true, shouldValidate: true });
     if (record.lastName) setValue('lastName', record.lastName, { shouldDirty: true, shouldValidate: true });
     if (record.expertise) setValue('expertise', record.expertise, { shouldDirty: true, shouldValidate: true });
-    if (record.hireDate) setValue('hireDate', record.hireDate, { shouldDirty: true, shouldValidate: true });
+    if (record.softtekHireDate || record.hireDate) setValue('softtekHireDate', record.softtekHireDate || record.hireDate || '', { shouldDirty: true, shouldValidate: true });
     if (record.profile) setValue('profileCatalogId', optionId(profiles, null, record.profile), { shouldDirty: true, shouldValidate: true });
     if (record.technologyProfile) setValue('technologyProfileCatalogId', optionId(technologyProfiles, null, record.technologyProfile), { shouldDirty: true, shouldValidate: true });
     if (record.currentTechnology) setValue('currentTechnologyCatalogId', optionId(technologies, null, record.currentTechnology), { shouldDirty: true, shouldValidate: true });
@@ -105,15 +113,15 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
 
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-3">
-      <input type="hidden" {...register('startDate')} />
-      <input type="hidden" {...register('hireDate')} />
+      <input type="hidden" {...register('expectedUpdatedAt')} />
       {hasInactiveReference ? <BBVAAlert tone="warning">Este colaborador conserva referencias históricas a catálogos inactivos. No se ofrecen como opciones seleccionables; elige un registro activo antes de guardar.</BBVAAlert> : null}
       <section className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Identificación</h3>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-3"><span className={labelClass}>IS</span><ISLookupField value={isValue ?? ''} onChange={(value) => setValue('softtekCode', value, { shouldDirty: true })} onResolved={hydrateFromDirectory} disabled={saving || readOnly} /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Usuario corporativo</span><input {...register('corporateUser')} disabled={readOnly || saving} className={fieldClass} /></label>
-          <label className="md:col-span-3"><span className={labelClass}>Correo electrónico *</span><input {...register('email', { required: true })} type="email" disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-2"><span className={labelClass}>IS</span><ISLookupField value={isValue ?? ''} onChange={(value) => setValue('softtekCode', value, { shouldDirty: true })} onResolved={hydrateFromDirectory} disabled={saving || readOnly} /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Usuario BBVA</span><input {...register('bbvaUser')} disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Correo Softtek *</span><input {...register('softtekEmail', { required: true })} type="email" disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Correo BBVA</span><input {...register('bbvaEmail')} type="email" disabled={readOnly || saving} className={fieldClass} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Nombre *</span><input {...register('firstName', { required: true })} disabled={readOnly || saving} className={fieldClass} /></label>
           <label className="md:col-span-2"><span className={labelClass}>Apellidos *</span><input {...register('lastName', { required: true })} disabled={readOnly || saving} className={fieldClass} /></label>
         </div>
@@ -149,8 +157,8 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
       <section className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Fechas</h3>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-3"><span className={labelClass}>Fecha de alta</span><BBVADatePicker value={startDate} onChange={(value) => setValue('startDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta" /></label>
-          <label className="md:col-span-3"><span className={labelClass}>Fecha de contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación" /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Fecha de alta BBVA</span><BBVADatePicker value={bbvaStartDate} onChange={(value) => setValue('bbvaStartDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta BBVA" /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Fecha de contratación Softtek</span><BBVADatePicker value={softtekHireDate} onChange={(value) => setValue('softtekHireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación Softtek" /></label>
         </div>
       </section>
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75"><label><span className={labelClass}>Observaciones</span><textarea {...register('notes')} rows={4} disabled={readOnly || saving} className={areaClass} /></label></section>

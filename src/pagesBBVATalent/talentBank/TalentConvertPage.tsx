@@ -32,7 +32,7 @@ function initialValues(talent: Talent | null | undefined, profiles: CatalogOptio
     technologyProfileCatalogId: optionId(technologyProfiles, talent?.technologyProfileCatalogId, talent?.technologyProfile),
     currentTechnologyCatalogId: optionId(technologies, talent?.currentTechnologyCatalogId, talent?.currentTechnology),
     expertise: talent?.expertise ?? '',
-    corporateUser: talent?.corporateUser ?? '',
+    bbvaUser: talent?.bbvaUser ?? talent?.corporateUser ?? '',
   };
 }
 
@@ -41,8 +41,9 @@ function toPayload(talent: Talent, values: ReturnType<typeof initialValues>, pro
     talentType: talent.talentType,
     affiliationType: talent.affiliationType,
     softtekCode: talent.softtekCode ?? '',
-    corporateUser: values.corporateUser,
-    email: talent.email,
+    bbvaUser: values.bbvaUser,
+    softtekEmail: talent.softtekEmail ?? talent.email,
+    bbvaEmail: talent.bbvaEmail ?? '',
     firstName: talent.firstName,
     lastName: talent.lastName ?? '',
     profile: optionName(profiles, values.profileCatalogId),
@@ -54,10 +55,11 @@ function toPayload(talent: Talent, values: ReturnType<typeof initialValues>, pro
     expertise: values.expertise,
     stage: talent.stage,
     active: talent.active,
-    platformStartDate: talent.platformStartDate ?? '',
-    hireDate: talent.hireDate ?? '',
+    bbvaStartDate: talent.bbvaStartDate ?? talent.platformStartDate ?? '',
+    softtekHireDate: talent.softtekHireDate ?? talent.hireDate ?? '',
     entryDate: talent.entryDate,
     notes: talent.notes ?? '',
+    expectedUpdatedAt: talent.updatedAt,
   };
 }
 
@@ -123,7 +125,7 @@ export const TalentConvertPage: React.FC = () => {
           <label className="md:col-span-3"><span className={labelClass}>Perfil tecnológico *</span><BBVASearchableSelect value={values.technologyProfileCatalogId} onChange={(value) => setValues((v) => ({ ...v, technologyProfileCatalogId: value }))} options={toOptions(technologyProfiles)} disabled={catalogsLoading} ariaLabel="Perfil tecnológico" /></label>
           <label className="md:col-span-3"><span className={labelClass}>Tecnología actual *</span><BBVASearchableSelect value={values.currentTechnologyCatalogId} onChange={(value) => setValues((v) => ({ ...v, currentTechnologyCatalogId: value }))} options={toOptions(technologies)} disabled={catalogsLoading} ariaLabel="Tecnología actual" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Nivel de experiencia</span><BBVASearchableSelect value={values.expertise} onChange={(value) => setValues((v) => ({ ...v, expertise: value }))} options={[{ value: '', label: '—' }, { value: 'TR', label: 'TR' }, { value: 'JR', label: 'JR' }, { value: 'STD', label: 'STD' }, { value: 'SR', label: 'SR' }]} ariaLabel="Nivel de experiencia" /></label>
-          <label className="md:col-span-4"><span className={labelClass}>Usuario corporativo</span><input value={values.corporateUser} onChange={(e) => setValues((v) => ({ ...v, corporateUser: e.target.value }))} className={fieldClass} /></label>
+          <label className="md:col-span-4"><span className={labelClass}>Usuario BBVA</span><input value={values.bbvaUser} onChange={(e) => setValues((v) => ({ ...v, bbvaUser: e.target.value }))} className={fieldClass} /></label>
         </div>
         <div className="mt-4 flex justify-end gap-2 border-t border-slate-200 pt-4">
           <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="h-9 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">Cancelar</button>

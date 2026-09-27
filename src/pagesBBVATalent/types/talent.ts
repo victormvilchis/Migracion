@@ -54,6 +54,9 @@ export interface Talent {
   deletedAt: string | null;
   deletedByEmail: string | null;
   softtekCode: string | null;
+  bbvaUser: string | null;
+  softtekEmail: string;
+  bbvaEmail: string | null;
   corporateUser: string | null;
   email: string;
   firstName: string;
@@ -68,6 +71,8 @@ export interface Talent {
   expertise: string | null;
   stage: TalentStage;
   active: boolean;
+  bbvaStartDate: string | null;
+  softtekHireDate: string | null;
   platformStartDate: string | null;
   hireDate: string | null;
   entryDate: string;
@@ -88,8 +93,11 @@ export interface TalentPayload {
   talentType: TalentType;
   affiliationType: TalentAffiliation;
   softtekCode: string;
-  corporateUser: string;
-  email: string;
+  bbvaUser: string;
+  softtekEmail: string;
+  bbvaEmail: string;
+  corporateUser?: string;
+  email?: string;
   firstName: string;
   lastName: string;
   profile: string;
@@ -101,10 +109,13 @@ export interface TalentPayload {
   expertise: string;
   stage: TalentStage;
   active: boolean;
-  platformStartDate: string;
-  hireDate: string;
+  bbvaStartDate: string;
+  softtekHireDate: string;
+  platformStartDate?: string;
+  hireDate?: string;
   entryDate: string;
   notes: string;
+  expectedUpdatedAt?: string;
 }
 
 export interface TalentHistoryItem {
