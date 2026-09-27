@@ -61,38 +61,45 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/talent-bank" element={modulePage(<TalentPage />)} />
               <Route path="/bbva/talent-bank/new" element={modulePage(<TalentEditorPage />)} />
               <Route path="/bbva/talent-bank/:id/edit" element={modulePage(<TalentEditorPage />)} />
+              <Route path="/bbva/talent-bank/:id/delete" element={modulePage(<TalentDetailPage mode="delete" />)} />
               <Route path="/bbva/talent-bank/:id/convert" element={modulePage(<TalentConvertPage />)} />
-              <Route path="/bbva/talent-bank/:id" element={modulePage(<TalentDetailPage />)} />
+              <Route path="/bbva/talent-bank/:id" element={modulePage(<TalentDetailPage mode="view" />)} />
               <Route path="/bbva/collaborators" element={modulePage(<CollaboratorsPage />)} />
               <Route path="/bbva/collaborators/new" element={modulePage(<CollaboratorEditorPage />)} />
               <Route path="/bbva/collaborators/import" element={modulePage(<CollaboratorImportPage />)} />
               <Route path="/bbva/collaborators/:id/edit" element={modulePage(<CollaboratorEditorPage />)} />
-              <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage />)} />
+              <Route path="/bbva/collaborators/:id/delete" element={modulePage(<CollaboratorDetailPage mode="delete" />)} />
+              <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage mode="view" />)} />
 
               <Route path="/bbva/admin/catalogs/categories" element={modulePage(<CatalogListPage type="categories" />)} />
               <Route path="/bbva/admin/catalogs/categories/new" element={modulePage(<CatalogEditorPage type="categories" />)} />
               <Route path="/bbva/admin/catalogs/categories/:id/edit" element={modulePage(<CatalogEditorPage type="categories" />)} />
-              <Route path="/bbva/admin/catalogs/categories/:id" element={modulePage(<CatalogDetailPage type="categories" />)} />
+              <Route path="/bbva/admin/catalogs/categories/:id/delete" element={modulePage(<CatalogDetailPage type="categories" mode="delete" />)} />
+              <Route path="/bbva/admin/catalogs/categories/:id" element={modulePage(<CatalogDetailPage type="categories" mode="view" />)} />
 
               <Route path="/bbva/admin/catalogs/technologies" element={modulePage(<CatalogListPage type="technologies" />)} />
               <Route path="/bbva/admin/catalogs/technologies/new" element={modulePage(<CatalogEditorPage type="technologies" />)} />
               <Route path="/bbva/admin/catalogs/technologies/:id/edit" element={modulePage(<CatalogEditorPage type="technologies" />)} />
-              <Route path="/bbva/admin/catalogs/technologies/:id" element={modulePage(<CatalogDetailPage type="technologies" />)} />
+              <Route path="/bbva/admin/catalogs/technologies/:id/delete" element={modulePage(<CatalogDetailPage type="technologies" mode="delete" />)} />
+              <Route path="/bbva/admin/catalogs/technologies/:id" element={modulePage(<CatalogDetailPage type="technologies" mode="view" />)} />
 
               <Route path="/bbva/admin/catalogs/profiles" element={modulePage(<CatalogListPage type="profiles" />)} />
               <Route path="/bbva/admin/catalogs/profiles/new" element={modulePage(<CatalogEditorPage type="profiles" />)} />
               <Route path="/bbva/admin/catalogs/profiles/:id/edit" element={modulePage(<CatalogEditorPage type="profiles" />)} />
-              <Route path="/bbva/admin/catalogs/profiles/:id" element={modulePage(<CatalogDetailPage type="profiles" />)} />
+              <Route path="/bbva/admin/catalogs/profiles/:id/delete" element={modulePage(<CatalogDetailPage type="profiles" mode="delete" />)} />
+              <Route path="/bbva/admin/catalogs/profiles/:id" element={modulePage(<CatalogDetailPage type="profiles" mode="view" />)} />
 
               <Route path="/bbva/admin/catalogs/technology-profiles" element={modulePage(<CatalogListPage type="technology-profiles" />)} />
               <Route path="/bbva/admin/catalogs/technology-profiles/new" element={modulePage(<CatalogEditorPage type="technology-profiles" />)} />
               <Route path="/bbva/admin/catalogs/technology-profiles/:id/edit" element={modulePage(<CatalogEditorPage type="technology-profiles" />)} />
-              <Route path="/bbva/admin/catalogs/technology-profiles/:id" element={modulePage(<CatalogDetailPage type="technology-profiles" />)} />
+              <Route path="/bbva/admin/catalogs/technology-profiles/:id/delete" element={modulePage(<CatalogDetailPage type="technology-profiles" mode="delete" />)} />
+              <Route path="/bbva/admin/catalogs/technology-profiles/:id" element={modulePage(<CatalogDetailPage type="technology-profiles" mode="view" />)} />
 
               <Route path="/bbva/admin/catalogs/certifications" element={modulePage(<CertificationCatalogListPage />)} />
               <Route path="/bbva/admin/catalogs/certifications/new" element={modulePage(<CertificationCatalogEditorPage />)} />
               <Route path="/bbva/admin/catalogs/certifications/:id/edit" element={modulePage(<CertificationCatalogEditorPage />)} />
-              <Route path="/bbva/admin/catalogs/certifications/:id" element={modulePage(<CertificationCatalogDetailPage />)} />
+              <Route path="/bbva/admin/catalogs/certifications/:id/delete" element={modulePage(<CertificationCatalogDetailPage mode="delete" />)} />
+              <Route path="/bbva/admin/catalogs/certifications/:id" element={modulePage(<CertificationCatalogDetailPage mode="view" />)} />
 
               <Route path="/bbva/*" element={modulePage(<BBVAPlaceholderPage />)} />
             </Routes>

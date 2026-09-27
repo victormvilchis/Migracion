@@ -8,7 +8,6 @@ import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableS
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import {
   useCertificationCatalogList,
-  useDeleteCertificationCatalogItem,
   useUpdateCertificationCatalogStatus,
 } from '../hooks/useCertificationCatalog';
 import {
@@ -20,10 +19,7 @@ import {
 } from '../types/certificationCatalog';
 
 type SortField = 'name' | 'certificationType' | 'provider' | 'updatedAt' | 'status';
-type PendingAction =
-  | { kind: 'status'; item: CertificationCatalogRecord; nextStatus: CertificationCatalogStatus }
-  | { kind: 'delete'; item: CertificationCatalogRecord }
-  | null;
+type PendingAction = { kind: 'status'; item: CertificationCatalogRecord; nextStatus: CertificationCatalogStatus } | null;
 
 const route = '/bbva/admin/catalogs/certifications';
 
@@ -43,7 +39,6 @@ export const CertificationCatalogListPage: React.FC = () => {
 
   const query = useCertificationCatalogList({ search, status, certificationType: type, page, size, sort, direction });
   const statusMutation = useUpdateCertificationCatalogStatus();
-  const deleteMutation = useDeleteCertificationCatalogItem();
   const data = query.data;
 
   useEffect(() => setPage(0), [search, status, type, size]);
@@ -62,13 +57,8 @@ export const CertificationCatalogListPage: React.FC = () => {
     if (!pending) return;
     setError(null);
     try {
-      if (pending.kind === 'status') {
-        await statusMutation.mutateAsync({ id: pending.item.id, status: pending.nextStatus });
-        setMessage(`La certificación fue ${pending.nextStatus === 'ACTIVE' ? 'activada' : 'inactivada'} correctamente.`);
-      } else {
-        await deleteMutation.mutateAsync(pending.item.id);
-        setMessage('La certificación fue eliminada correctamente.');
-      }
+      await statusMutation.mutateAsync({ id: pending.item.id, status: pending.nextStatus });
+      setMessage(`La certificación fue ${pending.nextStatus === 'ACTIVE' ? 'activada' : 'inactivada'} correctamente.`);
       setPending(null);
     } catch (actionError) {
       setPending(null);
@@ -108,7 +98,7 @@ export const CertificationCatalogListPage: React.FC = () => {
                   { id: 'view', label: 'Ver', icon: Eye, onClick: () => navigate(`${route}/${item.id}`) },
                   { id: 'edit', label: 'Editar', icon: Pencil, onClick: () => navigate(`${route}/${item.id}/edit`) },
                   item.status === 'ACTIVE' ? { id: 'inactive', label: 'Inactivar', icon: Power, onClick: () => setPending({ kind: 'status', item, nextStatus: 'INACTIVE' }) } : { id: 'active', label: 'Activar', icon: RefreshCw, onClick: () => setPending({ kind: 'status', item, nextStatus: 'ACTIVE' }) },
-                  { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger' as const, onClick: () => setPending({ kind: 'delete', item }) },
+                  { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger' as const, onClick: () => navigate(`${route}/${item.id}/delete`) },
                 ]} /></td>
               </tr>)}</tbody>
             </table>
@@ -117,7 +107,7 @@ export const CertificationCatalogListPage: React.FC = () => {
         </div>
       )}
 
-      <ConfirmDialog open={Boolean(pending)} title={pending?.kind === 'delete' ? 'Eliminar certificación' : `${pending?.nextStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'} certificación`} message={pending?.kind === 'delete' ? `Se eliminará “${pending.item.name}”. Solo se permite cuando no existe historial operativo asociado.` : `${pending?.nextStatus === 'ACTIVE' ? 'Se habilitará nuevamente' : 'Se inactivará'} “${pending?.item.name ?? ''}”. La configuración histórica se conservará.`} confirmLabel={pending?.kind === 'delete' ? 'Eliminar' : pending?.nextStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'} tone={pending?.kind === 'delete' ? 'danger' : pending?.nextStatus === 'ACTIVE' ? 'success' : 'warning'} busy={statusMutation.isPending || deleteMutation.isPending} onCancel={() => setPending(null)} onConfirm={() => void confirm()} />
+      <ConfirmDialog open={Boolean(pending)} title={`${pending?.nextStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'} certificación`} message={`${pending?.nextStatus === 'ACTIVE' ? 'Se habilitará nuevamente' : 'Se inactivará'} “${pending?.item.name ?? ''}”. La configuración histórica se conservará.`} confirmLabel={pending?.nextStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'} tone={pending?.nextStatus === 'ACTIVE' ? 'success' : 'warning'} busy={statusMutation.isPending} onCancel={() => setPending(null)} onConfirm={() => void confirm()} />
     </div>
   );
 };

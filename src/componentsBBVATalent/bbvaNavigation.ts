@@ -196,13 +196,14 @@ export const getBbvaBreadcrumbAction = (pathname: string): string | undefined =>
 
   if (/\/new$/.test(normalized)) return 'Nuevo';
   if (/\/edit$/.test(normalized)) return 'Editar';
+  if (/\/delete$/.test(normalized)) return 'Eliminar';
   if (/\/convert$/.test(normalized)) return 'Convertir';
   if (/\/import$/.test(normalized)) return 'Importar Excel';
   if (/\/manage$/.test(normalized)) return 'Gestionar';
   if (/\/certifications$/.test(normalized) && normalized.includes('/collaborators/')) return 'Certificaciones';
 
   const match = findBbvaNavigationMatch(normalized);
-  if (match && normalized !== normalizePath(match.module.path)) return 'Detalle';
+  if (match && normalized !== normalizePath(match.module.path)) return 'Ver';
 
   return undefined;
 };

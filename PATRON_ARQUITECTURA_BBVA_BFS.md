@@ -124,7 +124,7 @@ A partir de esta entrega, los módulos BBVA deben conservar el patrón visual co
 - Los listados ocupan el máximo ancho disponible y utilizan densidad compacta: encabezados de 9–10 px, filas aproximadas de 39 px, filtros de 32 px y acciones en menú desplegable.
 - Cada módulo ofrece su acción primaria en la esquina superior derecha (`Agregar talento`, `Agregar colaborador`, etc.). Las acciones secundarias como `Cargar Excel` aparecen junto a la acción primaria cuando correspondan.
 - Las tablas incluyen paginación compacta y selector 10/25/50/100.
-- Las vistas Nuevo/Editar/Detalle muestran siempre `Regresar`, breadcrumb compacto y no duplican títulos de página.
+- Las vistas Nuevo/Editar/Ver/Eliminar conservan breadcrumb compacto y no duplican títulos de página; Ver y Eliminar reutilizan el mismo formulario bloqueado mediante el patrón CRUD unificado.
 - Los mensajes de éxito, error e información usan alertas integradas; no se utiliza `window.alert()` para UX de negocio.
 - Los formularios mantienen secciones internas cuando ayudan a escanear información, pero usan controles compactos y anchos acordes al dato.
 
@@ -161,11 +161,11 @@ Este patrón será reutilizable para nuevos catálogos sin crear dependencias en
 
 ## Patrón transversal — confirmaciones y acciones sensibles
 
-- Toda confirmación de negocio de BBVA utiliza `ConfirmDialog`; no se crean modales aislados por pantalla ni se usa `window.confirm()`.
+- Las confirmaciones contextuales que permanecen como modal —por ejemplo activar/inactivar o transiciones breves— utilizan `ConfirmDialog`; no se crean modales aislados por pantalla ni se usa `window.confirm()`. La eliminación de entidades no usa modal: utiliza el modo `delete` del formulario CRUD unificado.
 - `ConfirmDialog` se renderiza mediante portal sobre `document.body`, bloquea el scroll de fondo, soporta cierre con `Esc`, restaura el foco y expone semántica `alertdialog` accesible.
 - El patrón visual mantiene una franja lateral con icono, título, explicación funcional, botón de cierre, `Cancelar` y una acción primaria explícita.
 - Los tonos son semánticos: `danger` para eliminación/conversión irreversible, `warning` para inactivación, `success` para reactivación y `primary` para confirmaciones neutras.
-- El componente compartido es la única fuente visual del patrón para Talent Bank, Colaboradores, Catálogos y Certificaciones.
+- `ConfirmDialog` es la única fuente visual para las confirmaciones modales que sigan aplicando en Banco de talento, Colaboradores, Catálogos y Certificaciones.
 
 ## Identidad de persona — IS y fuente corporativa desacoplada
 
@@ -215,3 +215,22 @@ Este patrón será reutilizable para nuevos catálogos sin crear dependencias en
 - No se incorporan frases promocionales, auto-descripciones del diseño ni mensajes como “experiencia moderna”, “inteligente”, “futurista” o similares dentro de pantallas operativas.
 - El microcopy debe ser funcional, breve y orientado a la tarea: indicar qué capturar, qué ocurrirá o cómo corregir un error.
 - Todos los archivos fuente y scripts SQL deben mantenerse en UTF-8; los textos con acentos se almacenan en SQL Server como `NVARCHAR`/literales `N'...'` para evitar caracteres `?` o mojibake.
+
+
+## Patrón transversal — CRUD unificado por formulario
+
+Toda entidad administrativa u operativa que exponga operaciones `Ver`, `Editar` y `Eliminar` debe reutilizar **el mismo componente de formulario y la misma distribución de campos**. No se crean vistas de detalle paralelas con tablas de pares etiqueta/valor ni pantallas de eliminación con otro layout.
+
+El contrato visual y funcional es:
+
+- `create`: campos habilitados; acciones `Cancelar` + acción primaria de alta.
+- `edit`: mismos campos habilitados; acciones `Cancelar` + `Guardar cambios`.
+- `view`: mismos campos visibles pero bloqueados; **única acción `Regresar`**, siempre ubicada en la parte superior izquierda de la página, fuera del formulario.
+- `delete`: mismos campos visibles pero bloqueados; `Regresar` siempre se ubica en la parte superior izquierda de la página y `Eliminar` permanece como única acción inferior, alineada a la derecha. La eliminación se ejecuta únicamente desde esta ruta/pantalla.
+- El menú `Acciones` de los listados navega a rutas explícitas `/:id`, `/:id/edit` y `/:id/delete`.
+- Las dependencias, permisos e integridad se vuelven a validar en backend al confirmar `Eliminar`; si existe una dependencia real, se conserva el `409 Conflict` funcional.
+- Los formularios compartidos reciben un `mode` tipado; la lógica de acciones inferiores vive en `BBVAFormActions` y el regreso superior reutiliza `BBVAFormBackButton` para evitar divergencias entre módulos.
+- Regla transversal: cualquier acción visible denominada `Regresar` debe colocarse siempre en la parte superior izquierda de la vista. Nunca se coloca `Regresar` en el pie del formulario, modal o barra inferior.
+- Las rutas de eliminación aparecen como `Eliminar` en breadcrumbs.
+- Esta regla aplica a Banco de talento, Colaboradores, Categorías, Tecnologías, Perfiles, Perfiles tecnológicos y Certificaciones, y es obligatoria para cualquier CRUD futuro de BBVA Workspace.
+- Las acciones ajenas al CRUD base (por ejemplo convertir talento, gestionar certificaciones o importar) pueden conservar flujos específicos, pero no deben alterar este contrato para Ver/Editar/Eliminar.

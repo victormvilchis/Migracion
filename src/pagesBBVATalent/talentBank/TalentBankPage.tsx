@@ -5,11 +5,10 @@ import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
-import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { TalentTypeBadge } from '../../componentsBBVATalent/TalentTypeBadge';
 import { downloadCvDocument, viewCvDocument } from '../lib/talentCv';
 import { roleDisplay, technologyDisplay } from '../lib/talentDisplay';
-import { useDeleteTalent, useTalentList } from '../hooks/useTalent';
+import { useTalentList } from '../hooks/useTalent';
 import { useCatalogOptions } from '../hooks/useCatalog';
 import { talentApi } from '../api/talentApi';
 import { TALENT_TYPES, TALENT_TYPE_LABELS, type Talent, type TalentType } from '../types/talent';
@@ -18,7 +17,6 @@ interface LocationState { message?: string; }
 
 export const TalentPage: React.FC = () => {
   const listQuery = useTalentList();
-  const deleteMutation = useDeleteTalent();
   const profilesQuery = useCatalogOptions('profiles');
   const technologiesQuery = useCatalogOptions('technologies');
   const navigate = useNavigate();
@@ -29,7 +27,6 @@ export const TalentPage: React.FC = () => {
   const [technologyFilter, setTechnologyFilter] = useState('ALL');
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
-  const [deleteTarget, setDeleteTarget] = useState<Talent | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>((location.state as LocationState | null)?.message ?? null);
 
@@ -65,17 +62,6 @@ export const TalentPage: React.FC = () => {
     } catch (error) {
       setActionError((error as Error).message);
     }
-  };
-
-  const confirmDelete = () => {
-    if (!deleteTarget) return;
-    deleteMutation.mutate(deleteTarget.id, {
-      onSuccess: () => {
-        setDeleteTarget(null);
-        setMessage('El talento fue eliminado definitivamente.');
-      },
-      onError: (error) => setActionError((error as Error).message),
-    });
   };
 
   return (
@@ -134,7 +120,7 @@ export const TalentPage: React.FC = () => {
                         { id: 'convert', label: 'Convertir a colaborador', icon: ArrowRightLeft, onClick: () => navigate(`/bbva/talent-bank/${item.id}/convert`) },
                         { id: 'view-cv', label: 'Ver CV', icon: FileText, disabled: !item.cv, onClick: () => void openCv(item, false) },
                         { id: 'download-cv', label: 'Descargar CV', icon: Download, disabled: !item.cv, onClick: () => void openCv(item, true) },
-                        { id: 'delete', label: 'Eliminar definitivamente', icon: Trash2, tone: 'danger', onClick: () => setDeleteTarget(item) },
+                        { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger', onClick: () => navigate(`/bbva/talent-bank/${item.id}/delete`) },
                       ]} />
                     </td>
                   </tr>
@@ -146,16 +132,6 @@ export const TalentPage: React.FC = () => {
         </div>
       )}
 
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title="Eliminar definitivamente"
-        message={`Se eliminará ${deleteTarget?.fullName ?? 'este talento'}, su historial y su CV. Esta acción no se puede deshacer.`}
-        confirmLabel="Eliminar definitivamente"
-        tone="danger"
-        busy={deleteMutation.isPending}
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteTarget(null)}
-      />
     </div>
   );
 };

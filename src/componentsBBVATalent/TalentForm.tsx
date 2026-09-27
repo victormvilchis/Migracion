@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, Eye, Save, UploadCloud, X } from 'lucide-react';
+import { Download, Eye, UploadCloud } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { talentSchema, type TalentFormValues } from '../pagesBBVATalent/schemas/talentSchema';
 import { useCatalogOptions } from '../pagesBBVATalent/hooks/useCatalog';
@@ -17,6 +17,7 @@ import {
 import { formatBytes } from '../pagesBBVATalent/lib/talentDisplay';
 import { validateCvFile } from '../pagesBBVATalent/lib/talentCv';
 import { BBVAAlert } from './BBVAAlert';
+import { BBVAFormActions, type BBVAFormMode, isBBVAFormReadOnly } from './BBVACrudForm';
 import { BBVADatePicker } from './BBVADatePicker';
 import { BBVASearchableSelect, type BBVASearchableSelectOption } from './BBVASearchableSelect';
 import { ISLookupField } from './ISLookupField';
@@ -24,13 +25,13 @@ import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityD
 
 const today = () => new Date().toISOString().slice(0, 10);
 const defaultStage = (type: TalentType) => type === 'ACADEMY' ? 'ACADEMY' : 'REGISTERED';
-const fieldClass = 'h-9 w-full rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
-const areaClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100';
+const fieldClass = 'h-9 w-full rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-600 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100 [.bbva-dark_&]:disabled:bg-slate-950/60';
+const areaClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-600 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100 [.bbva-dark_&]:disabled:bg-slate-950/60';
 const labelClass = 'mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:text-slate-400';
 const sectionClass = 'space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75';
 
 function optionId(options: CatalogOption[], currentId: string | null | undefined, currentName: string | null | undefined): string {
-  if (currentId && options.some((option) => option.id === currentId)) return currentId;
+  if (currentId) return currentId;
   const name = (currentName ?? '').trim().toLocaleUpperCase('es-MX');
   return options.find((option) => option.name.trim().toLocaleUpperCase('es-MX') === name)?.id ?? '';
 }
@@ -39,8 +40,12 @@ function optionName(options: CatalogOption[], id: string): string {
   return options.find((option) => option.id === id)?.name ?? '';
 }
 
-function toSelectOptions(options: CatalogOption[], emptyLabel = 'Seleccionar'): BBVASearchableSelectOption[] {
-  return [{ value: '', label: emptyLabel }, ...options.map((option) => ({ value: option.id, label: option.name }))];
+function toSelectOptions(options: CatalogOption[], emptyLabel = 'Seleccionar', currentId?: string | null, currentName?: string | null): BBVASearchableSelectOption[] {
+  const mapped = options.map((option) => ({ value: option.id, label: option.name }));
+  if (currentId && currentName && !mapped.some((option) => option.value === currentId)) {
+    mapped.unshift({ value: currentId, label: currentName });
+  }
+  return [{ value: '', label: emptyLabel }, ...mapped];
 }
 
 function toFormValues(
@@ -66,13 +71,16 @@ interface TalentFormProps {
   initialTalentType?: TalentType;
   currentCv?: TalentCvMetadata | null;
   saving?: boolean;
+  mode?: BBVAFormMode;
   onSubmit: (payload: TalentPayload, cvFile: File | null) => void;
   onCancel: () => void;
   onViewCv?: () => void;
   onDownloadCv?: () => void;
+  onDelete?: () => void;
 }
 
-export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentType = 'ACADEMY', currentCv, saving, onSubmit, onCancel, onViewCv, onDownloadCv }) => {
+export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentType = 'ACADEMY', currentCv, saving, mode = selected ? 'edit' : 'create', onSubmit, onCancel, onViewCv, onDownloadCv, onDelete }) => {
+  const readOnly = isBBVAFormReadOnly(mode);
   const [formError, setFormError] = useState<string | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const profilesQuery = useCatalogOptions('profiles');
@@ -103,6 +111,7 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
   }, [initialTalentType, profiles, reset, selected, technologies, technologyProfiles]);
 
   const submit = (values: TalentFormValues) => {
+    if (readOnly) return;
     const payload: TalentFormValues = {
       ...values,
       profile: optionName(profiles, values.profileCatalogId),
@@ -165,11 +174,11 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
           <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-800 [.bbva-dark_&]:text-slate-300">{TALENT_TYPE_LABELS[talentType]}</span>
         </div>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-3"><span className={labelClass}>IS</span><ISLookupField value={isValue ?? ''} onChange={(value) => setValue('softtekCode', value, { shouldDirty: true })} onResolved={hydrateFromDirectory} disabled={saving} /></label>
-          {fullForm ? <label className="md:col-span-2"><span className={labelClass}>Usuario corporativo</span><input {...register('corporateUser')} className={fieldClass} /></label> : null}
-          <label className={fullForm ? 'md:col-span-3' : 'md:col-span-4'}><span className={labelClass}>Correo electrónico</span><input {...register('email')} type="email" className={fieldClass} /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Nombre</span><input {...register('firstName')} className={fieldClass} /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Apellidos</span><input {...register('lastName')} className={fieldClass} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>IS</span><ISLookupField value={isValue ?? ''} onChange={(value) => setValue('softtekCode', value, { shouldDirty: true })} onResolved={hydrateFromDirectory} disabled={saving || readOnly} /></label>
+          {fullForm ? <label className="md:col-span-2"><span className={labelClass}>Usuario corporativo</span><input {...register('corporateUser')} disabled={readOnly || saving} className={fieldClass} /></label> : null}
+          <label className={fullForm ? 'md:col-span-3' : 'md:col-span-4'}><span className={labelClass}>Correo electrónico</span><input {...register('email')} type="email" disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Nombre</span><input {...register('firstName')} disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Apellidos</span><input {...register('lastName')} disabled={readOnly || saving} className={fieldClass} /></label>
         </div>
       </section>
 
@@ -178,22 +187,22 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-4">
             <span className={labelClass}>Perfil {talentType === 'ACADEMY' ? '*' : ''}</span>
-            <BBVASearchableSelect value={profileCatalogId ?? ''} onChange={(value) => setValue('profileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(profiles)} disabled={catalogsLoading} ariaLabel="Perfil" />
+            <BBVASearchableSelect value={profileCatalogId ?? ''} onChange={(value) => setValue('profileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(profiles, 'Seleccionar', selected?.profileCatalogId, selected?.profile)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil" />
           </label>
           {fullForm ? (
             <label className="md:col-span-3">
               <span className={labelClass}>Perfil tecnológico *</span>
-              <BBVASearchableSelect value={technologyProfileCatalogId ?? ''} onChange={(value) => setValue('technologyProfileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologyProfiles)} disabled={catalogsLoading} ariaLabel="Perfil tecnológico" />
+              <BBVASearchableSelect value={technologyProfileCatalogId ?? ''} onChange={(value) => setValue('technologyProfileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologyProfiles, 'Seleccionar', selected?.technologyProfileCatalogId, selected?.technologyProfile)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil tecnológico" />
             </label>
           ) : null}
           <label className={fullForm ? 'md:col-span-3' : 'md:col-span-5'}>
             <span className={labelClass}>Tecnología actual {talentType === 'ACADEMY' ? '*' : ''}</span>
-            <BBVASearchableSelect value={currentTechnologyCatalogId ?? ''} onChange={(value) => setValue('currentTechnologyCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologies)} disabled={catalogsLoading} ariaLabel="Tecnología actual" />
+            <BBVASearchableSelect value={currentTechnologyCatalogId ?? ''} onChange={(value) => setValue('currentTechnologyCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologies, 'Seleccionar', selected?.currentTechnologyCatalogId, selected?.currentTechnology)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Tecnología actual" />
           </label>
           {fullForm ? (
             <label className="md:col-span-2">
               <span className={labelClass}>Nivel de experiencia</span>
-              <BBVASearchableSelect value={expertise ?? ''} onChange={(value) => setValue('expertise', value, { shouldDirty: true, shouldValidate: true })} options={[{ value: '', label: '—' }, ...EXPERTISE_LEVELS.map((level) => ({ value: level, label: level }))]} ariaLabel="Nivel de experiencia" />
+              <BBVASearchableSelect value={expertise ?? ''} onChange={(value) => setValue('expertise', value, { shouldDirty: true, shouldValidate: true })} options={[{ value: '', label: '—' }, ...EXPERTISE_LEVELS.map((level) => ({ value: level, label: level }))]} disabled={readOnly || saving} ariaLabel="Nivel de experiencia" />
             </label>
           ) : null}
         </div>
@@ -202,39 +211,45 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
       <section className={sectionClass}>
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Fechas y estado</h3>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-2"><span className={labelClass}>Inicio vigencia</span><BBVADatePicker value={platformStartDate} onChange={(value) => setValue('platformStartDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Inicio de vigencia" /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Vencimiento</span><BBVADatePicker value={platformEndDate} onChange={(value) => setValue('platformEndDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Vencimiento" /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Fecha de contratación" /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Alta Banco de talento</span><BBVADatePicker value={entryDate} onChange={(value) => setValue('entryDate', value, { shouldDirty: true, shouldValidate: true })} ariaLabel="Fecha de alta en Banco de talento" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Inicio vigencia</span><BBVADatePicker value={platformStartDate} onChange={(value) => setValue('platformStartDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Inicio de vigencia" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Vencimiento</span><BBVADatePicker value={platformEndDate} onChange={(value) => setValue('platformEndDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Vencimiento" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación" /></label>
+          <label className="md:col-span-2"><span className={labelClass}>Alta Banco de talento</span><BBVADatePicker value={entryDate} onChange={(value) => setValue('entryDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta en Banco de talento" /></label>
           <label className="md:col-span-2">
             <span className={labelClass}>Etapa</span>
-            <BBVASearchableSelect value={stage ?? ''} onChange={(value) => setValue('stage', value as TalentFormValues['stage'], { shouldDirty: true, shouldValidate: true })} options={TALENT_STAGES.filter((item) => item !== 'CONVERTED').map((item) => ({ value: item, label: TALENT_STAGE_LABELS[item] }))} ariaLabel="Etapa" />
+            <BBVASearchableSelect value={stage ?? ''} onChange={(value) => setValue('stage', value as TalentFormValues['stage'], { shouldDirty: true, shouldValidate: true })} options={TALENT_STAGES.filter((item) => item !== 'CONVERTED').map((item) => ({ value: item, label: TALENT_STAGE_LABELS[item] }))} disabled={readOnly || saving} ariaLabel="Etapa" />
           </label>
-          <label className="md:col-span-2"><span className={labelClass}>Estado</span><span className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-300"><input {...register('active')} type="checkbox" className="h-3.5 w-3.5 rounded accent-blue-600" /> Activo</span></label>
+          <label className="md:col-span-2"><span className={labelClass}>Estado</span><span className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-300"><input {...register('active')} type="checkbox" disabled={readOnly || saving} className="h-3.5 w-3.5 rounded accent-blue-600" /> Activo</span></label>
         </div>
       </section>
 
       <section className={sectionClass}>
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)]">
-          <div><span className={labelClass}>Observaciones</span><textarea {...register('notes')} rows={4} className={areaClass} /></div>
+          <div><span className={labelClass}>Observaciones</span><textarea {...register('notes')} rows={4} disabled={readOnly || saving} className={areaClass} /></div>
           <div>
             <span className={labelClass}>Currículum</span>
             <div className="flex min-h-[92px] items-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-3 py-3 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/50">
-              <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+              <label className={`flex min-w-0 flex-1 items-center gap-2 ${readOnly ? 'cursor-default' : 'cursor-pointer'}`}>
                 <UploadCloud className="h-4 w-4 shrink-0 text-blue-500" />
                 <span className="min-w-0 truncate text-[10.5px] text-slate-600 [.bbva-dark_&]:text-slate-300">{cvFile ? cvFile.name : currentCv ? `${currentCv.fileName} · ${formatBytes(currentCv.fileSizeBytes)}` : 'Seleccionar CV (.pdf, .docx, .pptx)'}</span>
-                <input type="file" className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx" onChange={(event) => onFileSelected(event.target.files?.[0])} />
+                <input type="file" disabled={readOnly || saving} className="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx" onChange={(event) => onFileSelected(event.target.files?.[0])} />
               </label>
-              {currentCv ? <div className="flex shrink-0 gap-1"><button type="button" onClick={onViewCv} className="rounded-xl p-2 text-blue-600 hover:bg-blue-50 [.bbva-dark_&]:text-blue-300 [.bbva-dark_&]:hover:bg-blue-500/10" title="Ver CV"><Eye className="h-3.5 w-3.5" /></button><button type="button" onClick={onDownloadCv} className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 [.bbva-dark_&]:text-slate-300 [.bbva-dark_&]:hover:bg-slate-800" title="Descargar CV"><Download className="h-3.5 w-3.5" /></button></div> : null}
+              {currentCv ? <div className="flex shrink-0 gap-1"><button type="button" onClick={onViewCv} disabled={readOnly || saving} className="rounded-xl p-2 text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 [.bbva-dark_&]:text-blue-300 [.bbva-dark_&]:hover:bg-blue-500/10" title="Ver CV"><Eye className="h-3.5 w-3.5" /></button><button type="button" onClick={onDownloadCv} disabled={readOnly || saving} className="rounded-xl p-2 text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 [.bbva-dark_&]:text-slate-300 [.bbva-dark_&]:hover:bg-slate-800" title="Descargar CV"><Download className="h-3.5 w-3.5" /></button></div> : null}
             </div>
           </div>
         </div>
       </section>
 
-      <div className="flex justify-end gap-2 border-t border-slate-200 pt-3 [.bbva-dark_&]:border-slate-800">
-        <button type="button" onClick={onCancel} disabled={saving} className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-slate-800"><X className="h-3.5 w-3.5" />Cancelar</button>
-        <button type="submit" disabled={saving || catalogsLoading} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-4 text-[11px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50"><Save className="h-3.5 w-3.5" />{saving ? 'Guardando...' : 'Guardar'}</button>
-      </div>
+      <BBVAFormActions
+        mode={mode}
+        busy={saving}
+        submitDisabled={catalogsLoading}
+        onBack={onCancel}
+        onDelete={onDelete}
+        createLabel="Guardar"
+        editLabel="Guardar cambios"
+        deleteLabel="Eliminar talento"
+      />
     </form>
   );
 };

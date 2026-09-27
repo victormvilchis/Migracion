@@ -6,10 +6,8 @@ import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { BBVAStatusBadge, certificationStatusLabel, type CertificationStatus } from '../../componentsBBVATalent/BBVAStatusBadge';
-import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
-import { useCollaborators, useDeleteCollaborator } from '../hooks/useCollaborators';
+import { useCollaborators } from '../hooks/useCollaborators';
 import { useCatalogOptions } from '../hooks/useCatalog';
-import type { Collaborator } from '../types/collaborator';
 
 function roleDisplay(profile?: string | null, technologyProfile?: string | null) {
   const values = [profile, technologyProfile].filter(Boolean);
@@ -41,7 +39,6 @@ export const CollaboratorsPage: React.FC = () => {
   const query = useCollaborators();
   const profilesQuery = useCatalogOptions('profiles');
   const technologiesQuery = useCatalogOptions('technologies');
-  const deleteMutation = useDeleteCollaborator();
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -51,8 +48,6 @@ export const CollaboratorsPage: React.FC = () => {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
   const [message, setMessage] = useState<string | null>((location.state as { message?: string } | null)?.message ?? null);
-  const [deleteTarget, setDeleteTarget] = useState<Collaborator | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if ((location.state as { message?: string } | null)?.message) {
@@ -94,7 +89,6 @@ export const CollaboratorsPage: React.FC = () => {
       </div>
 
       {message && <BBVAAlert tone="success" onClose={() => setMessage(null)}>{message}</BBVAAlert>}
-      {actionError && <BBVAAlert tone="error" onClose={() => setActionError(null)}>{actionError}</BBVAAlert>}
 
       <div className="grid gap-2 lg:grid-cols-[minmax(260px,1fr)_minmax(230px,0.58fr)_minmax(220px,0.52fr)_minmax(220px,0.48fr)]">
         <div className="relative">
@@ -142,7 +136,7 @@ export const CollaboratorsPage: React.FC = () => {
                           { id: 'edit', label: 'Editar', icon: Pencil, onClick: () => navigate(`/bbva/collaborators/${item.id}/edit`) },
                           { id: 'manage', label: 'Gestionar', icon: Briefcase, onClick: () => navigate(`/bbva/collaborators/${item.id}/manage`) },
                           { id: 'certifications', label: 'Certificaciones', icon: Award, onClick: () => navigate(`/bbva/collaborators/${item.id}/certifications`) },
-                          { id: 'delete', label: 'Eliminar definitivamente', icon: Trash2, tone: 'danger', onClick: () => setDeleteTarget(item) },
+                          { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger', onClick: () => navigate(`/bbva/collaborators/${item.id}/delete`) },
                         ]} />
                       </td>
                     </tr>
@@ -155,22 +149,6 @@ export const CollaboratorsPage: React.FC = () => {
         </div>
       )}
 
-      <ConfirmDialog
-        open={Boolean(deleteTarget)}
-        title="Eliminar definitivamente"
-        message={`Se eliminará ${deleteTarget?.fullName ?? 'este colaborador'} y su información asociada. Esta acción no se puede deshacer.`}
-        confirmLabel="Eliminar definitivamente"
-        tone="danger"
-        busy={deleteMutation.isPending}
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={() => {
-          if (!deleteTarget) return;
-          deleteMutation.mutate(deleteTarget.id, {
-            onSuccess: () => { setDeleteTarget(null); setMessage('El colaborador fue eliminado definitivamente.'); },
-            onError: (error) => setActionError((error as Error).message),
-          });
-        }}
-      />
     </div>
   );
 };

@@ -6,17 +6,14 @@ import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
-import { useCatalogList, useDeleteCatalogItem, useUpdateCatalogStatus } from '../hooks/useCatalog';
+import { useCatalogList, useUpdateCatalogStatus } from '../hooks/useCatalog';
 import { catalogConfigs, type CatalogRecord, type CatalogStatus, type CatalogType } from '../types/catalog';
 
 interface CatalogListPageProps { type: CatalogType; }
 
 type SortField = 'name' | 'usageCount' | 'updatedAt' | 'status';
 
-type PendingAction =
-  | { kind: 'status'; item: CatalogRecord; nextStatus: CatalogStatus }
-  | { kind: 'delete'; item: CatalogRecord }
-  | null;
+type PendingAction = { kind: 'status'; item: CatalogRecord; nextStatus: CatalogStatus } | null;
 
 function formatDateTime(value: string) {
   const date = new Date(value);
@@ -40,7 +37,6 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
 
   const query = useCatalogList(type, { search, status, page, size, sort, direction });
   const statusMutation = useUpdateCatalogStatus(type);
-  const deleteMutation = useDeleteCatalogItem(type);
   const data = query.data;
 
   useEffect(() => {
@@ -67,15 +63,9 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
     if (!pending) return;
     setError(null);
     try {
-      if (pending.kind === 'status') {
-        await statusMutation.mutateAsync({ id: pending.item.id, status: pending.nextStatus });
-        const feminine = config.singularArticle === 'la';
-        setMessage(`${feminine ? 'La' : 'El'} ${config.singular} fue ${pending.nextStatus === 'ACTIVE' ? (feminine ? 'activada' : 'activado') : (feminine ? 'inactivada' : 'inactivado')} correctamente.`);
-      } else {
-        await deleteMutation.mutateAsync(pending.item.id);
-        const feminine = config.singularArticle === 'la';
-        setMessage(`${feminine ? 'La' : 'El'} ${config.singular} fue ${feminine ? 'eliminada' : 'eliminado'} correctamente.`);
-      }
+      await statusMutation.mutateAsync({ id: pending.item.id, status: pending.nextStatus });
+      const feminine = config.singularArticle === 'la';
+      setMessage(`${feminine ? 'La' : 'El'} ${config.singular} fue ${pending.nextStatus === 'ACTIVE' ? (feminine ? 'activada' : 'activado') : (feminine ? 'inactivada' : 'inactivado')} correctamente.`);
       setPending(null);
     } catch (actionError) {
       setPending(null);
@@ -83,9 +73,8 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
     }
   };
 
-  const busy = statusMutation.isPending || deleteMutation.isPending;
+  const busy = statusMutation.isPending;
   const pendingStatus = pending?.kind === 'status' ? pending.nextStatus : null;
-  const pendingItem = pending?.item ?? null;
 
   return (
     <div className="space-y-3 animate-fade-in">
@@ -140,7 +129,7 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
                         item.status === 'ACTIVE'
                           ? { id: 'inactive', label: 'Inactivar', icon: Power, onClick: () => setPending({ kind: 'status', item, nextStatus: 'INACTIVE' }) }
                           : { id: 'active', label: 'Activar', icon: RefreshCw, onClick: () => setPending({ kind: 'status', item, nextStatus: 'ACTIVE' }) },
-                        { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger' as const, onClick: () => setPending({ kind: 'delete', item }) },
+                        { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger' as const, onClick: () => navigate(`${config.route}/${item.id}/delete`) },
                       ]} />
                     </td>
                   </tr>
@@ -156,12 +145,10 @@ export const CatalogListPage: React.FC<CatalogListPageProps> = ({ type }) => {
 
       <ConfirmDialog
         open={Boolean(pending)}
-        title={pending?.kind === 'delete' ? `Eliminar ${config.singular}` : `${pendingStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'} ${config.singular}`}
-        message={pending?.kind === 'delete'
-          ? `Se eliminará ${config.singularArticle} ${config.singular} “${pendingItem?.name ?? ''}”. Solo es posible cuando no tiene usos registrados.`
-          : `${pendingStatus === 'ACTIVE' ? 'Se habilitará nuevamente' : 'Se inactivará'} ${config.singularArticle} ${config.singular} “${pendingItem?.name ?? ''}”. ${pendingStatus === 'INACTIVE' ? 'Los datos históricos se conservarán.' : ''}`}
-        confirmLabel={pending?.kind === 'delete' ? 'Eliminar' : pendingStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'}
-        tone={pending?.kind === 'delete' ? 'danger' : pendingStatus === 'ACTIVE' ? 'success' : 'warning'}
+        title={`${pendingStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'} ${config.singular}`}
+        message={`${pendingStatus === 'ACTIVE' ? 'Se habilitará nuevamente' : 'Se inactivará'} ${config.singularArticle} ${config.singular} “${pending?.item.name ?? ''}”. ${pendingStatus === 'INACTIVE' ? 'Los datos históricos se conservarán.' : ''}`}
+        confirmLabel={pendingStatus === 'ACTIVE' ? 'Activar' : 'Inactivar'}
+        tone={pendingStatus === 'ACTIVE' ? 'success' : 'warning'}
         busy={busy}
         onCancel={() => setPending(null)}
         onConfirm={() => void confirm()}
