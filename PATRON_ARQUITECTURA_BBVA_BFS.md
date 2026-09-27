@@ -1,5 +1,15 @@
 # Patrón de Arquitectura BBVA sobre BaseBFS / bfs_US
 
+
+## Regla transversal: no redundancia de contexto ni microcopy
+
+- El shell, la navegación lateral y los breadcrumbs ya identifican el módulo y la ubicación actual. Las vistas no deben repetir ese mismo contexto con héroes, subtítulos o encabezados equivalentes.
+- Evitar combinaciones como `Panel ejecutivo` + `Talento y certificaciones` cuando el breadcrumb ya indica `Panel`, o `Cobertura` + `Estado general de certificaciones` cuando ambos textos expresan la misma idea.
+- Una vista puede mostrar un título interno únicamente cuando aporta información nueva que el breadcrumb no comunica. Si el texto no agrega significado funcional, se elimina.
+- Las tarjetas no deben repetir la misma métrica en el título, subtítulo y ayuda. Cada texto visible debe aportar información distinta y accionable.
+- No usar microcopy promocional, autodescriptivo o de relleno en pantallas operativas.
+- Esta regla aplica a todos los módulos actuales y futuros de BBVA Workspace.
+
 ## Principios obligatorios
 
 1. El Header corporativo/global de BFS es infraestructura compartida y **no se reemplaza, elimina ni duplica** dentro del módulo BBVA.
@@ -255,3 +265,52 @@ Banco de talento y Colaboradores representan estados operativos de una misma per
 - `Gestionar` es el cockpit operativo del colaborador: muestra su contexto actual, accesos a edición/certificaciones, la acción `Mover a Banco de talento`, CV disponible, observaciones e historial de la persona.
 - `Regresar` permanece siempre en la esquina superior izquierda también en vistas de gestión y transición.
 - La conversión Banco de talento → Colaboradores finaliza en la vista `Gestionar` del colaborador para continuar el flujo operativo.
+
+## Patrón funcional — vencimiento pertenece a certificaciones, no a personas
+
+- La ficha maestra de una persona no contiene un campo funcional `Vencimiento`.
+- `bbva.Collaborator.EndDate` y `bbva.TalentBankEntry.PlatformEndDate` se eliminan del modelo, contratos HTTP, formularios, vistas y persistencia.
+- Colaboradores, Banco de talento y Prospectos no calculan ni muestran un vencimiento genérico de persona.
+- Las fechas de expiración pertenecen a `bbva.PersonCertification`, donde su significado es explícitamente el vencimiento de una certificación concreta.
+- Las transiciones de ciclo de vida registran su fecha efectiva en `bbva.PersonLifecycleHistory`; no reutilizan un campo de vencimiento de persona.
+
+## Patrón funcional — certificaciones del colaborador
+
+- Las certificaciones se asocian a `bbva.Person`, no al registro temporal de Colaborador; por ello sobreviven a las transiciones Banco de talento ↔ Colaborador.
+- `bbva.PersonCertification` representa la certificación asignada/aplicable de la persona, su ciclo vigente, obligatoriedad, fechas y estado base.
+- `bbva.PersonCertificationAttempt` registra intentos de manera append-only con número de intento, ciclo, resultado, fechas, costo capturado desde la configuración vigente y observaciones.
+- `bbva.PersonCertificationHistory` mantiene trazabilidad funcional de asignación, actualización, intento, aprobación/reprobación, recertificación y `No aplica`.
+- La aplicabilidad automática se deriva de configuración persistida del catálogo, tecnología actual y nivel de referencia del perfil; no se hardcodean reglas por colaborador en frontend.
+- Los estados operativos se derivan de configuración y fechas: Pendiente, Programada, Aplicada, Reprobada, Vigente, Próxima a vencer, Vencida, Recertificación pendiente y No aplica.
+- `Recertificar` inicia un nuevo ciclo sin borrar intentos ni historial previos.
+- Una certificación asignada/histórica impide la eliminación física de su catálogo; debe conservarse la integridad referencial.
+- La vista `Colaboradores > Certificaciones` es la superficie E2E de seguimiento de una persona; `Gestionar colaborador` presenta un resumen y acceso directo, pero no duplica la lógica de certificación.
+- `Certificaciones > Seguimiento` ofrece la vista transversal para localizar colaboradores que requieren atención.
+
+## Patrón funcional — Panel ejecutivo BBVA Workspace
+
+- `/bbva/dashboard` es un panel operativo de solo lectura; no incluye personalización ni configuración de widgets.
+- Las métricas se calculan desde persistencia real de Colaboradores, Banco de talento y certificaciones; no se muestran datos mock ni valores estáticos de negocio.
+- Los filtros disponibles se aplican de forma consistente a las métricas y vistas: búsqueda, perfil, tecnología, estado de certificación y rango de fechas cuando corresponda.
+- El panel prioriza alta legibilidad y drill-down: tarjetas, distribución por estado, vencimientos de certificaciones, capacidad por tecnología, composición de Banco de talento y una tabla de atención requerida.
+- Las tarjetas y elementos interactivos navegan a la superficie operativa correspondiente en lugar de abrir configuradores de dashboard.
+- El panel no introduce el concepto de Organización ni multitenancy dentro de BBVA Workspace.
+- Las gráficas simples se implementan con componentes web ligeros y accesibles; una librería externa de gráficas solo se incorpora cuando exista una necesidad funcional que justifique su peso y mantenimiento.
+
+## Patrón funcional — importación Excel de colaboradores
+
+- La importación vive dentro de `Colaboradores`; no se crea un módulo paralelo ni un historial visible separado.
+- Se procesa **siempre la primera hoja** del archivo `.xlsx`, sin depender de su nombre.
+- Los encabezados se resuelven por nombre normalizado; el orden de columnas puede cambiar y las columnas adicionales no bloquean la carga.
+- Una fila solo entra al análisis cuando contiene `NOMBRE EXTERNO`. Las filas sin nombre se ignoran y se informan en el resumen.
+- La importación es repetible e idempotente: el mismo archivo puede cargarse cuantas veces sea necesario y no existe bloqueo por hash/recibo de archivo.
+- La vista previa es obligatoria. Antes de aplicar se clasifican `Nuevos`, `Con cambios`, `Posibles bajas`, `Conflictos`, `Errores` y `Resueltos previamente`; no existe pestaña `Sin cambios`.
+- Los cambios comparan `Campo`, `Valor actual` y `Valor del Excel`. El usuario puede aplicar el valor del Excel o mantener el actual, individualmente o por colaborador.
+- Las decisiones de diferencias se guardan en `bbva.CollaboratorImportResolution` y se reutilizan cuando vuelve a aparecer exactamente el mismo conflicto de valores.
+- Los posibles bajas requieren decisión explícita: `Desactivar`, `Mantener activo`, `Ignorar` o `Revisar manualmente`. `Desactivar` utiliza el ciclo de vida existente y mueve a la persona a Banco de talento; nunca elimina físicamente la persona.
+- Los errores o conflictos de filas individuales no impiden aplicar registros válidos. La confirmación siempre indica qué se aplicará y qué se omitirá.
+- Para colaboradores nuevos, si el Excel no contiene correo, este se captura manualmente en la vista previa y debe ser válido antes de aplicar.
+- Perfil, perfil tecnológico y tecnología se normalizan para comparación. Cuando un valor del Excel no existe en su catálogo activo, la importación lo crea como registro activo en el catálogo correspondiente antes de asociarlo.
+- Después de crear, actualizar o reactivar un colaborador se sincronizan sus certificaciones aplicables con las reglas persistidas del catálogo.
+- La carga no modifica componentes globales de BaseBFS; su UX y sus selectores permanecen encapsulados dentro de BBVA Workspace.
+- No se incorporan mensajes promocionales ni encabezados redundantes: breadcrumb, botón `Regresar`, carga, resumen, resolución y confirmación son suficientes para orientar el flujo.

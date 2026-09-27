@@ -160,6 +160,78 @@ BEGIN TRY
     );
   END;
 
+  IF OBJECT_ID(N'bbva.PersonCertification', N'U') IS NULL AND OBJECT_ID(N'bbva.Person', N'U') IS NOT NULL
+  BEGIN
+    CREATE TABLE bbva.PersonCertification (
+      Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_PersonCertification PRIMARY KEY DEFAULT NEWID(),
+      PersonId UNIQUEIDENTIFIER NOT NULL,
+      CertificationId UNIQUEIDENTIFIER NOT NULL,
+      Applicable BIT NOT NULL CONSTRAINT DF_BBVA_PersonCertification_Applicable DEFAULT 1,
+      Mandatory BIT NOT NULL CONSTRAINT DF_BBVA_PersonCertification_Mandatory DEFAULT 1,
+      Source NVARCHAR(16) NOT NULL CONSTRAINT DF_BBVA_PersonCertification_Source DEFAULT N'AUTO',
+      CurrentCycle INT NOT NULL CONSTRAINT DF_BBVA_PersonCertification_CurrentCycle DEFAULT 1,
+      BaseStatus NVARCHAR(24) NOT NULL CONSTRAINT DF_BBVA_PersonCertification_BaseStatus DEFAULT N'PENDING',
+      ApplicationDate DATE NULL,
+      ApprovedDate DATE NULL,
+      ExpirationDate DATE NULL,
+      Notes NVARCHAR(1500) NULL,
+      CreatedAt DATETIME2(3) NOT NULL CONSTRAINT DF_BBVA_PersonCertification_CreatedAt DEFAULT SYSUTCDATETIME(),
+      UpdatedAt DATETIME2(3) NOT NULL CONSTRAINT DF_BBVA_PersonCertification_UpdatedAt DEFAULT SYSUTCDATETIME(),
+      CreatedByEmail NVARCHAR(255) NOT NULL,
+      UpdatedByEmail NVARCHAR(255) NOT NULL,
+      CONSTRAINT FK_BBVA_PersonCertification_Person FOREIGN KEY (PersonId) REFERENCES bbva.Person(Id),
+      CONSTRAINT FK_BBVA_PersonCertification_Catalog FOREIGN KEY (CertificationId) REFERENCES bbva.CertificationCatalog(Id),
+      CONSTRAINT CK_BBVA_PersonCertification_Source CHECK (Source IN (N'AUTO',N'MANUAL')),
+      CONSTRAINT CK_BBVA_PersonCertification_Cycle CHECK (CurrentCycle > 0),
+      CONSTRAINT CK_BBVA_PersonCertification_BaseStatus CHECK (BaseStatus IN (N'PENDING',N'SCHEDULED',N'APPLIED',N'FAILED',N'APPROVED',N'NOT_APPLICABLE'))
+    );
+  END;
+
+  IF OBJECT_ID(N'bbva.PersonCertificationAttempt', N'U') IS NULL AND OBJECT_ID(N'bbva.PersonCertification', N'U') IS NOT NULL
+  BEGIN
+    CREATE TABLE bbva.PersonCertificationAttempt (
+      Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_PersonCertificationAttempt PRIMARY KEY DEFAULT NEWID(),
+      PersonCertificationId UNIQUEIDENTIFIER NOT NULL,
+      CycleNumber INT NOT NULL,
+      AttemptNumber INT NOT NULL,
+      ApplicationDate DATE NULL,
+      Result NVARCHAR(16) NOT NULL CONSTRAINT DF_BBVA_PersonCertificationAttempt_Result DEFAULT N'PENDING',
+      ResultDate DATE NULL,
+      CostAmount DECIMAL(12,2) NULL,
+      CostCurrency NVARCHAR(8) NULL,
+      Notes NVARCHAR(1000) NULL,
+      CreatedAt DATETIME2(3) NOT NULL CONSTRAINT DF_BBVA_PersonCertificationAttempt_CreatedAt DEFAULT SYSUTCDATETIME(),
+      CreatedByEmail NVARCHAR(255) NOT NULL,
+      CONSTRAINT FK_BBVA_PersonCertificationAttempt_Record FOREIGN KEY (PersonCertificationId) REFERENCES bbva.PersonCertification(Id),
+      CONSTRAINT CK_BBVA_PersonCertificationAttempt_Cycle CHECK (CycleNumber > 0),
+      CONSTRAINT CK_BBVA_PersonCertificationAttempt_Number CHECK (AttemptNumber > 0),
+      CONSTRAINT CK_BBVA_PersonCertificationAttempt_Result CHECK (Result IN (N'PENDING',N'APPROVED',N'FAILED')),
+      CONSTRAINT CK_BBVA_PersonCertificationAttempt_Cost CHECK (CostAmount IS NULL OR CostAmount >= 0)
+    );
+  END;
+
+  IF OBJECT_ID(N'bbva.PersonCertificationHistory', N'U') IS NULL AND OBJECT_ID(N'bbva.PersonCertification', N'U') IS NOT NULL
+  BEGIN
+    CREATE TABLE bbva.PersonCertificationHistory (
+      Id UNIQUEIDENTIFIER NOT NULL CONSTRAINT PK_BBVA_PersonCertificationHistory PRIMARY KEY DEFAULT NEWID(),
+      PersonCertificationId UNIQUEIDENTIFIER NOT NULL,
+      EventType NVARCHAR(50) NOT NULL,
+      Description NVARCHAR(600) NOT NULL,
+      CreatedAt DATETIME2(3) NOT NULL CONSTRAINT DF_BBVA_PersonCertificationHistory_CreatedAt DEFAULT SYSUTCDATETIME(),
+      CreatedByEmail NVARCHAR(255) NOT NULL,
+      CONSTRAINT FK_BBVA_PersonCertificationHistory_Record FOREIGN KEY (PersonCertificationId) REFERENCES bbva.PersonCertification(Id)
+    );
+  END;
+
+  IF OBJECT_ID(N'bbva.PersonCertification', N'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_PersonCertification_Person_Certification' AND object_id=OBJECT_ID(N'bbva.PersonCertification'))
+    CREATE UNIQUE INDEX UX_BBVA_PersonCertification_Person_Certification ON bbva.PersonCertification(PersonId,CertificationId);
+  IF OBJECT_ID(N'bbva.PersonCertification', N'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BBVA_PersonCertification_Status' AND object_id=OBJECT_ID(N'bbva.PersonCertification'))
+    CREATE INDEX IX_BBVA_PersonCertification_Status ON bbva.PersonCertification(Applicable,BaseStatus,ExpirationDate) INCLUDE (PersonId,CertificationId,Mandatory,CurrentCycle);
+  IF OBJECT_ID(N'bbva.PersonCertificationAttempt', N'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_PersonCertificationAttempt_Cycle_Attempt' AND object_id=OBJECT_ID(N'bbva.PersonCertificationAttempt'))
+    CREATE UNIQUE INDEX UX_BBVA_PersonCertificationAttempt_Cycle_Attempt ON bbva.PersonCertificationAttempt(PersonCertificationId,CycleNumber,AttemptNumber);
+  IF OBJECT_ID(N'bbva.PersonCertificationHistory', N'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BBVA_PersonCertificationHistory_Record_CreatedAt' AND object_id=OBJECT_ID(N'bbva.PersonCertificationHistory'))
+    CREATE INDEX IX_BBVA_PersonCertificationHistory_Record_CreatedAt ON bbva.PersonCertificationHistory(PersonCertificationId,CreatedAt DESC);
+
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_BBVA_CertificationCatalog_Name' AND object_id=OBJECT_ID(N'bbva.CertificationCatalog'))
     CREATE UNIQUE INDEX UX_BBVA_CertificationCatalog_Name ON bbva.CertificationCatalog(Name);
   IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BBVA_CertificationCatalog_Status_Type' AND object_id=OBJECT_ID(N'bbva.CertificationCatalog'))

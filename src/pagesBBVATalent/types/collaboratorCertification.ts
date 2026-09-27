@@ -1,0 +1,95 @@
+export type CollaboratorCertificationStatus =
+  | 'PENDING'
+  | 'SCHEDULED'
+  | 'APPLIED'
+  | 'FAILED'
+  | 'VALID'
+  | 'EXPIRING'
+  | 'EXPIRED'
+  | 'RECERTIFICATION_PENDING'
+  | 'NOT_APPLICABLE';
+
+export type CertificationAttemptResult = 'PENDING' | 'APPROVED' | 'FAILED';
+
+export const COLLABORATOR_CERTIFICATION_STATUS_LABELS: Record<CollaboratorCertificationStatus, string> = {
+  PENDING: 'Pendiente',
+  SCHEDULED: 'Programada',
+  APPLIED: 'Aplicada',
+  FAILED: 'Reprobada',
+  VALID: 'Vigente',
+  EXPIRING: 'Próxima a vencer',
+  EXPIRED: 'Vencida',
+  RECERTIFICATION_PENDING: 'Recertificación pendiente',
+  NOT_APPLICABLE: 'No aplica',
+};
+
+export interface CollaboratorCertification {
+  id: string;
+  collaboratorId: string;
+  personId: string;
+  certificationId: string;
+  certificationName: string;
+  certificationType: string;
+  provider: string | null;
+  technologyName: string | null;
+  mandatory: boolean;
+  applicable: boolean;
+  source: 'AUTO' | 'MANUAL';
+  currentCycle: number;
+  baseStatus: 'PENDING' | 'SCHEDULED' | 'APPLIED' | 'FAILED' | 'APPROVED' | 'NOT_APPLICABLE';
+  status: CollaboratorCertificationStatus;
+  attemptCount: number;
+  applicationDate: string | null;
+  approvedDate: string | null;
+  expirationDate: string | null;
+  validityMonths: number | null;
+  expiringSoonDays: number | null;
+  recertificationEnabled: boolean;
+  requiresAttempts: boolean;
+  requiresApplicationDate: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CollaboratorCertificationSummary {
+  total: number;
+  applicable: number;
+  valid: number;
+  expiring: number;
+  expired: number;
+  pending: number;
+  failed: number;
+  recertificationPending: number;
+  coveragePercent: number;
+}
+
+export interface CertificationAttempt {
+  id: string;
+  certificationRecordId: string;
+  cycleNumber: number;
+  attemptNumber: number;
+  applicationDate: string | null;
+  result: CertificationAttemptResult;
+  resultDate: string | null;
+  costAmount: number | null;
+  costCurrency: string | null;
+  notes: string | null;
+  createdAt: string;
+  createdByEmail: string;
+}
+
+export interface CertificationHistoryItem {
+  id: string;
+  certificationRecordId: string;
+  eventType: string;
+  description: string;
+  createdAt: string;
+  createdByEmail: string;
+}
+
+export interface CollaboratorCertificationDetail {
+  item: CollaboratorCertification;
+  attempts: CertificationAttempt[];
+  history: CertificationHistoryItem[];
+}

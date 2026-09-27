@@ -45,7 +45,7 @@ function values(item: Collaborator | null | undefined, profiles: CatalogOption[]
     profile: item?.profile ?? '', profileCatalogId: optionId(profiles, item?.profileCatalogId, item?.profile),
     technologyProfile: item?.technologyProfile ?? '', technologyProfileCatalogId: optionId(technologyProfiles, item?.technologyProfileCatalogId, item?.technologyProfile),
     currentTechnology: item?.currentTechnology ?? '', currentTechnologyCatalogId: optionId(technologies, item?.currentTechnologyCatalogId, item?.currentTechnology),
-    expertise: item?.expertise ?? '', startDate: item?.startDate ?? '', endDate: item?.endDate ?? '', hireDate: item?.hireDate ?? '', notes: item?.notes ?? '',
+    expertise: item?.expertise ?? '', startDate: item?.startDate ?? '', hireDate: item?.hireDate ?? '', notes: item?.notes ?? '',
   };
 }
 
@@ -87,7 +87,6 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
   const currentTechnologyCatalogId = watch('currentTechnologyCatalogId');
   const expertise = watch('expertise');
   const startDate = watch('startDate');
-  const endDate = watch('endDate');
   const hireDate = watch('hireDate');
 
   const hydrateFromDirectory = (record: IdentityDirectoryRecord) => {
@@ -105,7 +104,6 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-3">
       <input type="hidden" {...register('startDate')} />
-      <input type="hidden" {...register('endDate')} />
       <input type="hidden" {...register('hireDate')} />
       <section className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Identificación</h3>
@@ -149,7 +147,6 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Fechas</h3>
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-3"><span className={labelClass}>Fecha de alta</span><BBVADatePicker value={startDate} onChange={(value) => setValue('startDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta" /></label>
-          <label className="md:col-span-3"><span className={labelClass}>Vencimiento</span><BBVADatePicker value={endDate} onChange={(value) => setValue('endDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Vencimiento" /></label>
           <label className="md:col-span-3"><span className={labelClass}>Fecha de contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación" /></label>
         </div>
       </section>

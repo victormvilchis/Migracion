@@ -74,10 +74,6 @@ async function normalizePayload(payload: any): Promise<TalentInput> {
   }
 
   const platformStartDate = normalizeDate(payload?.platformStartDate, 'Inicio de vigencia');
-  const platformEndDate = normalizeDate(payload?.platformEndDate, 'Vencimiento');
-  if (platformStartDate && platformEndDate && platformEndDate < platformStartDate) {
-    throw new Error('El vencimiento no puede ser anterior al inicio de vigencia.');
-  }
 
   return {
     talentType,
@@ -96,7 +92,6 @@ async function normalizePayload(payload: any): Promise<TalentInput> {
     stage: normalizeStage(payload?.stage, talentType),
     active: payload?.active === undefined ? true : Boolean(payload.active),
     platformStartDate,
-    platformEndDate,
     hireDate: normalizeDate(payload?.hireDate, 'Fecha de contratación'),
     entryDate: normalizeDate(payload?.entryDate, 'Fecha de alta en Talent Bank', true) as string,
     notes: cleanText(payload?.notes, 2000),

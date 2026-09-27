@@ -10,8 +10,10 @@ import {
   type CertificationType,
 } from './bbvaCertificationCatalogDomain.js';
 import { BbvaCertificationCatalogRepository } from './bbvaCertificationCatalogRepository.js';
+import { CollaboratorCertificationService } from './bbvaCollaboratorCertificationService.js';
 
 const repository = new BbvaCertificationCatalogRepository();
+const collaboratorCertificationService = new CollaboratorCertificationService();
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function nullableText(value: unknown, maxLength: number): string | null {
@@ -77,18 +79,24 @@ export class BbvaCertificationCatalogService {
   }
 
   async create(payload: unknown, actorEmail: string): Promise<CertificationCatalogRecord> {
-    return repository.create(await this.validate(payload), actorEmail);
+    const created = await repository.create(await this.validate(payload), actorEmail);
+    await collaboratorCertificationService.synchronizeAllActive(actorEmail);
+    return created;
   }
 
   async update(id: string, payload: unknown, actorEmail: string): Promise<CertificationCatalogRecord | null> {
     const current = await repository.findById(id);
     if (!current) return null;
-    return repository.update(id, await this.validate(payload), actorEmail);
+    const updated = await repository.update(id, await this.validate(payload), actorEmail);
+    if (updated) await collaboratorCertificationService.synchronizeAllActive(actorEmail);
+    return updated;
   }
 
   async updateStatus(id: string, status: unknown, actorEmail: string): Promise<CertificationCatalogRecord | null> {
     if (status !== 'ACTIVE' && status !== 'INACTIVE') throw new Error('El estado de la certificación es inválido.');
-    return repository.updateStatus(id, status as CertificationCatalogStatus, actorEmail);
+    const updated = await repository.updateStatus(id, status as CertificationCatalogStatus, actorEmail);
+    if (updated) await collaboratorCertificationService.synchronizeAllActive(actorEmail);
+    return updated;
   }
 
   delete(id: string, actorEmail: string): Promise<boolean> {

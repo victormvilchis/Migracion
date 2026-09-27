@@ -62,7 +62,7 @@ function toFormValues(
     technologyProfile: talent?.technologyProfile ?? '', technologyProfileCatalogId: optionId(technologyProfiles, talent?.technologyProfileCatalogId, talent?.technologyProfile),
     currentTechnology: talent?.currentTechnology ?? '', currentTechnologyCatalogId: optionId(technologies, talent?.currentTechnologyCatalogId, talent?.currentTechnology),
     expertise: talent?.expertise ?? '', stage: talent?.stage ?? defaultStage(initialType), active: talent?.active ?? true,
-    platformStartDate: talent?.platformStartDate ?? '', platformEndDate: talent?.platformEndDate ?? '', hireDate: talent?.hireDate ?? '', entryDate: talent?.entryDate ?? today(), notes: talent?.notes ?? '',
+    platformStartDate: talent?.platformStartDate ?? '', hireDate: talent?.hireDate ?? '', entryDate: talent?.entryDate ?? today(), notes: talent?.notes ?? '',
   };
 }
 
@@ -98,7 +98,6 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
   const expertise = watch('expertise');
   const stage = watch('stage');
   const platformStartDate = watch('platformStartDate');
-  const platformEndDate = watch('platformEndDate');
   const hireDate = watch('hireDate');
   const entryDate = watch('entryDate');
   const fullForm = talentType !== 'ACADEMY';
@@ -161,7 +160,6 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
       <input type="hidden" {...register('expertise')} />
       <input type="hidden" {...register('stage')} />
       <input type="hidden" {...register('platformStartDate')} />
-      <input type="hidden" {...register('platformEndDate')} />
       <input type="hidden" {...register('hireDate')} />
       <input type="hidden" {...register('entryDate')} />
 
@@ -212,7 +210,6 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Fechas y estado</h3>
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-2"><span className={labelClass}>Inicio vigencia</span><BBVADatePicker value={platformStartDate} onChange={(value) => setValue('platformStartDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Inicio de vigencia" /></label>
-          <label className="md:col-span-2"><span className={labelClass}>Vencimiento</span><BBVADatePicker value={platformEndDate} onChange={(value) => setValue('platformEndDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Vencimiento" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Alta Banco de talento</span><BBVADatePicker value={entryDate} onChange={(value) => setValue('entryDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta en Banco de talento" /></label>
           <label className="md:col-span-2">

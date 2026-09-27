@@ -31,16 +31,14 @@ export class TalentConversionRepository {
         await new sql.Request(transaction)
           .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
           .input('startDate', sql.Date, current.platformStartDate || current.entryDate || null)
-          .input('endDate', sql.Date, current.platformEndDate || null)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
-          .query(`UPDATE bbva.Collaborator SET Status=N'ACTIVE', StartDate=COALESCE(@startDate, StartDate), EndDate=@endDate, UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;`);
+          .query(`UPDATE bbva.Collaborator SET Status=N'ACTIVE', StartDate=COALESCE(@startDate, StartDate), UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;`);
       } else {
         const created = await new sql.Request(transaction)
           .input('personId', sql.UniqueIdentifier, current.personId)
           .input('startDate', sql.Date, current.platformStartDate || current.entryDate || null)
-          .input('endDate', sql.Date, current.platformEndDate || null)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
-          .query(`INSERT INTO bbva.Collaborator (PersonId, Status, StartDate, EndDate, CreatedByEmail, UpdatedByEmail) OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id VALUES (@personId, N'ACTIVE', @startDate, @endDate, @actorEmail, @actorEmail);`);
+          .query(`INSERT INTO bbva.Collaborator (PersonId, Status, StartDate, CreatedByEmail, UpdatedByEmail) OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id VALUES (@personId, N'ACTIVE', @startDate, @actorEmail, @actorEmail);`);
         collaboratorId = String(created.recordset[0].id);
         historyEvent = 'CREATED_FROM_TALENT';
         historyDescription = 'El colaborador fue incorporado desde Banco de talento.';

@@ -1,8 +1,10 @@
 import type { CollaboratorInput, CollaboratorRecord } from './bbvaCollaboratorDomain.js';
 import { CollaboratorRepository } from './bbvaCollaboratorRepository.js';
 import { resolveProfessionalCatalogReferences } from './bbvaProfessionalCatalogService.js';
+import { CollaboratorCertificationService } from './bbvaCollaboratorCertificationService.js';
 
 const repository = new CollaboratorRepository();
+const certificationService = new CollaboratorCertificationService();
 
 function cleanText(value: unknown, maxLength: number): string | null {
   const text = String(value ?? '').trim();
@@ -26,8 +28,6 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
   const email = requiredText(payload?.email, 'El correo electrónico', 255).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('El correo electrónico no tiene un formato válido.');
   const startDate = normalizeDate(payload?.startDate, 'Fecha de alta');
-  const endDate = normalizeDate(payload?.endDate, 'Vencimiento');
-  if (startDate && endDate && endDate < startDate) throw new Error('El vencimiento no puede ser anterior a la Fecha de alta.');
   const catalogs = await resolveProfessionalCatalogReferences(payload ?? {});
   if (!catalogs.profileCatalogId) throw new Error('El perfil es obligatorio y debe seleccionarse del catálogo.');
   if (!catalogs.technologyProfileCatalogId) throw new Error('El perfil tecnológico es obligatorio y debe seleccionarse del catálogo.');
@@ -47,7 +47,6 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
     currentTechnologyCatalogId: catalogs.currentTechnologyCatalogId,
     expertise: cleanText(payload?.expertise, 40)?.toUpperCase() ?? catalogs.profileSeniority,
     startDate,
-    endDate,
     hireDate: normalizeDate(payload?.hireDate, 'Fecha de contratación'),
     notes: cleanText(payload?.notes, 2000),
   };
@@ -56,7 +55,16 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
 export class CollaboratorService {
   list(): Promise<CollaboratorRecord[]> { return repository.list(); }
   get(id: string): Promise<CollaboratorRecord | null> { return repository.findById(id); }
-  async create(payload: any, actorEmail: string): Promise<CollaboratorRecord> { return repository.create(await normalizePayload(payload), actorEmail); }
-  async update(id: string, payload: any, actorEmail: string): Promise<CollaboratorRecord | null> { return repository.update(id, await normalizePayload(payload), actorEmail); }
+  async create(payload: any, actorEmail: string): Promise<CollaboratorRecord> {
+    const item = await repository.create(await normalizePayload(payload), actorEmail);
+    await certificationService.synchronize(item.id, actorEmail);
+    return (await repository.findById(item.id)) as CollaboratorRecord;
+  }
+  async update(id: string, payload: any, actorEmail: string): Promise<CollaboratorRecord | null> {
+    const item = await repository.update(id, await normalizePayload(payload), actorEmail);
+    if (!item) return null;
+    await certificationService.synchronize(id, actorEmail);
+    return repository.findById(id);
+  }
   delete(id: string): Promise<boolean> { return repository.delete(id); }
 }

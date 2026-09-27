@@ -21,15 +21,32 @@ const COLLABORATOR_SELECT = `
     p.Expertise AS expertise,
     c.Status AS status,
     CONVERT(VARCHAR(10), c.StartDate, 23) AS startDate,
-    CONVERT(VARCHAR(10), c.EndDate, 23) AS endDate,
     CONVERT(VARCHAR(10), p.HireDate, 23) AS hireDate,
     p.Notes AS notes,
     CASE WHEN d.Id IS NULL THEN CAST(0 AS BIT) ELSE CAST(1 AS BIT) END AS hasCv,
+    ISNULL(certStats.applicable,0) AS certificationApplicable,
+    ISNULL(certStats.validCount,0) AS certificationValid,
+    ISNULL(certStats.expiringCount,0) AS certificationExpiring,
+    ISNULL(certStats.expiredCount,0) AS certificationExpired,
+    ISNULL(certStats.pendingCount,0) AS certificationPending,
+    ISNULL(certStats.recertificationPendingCount,0) AS certificationRecertificationPending,
     CONVERT(VARCHAR(33), c.CreatedAt, 127) AS createdAt,
     CONVERT(VARCHAR(33), c.UpdatedAt, 127) AS updatedAt
   FROM bbva.Collaborator c
   INNER JOIN bbva.Person p ON p.Id=c.PersonId
   LEFT JOIN bbva.PersonDocument d ON d.PersonId=p.Id AND d.DocumentType=N'CV'
+  OUTER APPLY (
+    SELECT
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus<>N'NOT_APPLICABLE' THEN 1 END) AS applicable,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND (pc.ExpirationDate IS NULL OR pc.ExpirationDate > DATEADD(day,ISNULL(cc.ExpiringSoonDays,90),CONVERT(date,SYSUTCDATETIME()))) THEN 1 END) AS validCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate >= CONVERT(date,SYSUTCDATETIME()) AND pc.ExpirationDate <= DATEADD(day,ISNULL(cc.ExpiringSoonDays,90),CONVERT(date,SYSUTCDATETIME())) THEN 1 END) AS expiringCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=0 THEN 1 END) AS expiredCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus IN (N'PENDING',N'SCHEDULED',N'APPLIED',N'FAILED') THEN 1 END) AS pendingCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=1 THEN 1 END) AS recertificationPendingCount
+    FROM bbva.PersonCertification pc
+    INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+    WHERE pc.PersonId=p.Id
+  ) certStats
 `;
 
 function bindPerson(request: sql.Request, input: CollaboratorInput) {
@@ -80,9 +97,8 @@ export class CollaboratorRepository {
         .input('personId', sql.UniqueIdentifier, personId)
         .input('status', sql.NVarChar(20), 'ACTIVE')
         .input('startDate', sql.Date, input.startDate)
-        .input('endDate', sql.Date, input.endDate)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`INSERT INTO bbva.Collaborator (Id,PersonId,Status,StartDate,EndDate,CreatedByEmail,UpdatedByEmail) VALUES (@collaboratorId,@personId,@status,@startDate,@endDate,@actorEmail,@actorEmail);
+        .query(`INSERT INTO bbva.Collaborator (Id,PersonId,Status,StartDate,CreatedByEmail,UpdatedByEmail) VALUES (@collaboratorId,@personId,@status,@startDate,@actorEmail,@actorEmail);
                 INSERT INTO bbva.CollaboratorHistory (CollaboratorId,EventType,Description,CreatedByEmail) VALUES (@collaboratorId,N'CREATED',N'El colaborador fue registrado.',@actorEmail);`);
       await new sql.Request(transaction)
         .input('personId', sql.UniqueIdentifier, personId)
@@ -109,9 +125,8 @@ export class CollaboratorRepository {
       await new sql.Request(transaction)
         .input('id', sql.UniqueIdentifier, id)
         .input('startDate', sql.Date, input.startDate)
-        .input('endDate', sql.Date, input.endDate)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`UPDATE bbva.Collaborator SET StartDate=@startDate,EndDate=@endDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;
+        .query(`UPDATE bbva.Collaborator SET StartDate=@startDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;
                 INSERT INTO bbva.CollaboratorHistory (CollaboratorId,EventType,Description,CreatedByEmail) VALUES (@id,N'UPDATED',N'La información del colaborador fue actualizada.',@actorEmail);`);
       await transaction.commit();
       return this.findById(id);
@@ -130,10 +145,11 @@ export class CollaboratorRepository {
         .query(`
           SELECT
             CASE WHEN EXISTS (SELECT 1 FROM bbva.TalentBankEntry WHERE PersonId=@personId) THEN 1 ELSE 0 END AS hasTalent,
-            CASE WHEN EXISTS (SELECT 1 FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId AND FromState IS NOT NULL) THEN 1 ELSE 0 END AS hasMovement;
+            CASE WHEN EXISTS (SELECT 1 FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId AND FromState IS NOT NULL) THEN 1 ELSE 0 END AS hasMovement,
+            CASE WHEN EXISTS (SELECT 1 FROM bbva.PersonCertification WHERE PersonId=@personId) THEN 1 ELSE 0 END AS hasCertifications;
         `);
-      const dependency = dependencies.recordset[0] as { hasTalent: number; hasMovement: number };
-      if (Number(dependency.hasTalent) > 0 || Number(dependency.hasMovement) > 0) {
+      const dependency = dependencies.recordset[0] as { hasTalent: number; hasMovement: number; hasCertifications: number };
+      if (Number(dependency.hasTalent) > 0 || Number(dependency.hasMovement) > 0 || Number(dependency.hasCertifications) > 0) {
         throw Object.assign(new Error('No es posible eliminar a esta persona porque ya tiene historial de ciclo de vida. Utiliza la acción Mover a Banco de talento.'), { statusCode: 409 });
       }
 

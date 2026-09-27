@@ -6,6 +6,7 @@ import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
 import { PersonLifecycleTimeline } from '../../componentsBBVATalent/PersonLifecycleTimeline';
 import { useCollaborator } from '../hooks/useCollaborators';
 import { useCollaboratorLifecycle } from '../hooks/useLifecycle';
+import { useCollaboratorCertifications } from '../hooks/useCollaboratorCertifications';
 
 function formatDate(value?: string | null): string {
   if (!value) return 'No disponible';
@@ -28,6 +29,7 @@ export const CollaboratorManagePage: React.FC = () => {
   const location = useLocation();
   const collaboratorQuery = useCollaborator(id);
   const lifecycleQuery = useCollaboratorLifecycle(id);
+  const certificationsQuery = useCollaboratorCertifications(id);
   const [message, setMessage] = useState<string | null>((location.state as { message?: string } | null)?.message ?? null);
   const item = collaboratorQuery.data?.item;
 
@@ -86,8 +88,26 @@ export const CollaboratorManagePage: React.FC = () => {
                 <DataItem label="Usuario corporativo" value={item.corporateUser} />
                 <DataItem label="Fecha de alta" value={formatDate(item.startDate)} />
                 <DataItem label="Fecha de contratación" value={formatDate(item.hireDate)} />
-                <DataItem label="Vencimiento" value={formatDate(item.endDate)} />
               </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 p-4 [.bbva-dark_&]:border-slate-800">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100"><Award className="h-4 w-4 text-emerald-600" />Certificaciones</div>
+                <button type="button" onClick={() => navigate(`/bbva/collaborators/${item.id}/certifications`)} className="text-[10px] font-semibold text-blue-700 hover:underline">Abrir seguimiento</button>
+              </div>
+              {certificationsQuery.isLoading ? <div className="text-[10.5px] text-slate-500">Cargando certificaciones...</div> : certificationsQuery.data ? (
+                <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                  {[
+                    ['Aplicables', certificationsQuery.data.summary.applicable, 'text-slate-900'],
+                    ['Vigentes', certificationsQuery.data.summary.valid, 'text-emerald-700'],
+                    ['Próximas', certificationsQuery.data.summary.expiring, 'text-amber-700'],
+                    ['Vencidas', certificationsQuery.data.summary.expired, 'text-rose-700'],
+                    ['Pendientes', certificationsQuery.data.summary.pending, 'text-blue-700'],
+                    ['Recertificación', certificationsQuery.data.summary.recertificationPending, 'text-orange-700'],
+                  ].map(([label,value,tone]) => <div key={String(label)} className="rounded-xl bg-slate-50 px-3 py-2.5 [.bbva-dark_&]:bg-slate-950/40"><div className="text-[8.5px] font-semibold uppercase tracking-[0.05em] text-slate-400">{label}</div><div className={`mt-1 text-lg font-semibold ${tone}`}>{value}</div></div>)}
+                </div>
+              ) : <div className="text-[10.5px] text-slate-500">Sin datos de certificaciones.</div>}
             </section>
 
             <section>

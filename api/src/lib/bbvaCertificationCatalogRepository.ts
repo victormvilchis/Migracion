@@ -74,7 +74,7 @@ const BASE_SELECT = `
     c.Status AS status,
     (SELECT STRING_AGG(l.LevelCode, N',') WITHIN GROUP (ORDER BY l.LevelCode)
       FROM bbva.CertificationAllowedLevel l WHERE l.CertificationId=c.Id) AS allowedLevelsCsv,
-    CAST(0 AS INT) AS usageCount,
+    (SELECT COUNT(1) FROM bbva.PersonCertification pc WHERE pc.CertificationId=c.Id) AS usageCount,
     CONVERT(VARCHAR(33), c.CreatedAt, 127) AS createdAt,
     CONVERT(VARCHAR(33), c.UpdatedAt, 127) AS updatedAt,
     c.CreatedByEmail AS createdByEmail,

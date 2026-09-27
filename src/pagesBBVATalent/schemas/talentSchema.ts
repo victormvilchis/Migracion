@@ -23,14 +23,10 @@ export const talentSchema = z.object({
   stage: z.enum(TALENT_STAGES),
   active: z.boolean(),
   platformStartDate: optionalDate,
-  platformEndDate: optionalDate,
   hireDate: optionalDate,
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha de alta inválida.'),
   notes: z.string().trim().max(2000),
 }).superRefine((value, ctx) => {
-  if (value.platformStartDate && value.platformEndDate && value.platformEndDate < value.platformStartDate) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['platformEndDate'], message: 'El vencimiento no puede ser anterior al inicio de vigencia.' });
-  }
   if (value.talentType === 'ACADEMY') {
     if (!value.softtekCode) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['softtekCode'], message: 'El IS es obligatorio para Academia.' });
     if (!value.profileCatalogId) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['profileCatalogId'], message: 'El perfil es obligatorio para Academia.' });

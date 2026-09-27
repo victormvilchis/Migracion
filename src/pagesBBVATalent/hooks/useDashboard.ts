@@ -1,0 +1,7 @@
+import { useQuery } from '@tanstack/react-query';
+import { dashboardApi } from '../api/dashboardApi';
+import type { DashboardFilters } from '../types/dashboard';
+
+export function useBbvaDashboard(filters: DashboardFilters) {
+  return useQuery({ queryKey: ['bbva-dashboard', filters], queryFn: () => dashboardApi.get(filters) });
+}

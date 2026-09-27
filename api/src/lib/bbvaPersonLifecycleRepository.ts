@@ -134,7 +134,7 @@ export class PersonLifecycleRepository {
           .query(`
             UPDATE bbva.TalentBankEntry
             SET TalentType=N'BBVA_EXIT', Stage=@stage, Active=1,
-                PlatformStartDate=NULL, PlatformEndDate=NULL,
+                PlatformStartDate=NULL,
                 EntryDate=@effectiveDate, ConvertedAt=NULL,
                 UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
             WHERE Id=@entryId;
@@ -161,7 +161,7 @@ export class PersonLifecycleRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.Collaborator
-          SET Status=N'INACTIVE', EndDate=@effectiveDate,
+          SET Status=N'INACTIVE',
               UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
           WHERE Id=@collaboratorId;
         `);

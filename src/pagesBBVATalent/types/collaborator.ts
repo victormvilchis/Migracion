@@ -14,7 +14,6 @@ export interface CollaboratorPayload {
   currentTechnologyCatalogId: string;
   expertise: string;
   startDate: string;
-  endDate: string;
   hireDate: string;
   notes: string;
 }
@@ -37,10 +36,15 @@ export interface Collaborator {
   expertise: string | null;
   status: CollaboratorStatus;
   startDate: string | null;
-  endDate: string | null;
   hireDate: string | null;
   notes: string | null;
   hasCv: boolean;
+  certificationApplicable: number;
+  certificationValid: number;
+  certificationExpiring: number;
+  certificationExpired: number;
+  certificationPending: number;
+  certificationRecertificationPending: number;
   createdAt: string;
   updatedAt: string;
 }

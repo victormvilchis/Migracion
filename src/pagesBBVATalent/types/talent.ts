@@ -59,7 +59,6 @@ export interface Talent {
   stage: TalentStage;
   active: boolean;
   platformStartDate: string | null;
-  platformEndDate: string | null;
   hireDate: string | null;
   entryDate: string;
   notes: string | null;
@@ -88,7 +87,6 @@ export interface TalentPayload {
   stage: TalentStage;
   active: boolean;
   platformStartDate: string;
-  platformEndDate: string;
   hireDate: string;
   entryDate: string;
   notes: string;

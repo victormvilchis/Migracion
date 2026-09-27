@@ -72,14 +72,14 @@ export const bbvaNavigation: BBVANavGroup[] = [
         label: 'Seguimiento',
         path: '/bbva/certifications/tracking',
         description: 'Vigencias, próximas a vencer e historial en una sola vista.',
-        status: 'planned',
+        status: 'ready',
       },
       {
         id: 'certifications-metrics',
         label: 'Métricas',
         path: '/bbva/certifications/metrics',
         description: 'Cumplimiento, estado y tendencias en una sola vista.',
-        status: 'planned',
+        status: 'ready',
       },
     ],
   },
@@ -201,6 +201,7 @@ export const getBbvaBreadcrumbAction = (pathname: string): string | undefined =>
   if (/\/manage$/.test(normalized)) return 'Gestionar';
   if (/\/move-to-talent$/.test(normalized)) return 'Mover a Banco de talento';
   if (/\/certifications$/.test(normalized) && normalized.includes('/collaborators/')) return 'Certificaciones';
+  if (/\/attempt$/.test(normalized) && normalized.includes('/certifications/')) return 'Registrar intento';
 
   const match = findBbvaNavigationMatch(normalized);
   if (match && normalized !== normalizePath(match.module.path)) return 'Ver';

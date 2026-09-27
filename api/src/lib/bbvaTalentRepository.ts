@@ -23,7 +23,6 @@ const TALENT_SELECT = `
     t.Stage AS stage,
     t.Active AS active,
     CONVERT(VARCHAR(10), t.PlatformStartDate, 23) AS platformStartDate,
-    CONVERT(VARCHAR(10), t.PlatformEndDate, 23) AS platformEndDate,
     CONVERT(VARCHAR(10), p.HireDate, 23) AS hireDate,
     CONVERT(VARCHAR(10), t.EntryDate, 23) AS entryDate,
     p.Notes AS notes,
@@ -87,7 +86,6 @@ function bindEntry(request: sql.Request, input: TalentInput) {
     .input('stage', sql.NVarChar(30), input.stage)
     .input('active', sql.Bit, input.active)
     .input('platformStartDate', sql.Date, input.platformStartDate || null)
-    .input('platformEndDate', sql.Date, input.platformEndDate || null)
     .input('entryDate', sql.Date, input.entryDate);
 }
 
@@ -148,12 +146,12 @@ export class TalentRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail);
       const entryResult = await entryRequest.query(`
         INSERT INTO bbva.TalentBankEntry (
-          PersonId, TalentType, Stage, Active, PlatformStartDate, PlatformEndDate,
+          PersonId, TalentType, Stage, Active, PlatformStartDate,
           EntryDate, CreatedByEmail, UpdatedByEmail
         )
         OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
         VALUES (
-          @personId, @talentType, @stage, @active, @platformStartDate, @platformEndDate,
+          @personId, @talentType, @stage, @active, @platformStartDate,
           @entryDate, @actorEmail, @actorEmail
         );
       `);
@@ -210,7 +208,7 @@ export class TalentRepository {
         .query(`
           UPDATE bbva.TalentBankEntry
           SET TalentType=@talentType, Stage=@stage, Active=@active,
-              PlatformStartDate=@platformStartDate, PlatformEndDate=@platformEndDate,
+              PlatformStartDate=@platformStartDate,
               EntryDate=@entryDate, UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
           WHERE Id=@id;
         `);

@@ -5,7 +5,6 @@ import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
-import { BBVAStatusBadge, certificationStatusLabel, type CertificationStatus } from '../../componentsBBVATalent/BBVAStatusBadge';
 import { useCollaborators } from '../hooks/useCollaborators';
 import { useCatalogOptions } from '../hooks/useCatalog';
 
@@ -25,15 +24,16 @@ function formatDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-function certificationStatus(endDate?: string | null): CertificationStatus {
-  if (!endDate) return 'NA';
-  const end = new Date(`${endDate}T23:59:59`);
-  if (Number.isNaN(end.getTime())) return 'NA';
-  const now = new Date();
-  if (end.getTime() < now.getTime()) return 'EXPIRED';
-  const days = Math.ceil((end.getTime() - now.getTime()) / 86_400_000);
-  return days <= 90 ? 'EXPIRING' : 'OK';
+function certificationStatus(item: { certificationExpiring: number; certificationExpired: number; certificationPending: number; certificationRecertificationPending: number; certificationApplicable: number }) {
+  if (item.certificationExpired + item.certificationRecertificationPending > 0) return 'EXPIRED';
+  if (item.certificationExpiring > 0) return 'EXPIRING';
+  if (item.certificationPending > 0) return 'PENDING';
+  if (item.certificationApplicable > 0) return 'VALID';
+  return 'NA';
 }
+
+const certificationLabels: Record<string, string> = { VALID: 'En regla', EXPIRING: 'Próximas a vencer', EXPIRED: 'Atención requerida', PENDING: 'Pendientes', NA: 'Sin aplicables' };
+const certificationTone: Record<string, string> = { VALID: 'bg-emerald-50 text-emerald-700', EXPIRING: 'bg-amber-50 text-amber-700', EXPIRED: 'bg-rose-50 text-rose-700', PENDING: 'bg-blue-50 text-blue-700', NA: 'bg-slate-100 text-slate-500' };
 
 export const CollaboratorsPage: React.FC = () => {
   const query = useCollaborators();
@@ -44,7 +44,7 @@ export const CollaboratorsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [technologyFilter, setTechnologyFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | CertificationStatus>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'VALID' | 'EXPIRING' | 'EXPIRED' | 'PENDING' | 'NA'>('ALL');
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
   const [message, setMessage] = useState<string | null>((location.state as { message?: string } | null)?.message ?? null);
@@ -63,7 +63,7 @@ export const CollaboratorsPage: React.FC = () => {
     const term = search.trim().toLowerCase();
     return items.filter((item) => {
       const role = roleDisplay(item.profile, item.technologyProfile);
-      const cert = certificationStatus(item.endDate);
+      const cert = certificationStatus(item);
       const matchesSearch = !term || [item.fullName, item.email, item.softtekCode, item.corporateUser, role, item.currentTechnology, item.expertise]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
@@ -97,7 +97,7 @@ export const CollaboratorsPage: React.FC = () => {
         </div>
         <BBVASearchableSelect value={roleFilter} onChange={setRoleFilter} options={[{ value: 'ALL', label: 'Todos los roles' }, ...roleOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Filtrar por rol" />
         <BBVASearchableSelect value={technologyFilter} onChange={setTechnologyFilter} options={[{ value: 'ALL', label: 'Todas las tecnologías' }, ...technologyOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Filtrar por tecnología" />
-        <BBVASearchableSelect value={statusFilter} onChange={(value) => setStatusFilter(value as 'ALL' | CertificationStatus)} options={[{ value: 'ALL', label: 'Todos los estados' }, ...(['OK', 'EXPIRING', 'EXPIRED', 'NA'] as CertificationStatus[]).map((status) => ({ value: status, label: certificationStatusLabel[status] }))]} ariaLabel="Filtrar por estado de certificación" />
+        <BBVASearchableSelect value={statusFilter} onChange={(value) => setStatusFilter(value as typeof statusFilter)} options={[{ value: 'ALL', label: 'Todos los estados' }, { value: 'VALID', label: 'En regla' }, { value: 'EXPIRING', label: 'Próximas a vencer' }, { value: 'EXPIRED', label: 'Atención requerida' }, { value: 'PENDING', label: 'Pendientes' }, { value: 'NA', label: 'Sin aplicables' }]} ariaLabel="Filtrar por estado de certificación" />
       </div>
 
       {query.isLoading ? (
@@ -114,22 +114,22 @@ export const CollaboratorsPage: React.FC = () => {
                   <th className="w-[25%] px-2 py-1.5">Rol</th>
                   <th className="w-[15%] px-2 py-1.5">Tecnología actual</th>
                   <th className="w-[9%] px-2 py-1.5">Fecha de alta</th>
-                  <th className="w-[8%] px-2 py-1.5">Vencimiento</th>
-                  <th className="w-[9%] px-2 py-1.5">Estado de certificación</th>
+                  <th className="w-[11%] px-2 py-1.5">Certificaciones</th>
+                  <th className="w-[10%] px-2 py-1.5">Estado</th>
                   <th className="w-[5%] px-2 py-1.5 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 [.bbva-dark_&]:divide-slate-800">
                 {paged.map((item) => {
-                  const certStatus = certificationStatus(item.endDate);
+                  const certStatus = certificationStatus(item);
                   return (
                     <tr key={item.id} className="h-[39px] transition hover:bg-slate-50 [.bbva-dark_&]:hover:bg-slate-800/60">
                       <td className="px-2 py-1.5"><div className="truncate font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">{item.email}</div></td>
                       <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] text-slate-700 [.bbva-dark_&]:text-slate-300">{roleDisplay(item.profile, item.technologyProfile)}</div></td>
                       <td className="px-2 py-1.5 text-slate-700 [.bbva-dark_&]:text-slate-300">{technologyDisplay(item.currentTechnology, item.expertise)}</td>
                       <td className="px-2 py-1.5 whitespace-nowrap text-slate-700 [.bbva-dark_&]:text-slate-300">{formatDate(item.startDate)}</td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-slate-700 [.bbva-dark_&]:text-slate-300">{formatDate(item.endDate)}</td>
-                      <td className="px-2 py-1.5"><BBVAStatusBadge status={certStatus} /></td>
+                      <td className="px-2 py-1.5"><div className="font-semibold tabular-nums text-slate-800">{item.certificationValid + item.certificationExpiring}/{item.certificationApplicable}</div><div className="text-[9px] text-slate-400">cubiertas / aplicables</div></td>
+                      <td className="px-2 py-1.5"><span className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold ${certificationTone[certStatus]}`}>{certificationLabels[certStatus]}</span></td>
                       <td className="px-2 py-1.5 text-right">
                         <BBVAActionMenu items={[
                           { id: 'view', label: 'Ver', icon: Eye, onClick: () => navigate(`/bbva/collaborators/${item.id}`) },

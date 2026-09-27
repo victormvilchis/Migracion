@@ -54,7 +54,6 @@ function toPayload(talent: Talent, values: ReturnType<typeof initialValues>, pro
     stage: talent.stage,
     active: talent.active,
     platformStartDate: talent.platformStartDate ?? '',
-    platformEndDate: talent.platformEndDate ?? '',
     hireDate: talent.hireDate ?? '',
     entryDate: talent.entryDate,
     notes: talent.notes ?? '',

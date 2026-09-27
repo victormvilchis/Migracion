@@ -8,6 +8,10 @@ import { DashboardPage } from './pages/DashboardPage';
 import { SampleCrudPage } from './pages/SampleCrudPage';
 import { SampleAiPage } from './pages/SampleAiPage';
 
+const BBVADashboardPage = React.lazy(() => import('./pagesBBVATalent/dashboard/BBVADashboardPage').then((m) => ({ default: m.BBVADashboardPage })));
+const CollaboratorCertificationsPage = React.lazy(() => import('./pagesBBVATalent/collaboratorCertifications/CollaboratorCertificationsPage').then((m) => ({ default: m.CollaboratorCertificationsPage })));
+const CollaboratorCertificationDetailPage = React.lazy(() => import('./pagesBBVATalent/collaboratorCertifications/CollaboratorCertificationDetailPage').then((m) => ({ default: m.CollaboratorCertificationDetailPage })));
+const CertificationAttemptPage = React.lazy(() => import('./pagesBBVATalent/collaboratorCertifications/CertificationAttemptPage').then((m) => ({ default: m.CertificationAttemptPage })));
 const TalentPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentBankPage').then((m) => ({ default: m.TalentPage })));
 const TalentEditorPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentEditorPage').then((m) => ({ default: m.TalentEditorPage })));
 const TalentDetailPage = React.lazy(() => import('./pagesBBVATalent/talentBank/TalentDetailPage').then((m) => ({ default: m.TalentDetailPage })));
@@ -21,6 +25,8 @@ const CollaboratorMoveToTalentPage = React.lazy(() => import('./pagesBBVATalent/
 const CatalogListPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogListPage').then((m) => ({ default: m.CatalogListPage })));
 const CatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogEditorPage').then((m) => ({ default: m.CatalogEditorPage })));
 const CatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogDetailPage').then((m) => ({ default: m.CatalogDetailPage })));
+const CertificationTrackingPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationTrackingPage').then((m) => ({ default: m.CertificationTrackingPage })));
+const CertificationMetricsPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationMetricsPage').then((m) => ({ default: m.CertificationMetricsPage })));
 const CertificationCatalogListPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogListPage').then((m) => ({ default: m.CertificationCatalogListPage })));
 const CertificationCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogEditorPage').then((m) => ({ default: m.CertificationCatalogEditorPage })));
 const CertificationCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogDetailPage').then((m) => ({ default: m.CertificationCatalogDetailPage })));
@@ -59,7 +65,7 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
         <BBVALayout>
           <div key={userKey} className="w-full min-w-0">
             <Routes>
-              <Route path="/bbva/dashboard" element={modulePage(<BBVAPlaceholderPage />)} />
+              <Route path="/bbva/dashboard" element={modulePage(<BBVADashboardPage />)} />
               <Route path="/bbva/talent-bank" element={modulePage(<TalentPage />)} />
               <Route path="/bbva/talent-bank/new" element={modulePage(<TalentEditorPage />)} />
               <Route path="/bbva/talent-bank/:id/edit" element={modulePage(<TalentEditorPage />)} />
@@ -73,7 +79,15 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/collaborators/:id/delete" element={modulePage(<CollaboratorDetailPage mode="delete" />)} />
               <Route path="/bbva/collaborators/:id/manage" element={modulePage(<CollaboratorManagePage />)} />
               <Route path="/bbva/collaborators/:id/move-to-talent" element={modulePage(<CollaboratorMoveToTalentPage />)} />
+              <Route path="/bbva/collaborators/:id/certifications" element={modulePage(<CollaboratorCertificationsPage />)} />
+              <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/edit" element={modulePage(<CollaboratorCertificationDetailPage mode="edit" />)} />
+              <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/delete" element={modulePage(<CollaboratorCertificationDetailPage mode="delete" />)} />
+              <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/attempt" element={modulePage(<CertificationAttemptPage />)} />
+              <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId" element={modulePage(<CollaboratorCertificationDetailPage mode="view" />)} />
               <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage mode="view" />)} />
+
+              <Route path="/bbva/certifications/tracking" element={modulePage(<CertificationTrackingPage />)} />
+              <Route path="/bbva/certifications/metrics" element={modulePage(<CertificationMetricsPage />)} />
 
               <Route path="/bbva/admin/catalogs/categories" element={modulePage(<CatalogListPage type="categories" />)} />
               <Route path="/bbva/admin/catalogs/categories/new" element={modulePage(<CatalogEditorPage type="categories" />)} />
