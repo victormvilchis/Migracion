@@ -31,6 +31,10 @@ const CertificationMetricsPage = React.lazy(() => import('./pagesBBVATalent/cert
 const CertificationCatalogListPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogListPage').then((m) => ({ default: m.CertificationCatalogListPage })));
 const CertificationCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogEditorPage').then((m) => ({ default: m.CertificationCatalogEditorPage })));
 const CertificationCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogDetailPage').then((m) => ({ default: m.CertificationCatalogDetailPage })));
+const AdminUsersPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
+const AdminUserEditorPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUserEditorPage').then((m) => ({ default: m.AdminUserEditorPage })));
+const AdminRolesPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminRolesPage').then((m) => ({ default: m.AdminRolesPage })));
+const AdminRoleEditorPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminRoleEditorPage').then((m) => ({ default: m.AdminRoleEditorPage })));
 const BBVAPlaceholderPage = React.lazy(() => import('./pagesBBVATalent/BBVAPlaceholderPage'));
 
 const queryClient = new QueryClient({
@@ -97,6 +101,13 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
 
               <Route path="/bbva/certifications/tracking" element={modulePage(<CertificationTrackingPage />)} />
               <Route path="/bbva/certifications/metrics" element={modulePage(<CertificationMetricsPage />)} />
+
+              <Route path="/bbva/admin/users" element={modulePage(<AdminUsersPage />)} />
+              <Route path="/bbva/admin/users/new" element={modulePage(<AdminUserEditorPage />)} />
+              <Route path="/bbva/admin/users/:id/edit" element={modulePage(<AdminUserEditorPage />)} />
+              <Route path="/bbva/admin/roles" element={modulePage(<AdminRolesPage />)} />
+              <Route path="/bbva/admin/roles/new" element={modulePage(<AdminRoleEditorPage />)} />
+              <Route path="/bbva/admin/roles/:id/edit" element={modulePage(<AdminRoleEditorPage />)} />
 
               <Route path="/bbva/admin/catalogs/categories" element={modulePage(<CatalogListPage type="categories" />)} />
               <Route path="/bbva/admin/catalogs/categories/new" element={modulePage(<CatalogEditorPage type="categories" />)} />

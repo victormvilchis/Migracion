@@ -663,6 +663,7 @@ export class CollaboratorCertificationRepository {
         lastScore10:row.lastScore10 === null ? null : Number(row.lastScore10),
         importedAttemptNumber:row.importedAttemptNumber === null ? null : Number(row.importedAttemptNumber),
         lastDataSource:row.lastDataSource ?? null, lastImportFingerprint:row.lastImportFingerprint ?? null,
+        hasManualResult:(attemptsByRecord.get(String(row.recordId)) ?? []).some((attempt) => (attempt.source ?? 'MANUAL').toUpperCase() !== 'IMPORT'),
         attempts:attemptsByRecord.get(String(row.recordId)) ?? [],
       };
       byPerson.set(String(row.personId), [...(byPerson.get(String(row.personId)) ?? []), state]);

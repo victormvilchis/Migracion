@@ -6,6 +6,8 @@ import {
   importCertificationResolutionKey,
   sameImportCertificationAttemptEvidence,
   sameEffectiveImportCertificationState,
+  requiresManualCertificationReconciliation,
+  manualProtectedCertificationOutcomeChanged,
   parseCertificationEvidence,
 } from '../dist/lib/bbvaCollaboratorImportCertificationDomain.js';
 
@@ -244,9 +246,39 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
   assert.equal(evidence.issues.find((issue) => issue.code === 'ATTEMPT_EXCEEDS_CONFIGURED_MAX')?.blocking, true);
 }
 
+
+// T. Una asignación manual sin resultados no convierte un cambio ordinario en conflicto.
+{
+  assert.equal(requiresManualCertificationReconciliation({ hasManualResult:false }, true, false), false);
+}
+
+// U. Los resultados manuales sí se protegen cuando el Excel propone un estado materialmente diferente.
+{
+  assert.equal(requiresManualCertificationReconciliation({ hasManualResult:true }, true, false), true);
+  assert.equal(requiresManualCertificationReconciliation({ hasManualResult:true }, false, false), false);
+  assert.equal(requiresManualCertificationReconciliation({ hasManualResult:true }, true, true), false);
+}
+
+
+// V. Una certificación manual vigente no entra en conflicto si Excel mantiene el mismo resultado efectivo.
+{
+  const evidence = parse('DEVELOPMENT_SECURITY', {
+    '¿APLICA DS?':'SI', 'ESTATUS CERTIFICACIÓN DS':'VIGENTE - REGULAR', 'ESTATUS DEL EXAMEN DS':'APROBADO',
+    'FECHA DE APLICACIÓN DS':'18/05/2026', 'INTENTO DS':'1',
+  }, { config: config({ requiresAttempts:true, requiresApplicationDate:true, validityMonths:12 }) });
+  assert.equal(manualProtectedCertificationOutcomeChanged({ applicable:true, baseStatus:'APPROVED' }, evidence), false);
+  assert.equal(requiresManualCertificationReconciliation({ hasManualResult:true }, manualProtectedCertificationOutcomeChanged({ applicable:true, baseStatus:'APPROVED' }, evidence), false), false);
+}
+
+// W. Cambiar No aplica por una aprobación sí requiere decisión cuando existe resultado manual protegido.
+{
+  const evidence = parse('GITHUB', { 'APLICA GITHUB':'SI', 'STATUS GITHUB':'Aprobado' });
+  assert.equal(manualProtectedCertificationOutcomeChanged({ applicable:false, baseStatus:'NOT_APPLICABLE' }, evidence), true);
+}
+
 // Sanidad de fechas de calendario (sin timezone drift).
 assert.equal(addCalendarMonths('2024-01-31', 1), '2024-02-29');
 assert.equal(addCalendarMonths('2025-01-31', 1), '2025-02-28');
 assert.equal(addCalendarDays('2026-01-31', 30), '2026-03-02');
 
-console.log('OK: 21 escenarios de dominio de importación histórica de certificaciones.');
+console.log('OK: 25 escenarios de dominio de importación histórica de certificaciones.');

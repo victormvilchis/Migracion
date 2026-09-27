@@ -5,6 +5,7 @@ import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useCatalogOptions } from '../hooks/useCatalog';
+import { useDeliveryManagers } from '../hooks/useAdminUsers';
 import { useConvertTalent, useTalent, useUpdateTalent } from '../hooks/useTalent';
 import type { CatalogOption } from '../types/catalog';
 import type { Talent, TalentPayload } from '../types/talent';
@@ -72,9 +73,11 @@ export const TalentConvertPage: React.FC = () => {
   const profilesQuery = useCatalogOptions('profiles');
   const technologyProfilesQuery = useCatalogOptions('technology-profiles');
   const technologiesQuery = useCatalogOptions('technologies');
+  const deliveryManagersQuery = useDeliveryManagers();
   const profiles = useMemo(() => profilesQuery.data?.items ?? [], [profilesQuery.data]);
   const technologyProfiles = useMemo(() => technologyProfilesQuery.data?.items ?? [], [technologyProfilesQuery.data]);
   const technologies = useMemo(() => technologiesQuery.data?.items ?? [], [technologiesQuery.data]);
+  const deliveryManagers = useMemo(() => deliveryManagersQuery.data?.items ?? [], [deliveryManagersQuery.data]);
   const talent = talentQuery.data?.item ?? null;
   const [values, setValues] = useState(() => initialValues(talent, [], [], []));
   const [deliveryManager, setDeliveryManager] = useState('');
@@ -91,7 +94,7 @@ export const TalentConvertPage: React.FC = () => {
       return;
     }
     if (!deliveryManager.trim()) {
-      setError('Captura el DM antes de convertir a colaborador.');
+      setError('Selecciona un Delivery Manager antes de continuar.');
       return;
     }
     setError(null);
@@ -114,7 +117,7 @@ export const TalentConvertPage: React.FC = () => {
   if (talentQuery.isLoading) return <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando talento...</div>;
   if (talentQuery.error || !talent) return <BBVAAlert tone="error">{(talentQuery.error as Error)?.message || 'No se encontró el talento.'}</BBVAAlert>;
   const busy = updateMutation.isPending || convertMutation.isPending;
-  const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading;
+  const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading || deliveryManagersQuery.isLoading;
 
   return (
     <div className="space-y-3 animate-fade-in">
@@ -131,7 +134,7 @@ export const TalentConvertPage: React.FC = () => {
           <label className="md:col-span-3"><span className={labelClass}>Tecnología actual *</span><BBVASearchableSelect value={values.currentTechnologyCatalogId} onChange={(value) => setValues((v) => ({ ...v, currentTechnologyCatalogId: value }))} options={toOptions(technologies)} disabled={catalogsLoading} ariaLabel="Tecnología actual" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Nivel de experiencia</span><BBVASearchableSelect value={values.expertise} onChange={(value) => setValues((v) => ({ ...v, expertise: value }))} options={[{ value: '', label: '—' }, { value: 'TR', label: 'TR' }, { value: 'JR', label: 'JR' }, { value: 'STD', label: 'STD' }, { value: 'SR', label: 'SR' }]} ariaLabel="Nivel de experiencia" /></label>
           <label className="md:col-span-4"><span className={labelClass}>Usuario BBVA</span><input value={values.bbvaUser} onChange={(e) => setValues((v) => ({ ...v, bbvaUser: e.target.value }))} className={fieldClass} /></label>
-          <label className="md:col-span-4"><span className={labelClass}>DM *</span><input value={deliveryManager} onChange={(e) => setDeliveryManager(e.target.value)} className={fieldClass} placeholder="Delivery Manager" /></label>
+          <label className="md:col-span-4"><span className={labelClass}>DM *</span><BBVASearchableSelect value={deliveryManager} onChange={setDeliveryManager} options={[{ value: '', label: 'Seleccionar Delivery Manager' }, ...deliveryManagers.map((item) => ({ value: item.fullName, label: item.fullName, description: [item.email, item.corporateUser].filter(Boolean).join(' · ') || undefined }))]} disabled={deliveryManagersQuery.isLoading} ariaLabel="Delivery Manager" searchPlaceholder="Buscar Delivery Manager" emptyMessage="No hay Delivery Managers activos." /></label>
         </div>
         <div className="mt-4 flex justify-end gap-2 border-t border-slate-200 pt-4">
           <button type="button" onClick={() => navigate('/bbva/talent-bank')} className="h-9 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700 hover:bg-slate-50">Cancelar</button>

@@ -9,7 +9,11 @@ export type BbvaPermission =
   | 'TALENT_READ'
   | 'TALENT_WRITE'
   | 'COLLABORATOR_READ'
-  | 'COLLABORATOR_WRITE';
+  | 'COLLABORATOR_WRITE'
+  | 'USER_ADMIN_READ'
+  | 'USER_ADMIN_WRITE'
+  | 'ROLE_ADMIN_READ'
+  | 'ROLE_ADMIN_WRITE';
 
 type HttpError = Error & { statusCode?: number };
 

@@ -18,6 +18,7 @@ import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { parseFirstExcelSheet, parseTabularFile } from '../lib/xlsxFirstSheet';
 import { enrichImportRows, type ImportEnrichmentSummary } from '../lib/collaboratorImportEnrichment';
 import { useApplyCollaboratorImport, usePreviewCollaboratorImport } from '../hooks/useCollaboratorImport';
+import { useDeliveryManagers } from '../hooks/useAdminUsers';
 import type {
   ImportApplyResult,
   ImportCertificationPreview,
@@ -53,6 +54,7 @@ function summaryCard(label: string, value: number, caption: string, icon: React.
 }
 
 function formatValue(value: string | null | undefined) { return value?.trim() || '—'; }
+function normalizeComparable(value: string | null | undefined) { return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toUpperCase(); }
 
 function readableImportError(error: unknown): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
@@ -128,7 +130,7 @@ function CertificationBlock({
 
       {fields.length ? (
         <details className="mt-2 group">
-          <summary className="cursor-pointer select-none text-[8.5px] font-semibold text-blue-700 hover:underline">Ver comparación técnica</summary>
+          <summary className="cursor-pointer select-none text-[8.5px] font-semibold text-blue-700 hover:underline">Ver detalle</summary>
           <div className="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white">
             <table className="w-full min-w-[720px] text-left text-[9px]">
               <thead className="bg-slate-50 text-[8px] uppercase tracking-[0.04em] text-slate-400"><tr><th className="px-2 py-1.5">Campo</th><th className="px-2 py-1.5">Actual</th><th className="px-2 py-1.5">Excel</th><th className="px-2 py-1.5">Calculado</th><th className="px-2 py-1.5">Origen</th></tr></thead>
@@ -147,6 +149,9 @@ export const CollaboratorImportPage: React.FC = () => {
   const supplementInputRef = useRef<HTMLInputElement>(null);
   const previewMutation = usePreviewCollaboratorImport();
   const applyMutation = useApplyCollaboratorImport();
+  const deliveryManagersQuery = useDeliveryManagers();
+  const deliveryManagerOptions = useMemo(() => deliveryManagersQuery.data?.items ?? [], [deliveryManagersQuery.data]);
+  const canonicalDeliveryManager = (value: string | null | undefined) => deliveryManagerOptions.find((item) => normalizeComparable(item.fullName) === normalizeComparable(value))?.fullName ?? '';
   const [file, setFile] = useState<File | null>(null);
   const [supplementFile, setSupplementFile] = useState<File | null>(null);
   const [enrichmentSummary, setEnrichmentSummary] = useState<ImportEnrichmentSummary | null>(null);
@@ -196,7 +201,7 @@ export const CollaboratorImportPage: React.FC = () => {
       setPreview(result);
       setEmails(Object.fromEntries(result.newItems.map((item) => [item.rowKey, item.email ?? ''])));
       setSofttekCodes(Object.fromEntries(result.newItems.map((item) => [item.rowKey, item.softtekCode ?? ''])));
-      setDeliveryManagers(Object.fromEntries(result.newItems.map((item) => [item.rowKey, item.deliveryManager ?? ''])));
+      setDeliveryManagers(Object.fromEntries(result.newItems.map((item) => [item.rowKey, canonicalDeliveryManager(item.deliveryManager)])));
       setDecisions(decisionsForPreview(result));
       setLowDecisions(Object.fromEntries(result.possibleLows.map((item) => [item.collaboratorId, item.decision])));
       const hasAttention = result.conflicts.length + result.errors.length > 0;
@@ -212,6 +217,11 @@ export const CollaboratorImportPage: React.FC = () => {
   const missingNewIs = useMemo(() => preview?.newItems.filter((item) => !(softtekCodes[item.rowKey] ?? '').trim()) ?? [], [preview, softtekCodes]);
   const missingNewDm = useMemo(() => preview?.newItems.filter((item) => !(deliveryManagers[item.rowKey] ?? '').trim()) ?? [], [deliveryManagers, preview]);
   const unresolvedConflicts = useMemo(() => preview?.conflicts.filter((item) => !item.resolutionKey || !decisions[item.resolutionKey]) ?? [], [decisions, preview]);
+  const groupedConflicts = useMemo(() => {
+    const groups = new Map<string, typeof unresolvedConflicts>();
+    for (const item of unresolvedConflicts) groups.set(item.rowKey, [...(groups.get(item.rowKey) ?? []), item]);
+    return [...groups.values()];
+  }, [unresolvedConflicts]);
   const requiredFieldRowKeys = useMemo(() => new Set([...invalidNewEmails, ...missingNewIs, ...missingNewDm].map((item) => item.rowKey)), [invalidNewEmails, missingNewDm, missingNewIs]);
   const validationAttentionCount = (preview?.errors.length ?? 0) + unresolvedConflicts.length + requiredFieldRowKeys.size;
   const attentionCount = validationAttentionCount + applyErrors.length;
@@ -248,7 +258,7 @@ export const CollaboratorImportPage: React.FC = () => {
       setPreview(refreshed);
       setEmails(Object.fromEntries(refreshed.newItems.map((item) => [item.rowKey, item.email ?? emails[item.rowKey] ?? ''])));
       setSofttekCodes(Object.fromEntries(refreshed.newItems.map((item) => [item.rowKey, item.softtekCode ?? softtekCodes[item.rowKey] ?? ''])));
-      setDeliveryManagers(Object.fromEntries(refreshed.newItems.map((item) => [item.rowKey, item.deliveryManager ?? deliveryManagers[item.rowKey] ?? ''])));
+      setDeliveryManagers(Object.fromEntries(refreshed.newItems.map((item) => [item.rowKey, canonicalDeliveryManager(item.deliveryManager) || deliveryManagers[item.rowKey] || ''])));
       setDecisions(decisionsForPreview(refreshed));
       setLowDecisions(Object.fromEntries(refreshed.possibleLows.map((item) => [item.collaboratorId, 'REVIEW'])));
 
@@ -256,7 +266,7 @@ export const CollaboratorImportPage: React.FC = () => {
       if (stillPending) {
         setActiveTab('attention');
         const pending = result.errors.length + refreshed.errors.length + refreshed.conflicts.length;
-        setError(`Se aplicó todo lo que estaba listo. Quedan ${pending} incidencia${pending === 1 ? '' : 's'} por revisar; no necesitas volver a cargar los registros que ya se guardaron.`);
+        setError(`Importación actualizada. Quedan ${pending} elemento${pending === 1 ? '' : 's'} por revisar.`);
         return;
       }
       navigate('/bbva/collaborators', { state: { message } });
@@ -282,7 +292,7 @@ export const CollaboratorImportPage: React.FC = () => {
         <div className="border-b border-slate-100 px-4 py-3">
           <div className="text-[9px] font-semibold uppercase tracking-[0.06em] text-blue-600">Importación masiva</div>
           <div className="mt-0.5 text-sm font-semibold text-slate-900">1. Carga y valida el archivo</div>
-          <div className="mt-0.5 text-[10px] text-slate-500">Primero validamos identidad, catálogos y certificaciones. Nada se guarda hasta que pulses <b>Aplicar importación</b>.</div>
+          <div className="mt-0.5 text-[10px] text-slate-500">Valida el archivo y revisa únicamente los registros que necesitan una decisión.</div>
         </div>
         <div className="p-4">
           <div onDragEnter={(event) => { event.preventDefault(); setDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { if (event.currentTarget === event.target) setDragging(false); }} onDrop={(event) => { event.preventDefault(); setDragging(false); chooseFile(event.dataTransfer.files?.[0] ?? null); }} className={`flex min-h-[112px] items-center justify-between gap-4 rounded-2xl border border-dashed px-5 py-4 transition ${dragging ? 'border-blue-400 bg-blue-50' : 'border-emerald-300 bg-emerald-50/30'}`}>
@@ -305,21 +315,21 @@ export const CollaboratorImportPage: React.FC = () => {
       {preview ? <>
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-            <div><div className="text-[9px] font-semibold uppercase tracking-[0.06em] text-blue-600">2. Revisa el resultado</div><div className="mt-0.5 text-sm font-semibold text-slate-900">Qué se puede aplicar y qué necesita atención</div><div className="mt-0.5 text-[9.5px] text-slate-500">Los avisos informativos no bloquean. Sólo los errores de datos y los conflictos reales dejan elementos pendientes.</div></div>
+            <div><div className="text-[9px] font-semibold uppercase tracking-[0.06em] text-blue-600">2. Revisa el resultado</div><div className="mt-0.5 text-sm font-semibold text-slate-900">Resumen de la importación</div><div className="mt-0.5 text-[9.5px] text-slate-500">Revisa los pendientes y aplica los registros listos.</div></div>
             <button type="button" onClick={() => setConfirmOpen(true)} disabled={!actionable || applyMutation.isPending} className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-4 text-[10.5px] font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"><CheckCircle2 className="h-3.5 w-3.5" />Aplicar lo válido</button>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {summaryCard('Filas del archivo', preview.totalRowsAnalyzed, 'registros analizados', <Users className="h-4 w-4" />, false)}
             {summaryCard('Listos para aplicar', readyCount, `${preview.newItems.length} nuevos · ${preview.changedItems.length} con cambios`, <CheckCircle2 className="h-4 w-4" />, activeTab === 'new' || activeTab === 'changed', () => setActiveTab(preview.newItems.length ? 'new' : 'changed'))}
-            {summaryCard('Necesitan atención', attentionCount, attentionCount ? 'revisa antes o déjalos pendientes' : 'sin bloqueos', <AlertTriangle className="h-4 w-4" />, activeTab === 'attention', () => setActiveTab('attention'))}
+            {summaryCard('Por revisar', attentionCount, attentionCount ? 'requieren una acción' : 'sin pendientes', <AlertTriangle className="h-4 w-4" />, activeTab === 'attention', () => setActiveTab('attention'))}
             {summaryCard('Posibles bajas', preview.possibleLows.length, 'requieren decisión explícita', <XCircle className="h-4 w-4" />, activeTab === 'lows', () => setActiveTab('lows'))}
           </div>
 
           {(invalidNewEmails.length || missingNewIs.length || missingNewDm.length || unresolvedConflicts.length || preview.errors.length) ? (
             <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2.5 text-[9.5px] text-amber-900">
               <b>Antes de aplicar:</b> {requiredFieldRowKeys.size ? `${requiredFieldRowKeys.size} fila${requiredFieldRowKeys.size === 1 ? '' : 's'} nueva${requiredFieldRowKeys.size === 1 ? '' : 's'} requiere${requiredFieldRowKeys.size === 1 ? '' : 'n'} IS, correo o DM. ` : ''}{preview.errors.length ? `${preview.errors.length} error${preview.errors.length === 1 ? '' : 'es'} de datos quedará${preview.errors.length === 1 ? '' : 'n'} pendiente${preview.errors.length === 1 ? '' : 's'}. ` : ''}{unresolvedConflicts.length ? `${unresolvedConflicts.length} conflicto${unresolvedConflicts.length === 1 ? '' : 's'} necesita${unresolvedConflicts.length === 1 ? '' : 'n'} decisión.` : ''}
-              <button type="button" onClick={() => setActiveTab('attention')} className="ml-1 font-semibold text-blue-700 underline">Ver atención</button>
+              <button type="button" onClick={() => setActiveTab('attention')} className="ml-1 font-semibold text-blue-700 underline">Abrir revisión</button>
             </div>
           ) : <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[9.5px] font-medium text-emerald-800">No hay bloqueos pendientes. Puedes aplicar la importación.</div>}
         </section>
@@ -328,7 +338,7 @@ export const CollaboratorImportPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 px-3 py-2.5">
             {tabButton('new', 'Nuevos', preview.newItems.length)}
             {tabButton('changed', 'Cambios', preview.changedItems.length)}
-            {tabButton('attention', 'Atención', attentionCount)}
+            {tabButton('attention', 'Revisión', attentionCount)}
             {tabButton('lows', 'Posibles bajas', preview.possibleLows.length)}
             {preview.resolvedPreviously.length ? tabButton('resolved', 'Ya resueltos', preview.resolvedPreviously.length) : null}
           </div>
@@ -342,7 +352,7 @@ export const CollaboratorImportPage: React.FC = () => {
                 <div className="grid gap-2 md:grid-cols-3">
                   <div><div className="mb-1 text-[8px] font-semibold uppercase text-slate-400">IS</div><ISLookupField value={softtekCodes[item.rowKey] ?? ''} onChange={(value) => setSofttekCodes((current) => ({ ...current, [item.rowKey]: value }))} onResolved={(record) => { setSofttekCodes((current) => ({ ...current, [item.rowKey]: record.is })); if (record.email) setEmails((current) => ({ ...current, [item.rowKey]: record.email ?? current[item.rowKey] ?? '' })); }} disabled={applyMutation.isPending} /></div>
                   <div><div className="mb-1 text-[8px] font-semibold uppercase text-slate-400">Correo Softtek</div><input value={emails[item.rowKey] ?? ''} onChange={(event) => setEmails((current) => ({ ...current, [item.rowKey]: event.target.value }))} className={`h-9 w-full rounded-xl border px-2.5 text-[10px] outline-none ${emailRe.test((emails[item.rowKey] ?? '').trim()) ? 'border-slate-300 focus:border-blue-500' : 'border-amber-300 bg-amber-50 focus:border-amber-500'}`} placeholder="correo@softtek.com" /></div>
-                  <div><div className="mb-1 text-[8px] font-semibold uppercase text-slate-400">Delivery Manager</div><input value={deliveryManagers[item.rowKey] ?? ''} onChange={(event) => setDeliveryManagers((current) => ({ ...current, [item.rowKey]: event.target.value }))} className={`h-9 w-full rounded-xl border px-2.5 text-[10px] outline-none ${(deliveryManagers[item.rowKey] ?? '').trim() ? 'border-slate-300 focus:border-blue-500' : 'border-amber-300 bg-amber-50 focus:border-amber-500'}`} placeholder="DM obligatorio" /></div>
+                  <div><div className="mb-1 text-[8px] font-semibold uppercase text-slate-400">Delivery Manager</div><BBVASearchableSelect value={deliveryManagers[item.rowKey] ?? ''} onChange={(value) => setDeliveryManagers((current) => ({ ...current, [item.rowKey]: value }))} options={[{ value: '', label: 'Seleccionar Delivery Manager' }, ...deliveryManagerOptions.map((dm) => ({ value: dm.fullName, label: dm.fullName, description: [dm.email, dm.corporateUser].filter(Boolean).join(' · ') || undefined }))]} disabled={deliveryManagersQuery.isLoading || applyMutation.isPending} ariaLabel={`Delivery Manager de ${item.fullName}`} searchPlaceholder="Buscar Delivery Manager" emptyMessage="No hay Delivery Managers activos." /></div>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[8.5px] text-slate-500"><span>XM: <b className="font-medium text-slate-700">{formatValue(item.corporateUser)}</b></span>{item.bbvaEmail ? <span>Correo BBVA: <b className="font-medium text-slate-700">{item.bbvaEmail}</b></span> : null}<span>Perfil tecnológico: <b className="font-medium text-slate-700">{formatValue(item.technologyProfile)}</b></span>{item.startDate ? <span>Alta BBVA: <b className="font-medium text-slate-700">{item.startDate}</b></span> : null}</div>
                 {certChanges.length ? <details className="mt-2 rounded-xl border border-slate-200 bg-slate-50/40"><summary className="cursor-pointer px-3 py-2 text-[9px] font-semibold text-blue-700">Certificaciones a actualizar ({certChanges.length})</summary><div className="space-y-2 border-t border-slate-200 p-2">{certChanges.map((cert) => <CertificationBlock key={cert.resolutionKey} certification={cert} decisions={decisions} setDecisions={setDecisions} />)}</div></details> : null}
@@ -368,7 +378,7 @@ export const CollaboratorImportPage: React.FC = () => {
 
               {preview.errors.length ? <div><div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.05em] text-rose-700">Errores de datos · {preview.errors.length}</div><div className="space-y-2">{preview.errors.map((item) => <div key={`preview-${item.rowKey}-${item.rowNumber}-${item.code ?? item.message}`} className="rounded-xl border border-rose-200 bg-rose-50/45 p-3"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-rose-700">Fila {item.rowNumber}</span><span className="text-[9.5px] font-semibold text-slate-900">{item.fullName || 'Sin nombre'}</span>{item.certificationLabel ? <span className="text-[8.5px] font-semibold text-blue-700">{item.certificationLabel}</span> : null}</div><div className="mt-1.5 text-[9px] leading-4 text-slate-600">{item.message}</div></div>)}</div></div> : null}
 
-              {preview.conflicts.length ? <div><div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.05em] text-amber-700">Conflictos reales · {preview.conflicts.length}</div><div className="space-y-2">{preview.conflicts.map((item) => <div key={`${item.rowKey}-${item.issueCode ?? item.message}`} className="rounded-xl border border-amber-200 bg-amber-50/35 p-3"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-amber-700">Fila {item.rowNumber}</span><span className="text-[9.5px] font-semibold text-slate-900">{item.fullName || 'Sin nombre'}</span>{item.certificationLabel ? <span className="text-[8.5px] font-semibold text-blue-700">{item.certificationLabel}</span> : null}</div><div className="mt-1.5 text-[9px] leading-4 text-slate-600">{item.message}</div>{item.currentValue || item.excelValue || item.calculatedValue ? <div className="mt-1 text-[8.5px] text-slate-400">Actual: {formatValue(item.currentValue)} · Excel: {formatValue(item.excelValue)} · Calculado: {formatValue(item.calculatedValue)}</div> : null}</div>{item.resolutionKey ? <div className="flex shrink-0 gap-1"><button type="button" onClick={() => setDecisions((current) => ({ ...current, [item.resolutionKey as string]: 'APPLY_EXCEL' }))} className={`h-7 rounded-lg px-2 text-[8px] font-semibold ${decisions[item.resolutionKey] === 'APPLY_EXCEL' ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Aplicar Excel</button><button type="button" onClick={() => setDecisions((current) => ({ ...current, [item.resolutionKey as string]: 'KEEP_CURRENT' }))} className={`h-7 rounded-lg px-2 text-[8px] font-semibold ${decisions[item.resolutionKey] === 'KEEP_CURRENT' ? 'bg-slate-700 text-white' : 'border border-slate-200 bg-white text-slate-600'}`}>Mantener actual</button></div> : <span className="rounded-full bg-rose-50 px-2 py-1 text-[8px] font-semibold text-rose-700">Fila pendiente</span>}</div></div>)}</div></div> : null}
+              {groupedConflicts.length ? <div><div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.05em] text-amber-700">Decisiones pendientes · {unresolvedConflicts.length}</div><div className="space-y-2">{groupedConflicts.map((items) => { const first = items[0]; return <div key={first.rowKey} className="rounded-xl border border-amber-200 bg-amber-50/25"><div className="flex flex-wrap items-center gap-2 border-b border-amber-100 px-3 py-2"><span className="rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-amber-700">Fila {first.rowNumber}</span><span className="text-[10px] font-semibold text-slate-900">{first.fullName || 'Sin nombre'}</span><span className="text-[8.5px] text-slate-500">{items.length} decisión{items.length === 1 ? '' : 'es'}</span></div><div className="divide-y divide-amber-100">{items.map((item) => <div key={`${item.rowKey}-${item.issueCode ?? item.message}`} className="grid gap-2 px-3 py-2.5 md:grid-cols-[minmax(0,1fr)_auto]"><div className="min-w-0">{item.certificationLabel ? <div className="text-[8.5px] font-semibold text-blue-700">{item.certificationLabel}</div> : null}<div className="mt-0.5 text-[9px] leading-4 text-slate-700">{item.message}</div>{item.currentValue || item.excelValue || item.calculatedValue ? <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[8px] text-slate-500"><span>Actual <b className="text-slate-700">{formatValue(item.currentValue)}</b></span><span>Excel <b className="text-slate-700">{formatValue(item.excelValue)}</b></span><span>Resultado <b className="text-slate-700">{formatValue(item.calculatedValue)}</b></span></div> : null}</div>{item.resolutionKey ? <div className="flex shrink-0 items-center gap-1"><button type="button" onClick={() => setDecisions((current) => ({ ...current, [item.resolutionKey as string]: 'APPLY_EXCEL' }))} className="h-7 rounded-lg border border-blue-200 bg-white px-2.5 text-[8px] font-semibold text-blue-700 hover:bg-blue-50">Usar Excel</button><button type="button" onClick={() => setDecisions((current) => ({ ...current, [item.resolutionKey as string]: 'KEEP_CURRENT' }))} className="h-7 rounded-lg border border-slate-200 bg-white px-2.5 text-[8px] font-semibold text-slate-600 hover:bg-slate-50">Conservar actual</button></div> : <span className="w-fit rounded-full bg-rose-50 px-2 py-1 text-[8px] font-semibold text-rose-700">Requiere corrección</span>}</div>)}</div></div>; })}</div></div> : null}
 
               {groupedApplyErrors.length ? <div><div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.05em] text-rose-700">Incidencias durante la aplicación · {applyErrors.length}</div><div className="space-y-2">{groupedApplyErrors.map((group, index) => { const first = group[0]; return <details key={`${first.stage}-${first.code ?? index}-${first.message}`} className="rounded-xl border border-rose-200 bg-rose-50/35"><summary className="cursor-pointer list-none p-3"><div className="flex items-center justify-between gap-3"><div><div className="text-[9.5px] font-semibold text-slate-900">{first.message}</div><div className="mt-1 text-[8.5px] text-slate-500">{applyStageLabel(first.stage)} · {group.length} fila{group.length === 1 ? '' : 's'}</div></div><ChevronDown className="h-3.5 w-3.5 text-slate-400" /></div></summary><div className="border-t border-rose-100 px-3 py-2 text-[8.5px] text-slate-600">{group.map((item) => <div key={`${item.rowKey ?? item.rowNumber}-${item.name}`} className="py-0.5">Fila {item.rowNumber ?? '—'} · <b>{item.name || 'Sin nombre'}</b></div>)}</div></details>; })}</div></div> : null}
 
@@ -384,7 +394,7 @@ export const CollaboratorImportPage: React.FC = () => {
         </section>
       </> : null}
 
-      <ConfirmDialog open={confirmOpen} title="Aplicar importación" message={preview ? `Se aplicarán únicamente los registros y datos que están listos. Los errores de datos y conflictos sin resolver quedarán pendientes sin bloquear el resto. Nuevos: ${preview.newItems.length}. Con cambios: ${preview.changedItems.length}. Certificaciones: hasta ${preview.certificationChanges}. Resultados: hasta ${preview.certificationResults}. Posibles bajas marcadas para desactivar: ${Object.values(lowDecisions).filter((value) => value === 'DEACTIVATE').length}. Pendientes conocidos: ${validationAttentionCount}.` : ''} confirmLabel="Aplicar lo válido" tone="primary" busy={applyMutation.isPending} onCancel={() => setConfirmOpen(false)} onConfirm={() => void apply()} />
+      <ConfirmDialog open={confirmOpen} title="Aplicar importación" message={preview ? `Listos: ${readyCount}. Por revisar: ${validationAttentionCount}. Posibles bajas a desactivar: ${Object.values(lowDecisions).filter((value) => value === 'DEACTIVATE').length}.` : ''} confirmLabel="Aplicar lo válido" tone="primary" busy={applyMutation.isPending} onCancel={() => setConfirmOpen(false)} onConfirm={() => void apply()} />
     </div>
   );
 };

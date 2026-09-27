@@ -2,9 +2,11 @@ import type { CollaboratorInput, CollaboratorRecord } from './bbvaCollaboratorDo
 import { CollaboratorRepository } from './bbvaCollaboratorRepository.js';
 import { resolveProfessionalCatalogReferences } from './bbvaProfessionalCatalogService.js';
 import { CollaboratorCertificationService } from './bbvaCollaboratorCertificationService.js';
+import { BbvaUserAdminService } from './bbvaUserAdminService.js';
 
 const repository = new CollaboratorRepository();
 const certificationService = new CollaboratorCertificationService();
+const userAdminService = new BbvaUserAdminService();
 
 function cleanText(value: unknown, maxLength: number): string | null {
   const text = String(value ?? '').trim();
@@ -40,7 +42,7 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
     bbvaUser: cleanText(payload?.bbvaUser ?? payload?.corporateUser, 100)?.toUpperCase() ?? null,
     softtekEmail,
     bbvaEmail: bbvaEmailRaw,
-    deliveryManager: requiredText(payload?.deliveryManager, 'El DM', 180),
+    deliveryManager: await userAdminService.resolveDeliveryManagerName(payload?.deliveryManager),
     firstName: requiredText(payload?.firstName, 'El nombre', 120),
     lastName: requiredText(payload?.lastName, 'Los apellidos', 180),
     profile: catalogs.profile,

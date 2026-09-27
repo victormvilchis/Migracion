@@ -19,17 +19,10 @@ function cleanText(value: unknown, max: number): string | null {
   const text = String(value ?? '').trim();
   return text ? text.slice(0, max) : null;
 }
-function accentFor(source: CertificationCommunicationSource, fallback: string | null): string | null {
-  const key = `${source.certificationName} ${source.technologyName ?? ''}`.toUpperCase();
-  if (key.includes('DESARROLLO SEGURO') || source.certificationType === 'DEVELOPMENT_SECURITY') return '#C0394A';
-  if (key.includes('JAVA')) return '#C55A11';
-  if (key.includes('APX')) return '#1464A5';
-  if (key.includes('ASO')) return '#087F8C';
-  if (key.includes('LRBA')) return '#6D4AFF';
-  if (key.includes('SALESFORCE')) return '#00A1E0';
-  if (source.certificationType === 'NORMATIVE_TESTING') return '#8A6508';
-  return fallback;
+function accentFor(_source: CertificationCommunicationSource, fallback: string | null): string | null {
+  return fallback ?? '#1464A5';
 }
+
 function asRecord(stored: StoredCertificationCommunication, provider: EmailProvider): CertificationCommunicationRecord {
   return {
     id: stored.id,

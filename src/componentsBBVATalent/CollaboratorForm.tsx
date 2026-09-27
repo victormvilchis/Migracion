@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useCatalogOptions } from '../pagesBBVATalent/hooks/useCatalog';
+import { useDeliveryManagers } from '../pagesBBVATalent/hooks/useAdminUsers';
 import type { CatalogOption } from '../pagesBBVATalent/types/catalog';
 import type { Collaborator, CollaboratorPayload } from '../pagesBBVATalent/types/collaborator';
 import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
@@ -68,9 +69,11 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
   const profilesQuery = useCatalogOptions('profiles');
   const technologyProfilesQuery = useCatalogOptions('technology-profiles');
   const technologiesQuery = useCatalogOptions('technologies');
+  const deliveryManagersQuery = useDeliveryManagers();
   const profiles = useMemo(() => profilesQuery.data?.items ?? [], [profilesQuery.data]);
   const technologyProfiles = useMemo(() => technologyProfilesQuery.data?.items ?? [], [technologyProfilesQuery.data]);
   const technologies = useMemo(() => technologiesQuery.data?.items ?? [], [technologiesQuery.data]);
+  const deliveryManagers = useMemo(() => deliveryManagersQuery.data?.items ?? [], [deliveryManagersQuery.data]);
   const { register, handleSubmit, reset, setValue, watch } = useForm<CollaboratorPayload>({ defaultValues: values(selected, [], [], []) });
 
   useEffect(() => reset(values(selected, profiles, technologyProfiles, technologies)), [profiles, reset, selected, technologies, technologyProfiles]);
@@ -85,12 +88,13 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
     });
   };
 
-  const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading;
+  const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading || deliveryManagersQuery.isLoading;
   const isValue = watch('softtekCode');
   const profileCatalogId = watch('profileCatalogId');
   const technologyProfileCatalogId = watch('technologyProfileCatalogId');
   const currentTechnologyCatalogId = watch('currentTechnologyCatalogId');
   const expertise = watch('expertise');
+  const deliveryManager = watch('deliveryManager');
   const bbvaStartDate = watch('bbvaStartDate');
   const softtekHireDate = watch('softtekHireDate');
 
@@ -155,7 +159,16 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
           </label>
           <label className="md:col-span-4">
             <span className={labelClass}>DM *</span>
-            <input {...register('deliveryManager', { required: true })} disabled={readOnly || saving} className={fieldClass} placeholder="Delivery Manager" />
+            <BBVASearchableSelect
+              value={deliveryManager ?? ''}
+              onChange={(value) => setValue('deliveryManager', value, { shouldDirty: true, shouldValidate: true })}
+              options={[{ value: '', label: 'Seleccionar Delivery Manager' }, ...deliveryManagers.map((item) => ({ value: item.fullName, label: item.fullName, description: [item.email, item.corporateUser].filter(Boolean).join(' · ') || undefined }))]}
+              disabled={readOnly || saving || deliveryManagersQuery.isLoading}
+              ariaLabel="Delivery Manager"
+              searchPlaceholder="Buscar Delivery Manager"
+              emptyMessage="No hay Delivery Managers activos. Regístralos en Administración > Usuarios."
+            />
+            <input type="hidden" {...register('deliveryManager', { required: true })} />
           </label>
         </div>
       </section>

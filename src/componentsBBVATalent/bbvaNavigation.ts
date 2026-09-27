@@ -123,8 +123,8 @@ export const bbvaNavigation: BBVANavGroup[] = [
     label: 'Administración',
     icon: ShieldCheck,
     modules: [
-      { id: 'users', label: 'Usuarios', path: '/bbva/admin/users', status: 'planned' },
-      { id: 'roles', label: 'Roles', path: '/bbva/admin/roles', status: 'planned' },
+      { id: 'users', label: 'Usuarios', path: '/bbva/admin/users', status: 'ready' },
+      { id: 'roles', label: 'Roles', path: '/bbva/admin/roles', status: 'ready' },
     ],
     sections: [
       {

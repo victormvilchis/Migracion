@@ -1,4 +1,15 @@
 import { deflateSync } from 'node:zlib';
+import {
+  POSTCARD_FONT_BASE_SIZE,
+  POSTCARD_FONT_CELL_H,
+  POSTCARD_FONT_CELL_W,
+  POSTCARD_FONT_CHARS,
+  POSTCARD_FONT_COLS,
+  POSTCARD_FONT_REGULAR,
+  POSTCARD_FONT_REGULAR_WIDTHS,
+  POSTCARD_FONT_SEMIBOLD,
+  POSTCARD_FONT_SEMIBOLD_WIDTHS,
+} from './bbvaPostcardFont.js';
 
 export interface PostcardRenderInput {
   eyebrow: string;
@@ -12,124 +23,228 @@ export interface PostcardRenderInput {
   accent?: string | null;
 }
 
+type RGB = [number, number, number];
+type FontWeight = 'regular' | 'semibold';
+
 const W = 1200;
 const H = 675;
-const FONT: Record<string, string[]> = {
-  A:['01110','10001','10001','11111','10001','10001','10001'], B:['11110','10001','10001','11110','10001','10001','11110'],
-  C:['01111','10000','10000','10000','10000','10000','01111'], D:['11110','10001','10001','10001','10001','10001','11110'],
-  E:['11111','10000','10000','11110','10000','10000','11111'], F:['11111','10000','10000','11110','10000','10000','10000'],
-  G:['01111','10000','10000','10111','10001','10001','01111'], H:['10001','10001','10001','11111','10001','10001','10001'],
-  I:['11111','00100','00100','00100','00100','00100','11111'], J:['00111','00010','00010','00010','10010','10010','01100'],
-  K:['10001','10010','10100','11000','10100','10010','10001'], L:['10000','10000','10000','10000','10000','10000','11111'],
-  M:['10001','11011','10101','10101','10001','10001','10001'], N:['10001','11001','10101','10011','10001','10001','10001'],
-  O:['01110','10001','10001','10001','10001','10001','01110'], P:['11110','10001','10001','11110','10000','10000','10000'],
-  Q:['01110','10001','10001','10001','10101','10010','01101'], R:['11110','10001','10001','11110','10100','10010','10001'],
-  S:['01111','10000','10000','01110','00001','00001','11110'], T:['11111','00100','00100','00100','00100','00100','00100'],
-  U:['10001','10001','10001','10001','10001','10001','01110'], V:['10001','10001','10001','10001','10001','01010','00100'],
-  W:['10001','10001','10001','10101','10101','10101','01010'], X:['10001','10001','01010','00100','01010','10001','10001'],
-  Y:['10001','10001','01010','00100','00100','00100','00100'], Z:['11111','00001','00010','00100','01000','10000','11111'],
-  '0':['01110','10001','10011','10101','11001','10001','01110'], '1':['00100','01100','00100','00100','00100','00100','01110'],
-  '2':['01110','10001','00001','00010','00100','01000','11111'], '3':['11110','00001','00001','01110','00001','00001','11110'],
-  '4':['00010','00110','01010','10010','11111','00010','00010'], '5':['11111','10000','10000','11110','00001','00001','11110'],
-  '6':['01110','10000','10000','11110','10001','10001','01110'], '7':['11111','00001','00010','00100','01000','01000','01000'],
-  '8':['01110','10001','10001','01110','10001','10001','01110'], '9':['01110','10001','10001','01111','00001','00001','01110'],
-  ' ':['00000','00000','00000','00000','00000','00000','00000'], '.':['00000','00000','00000','00000','00000','00110','00110'],
-  ',':['00000','00000','00000','00000','00110','00110','00100'], ':':['00000','00110','00110','00000','00110','00110','00000'],
-  '-':['00000','00000','00000','11111','00000','00000','00000'], '/':['00001','00010','00100','01000','10000','00000','00000'],
-  '!':['00100','00100','00100','00100','00100','00000','00100'], '?':['01110','10001','00001','00010','00100','00000','00100'],
-  '+':['00000','00100','00100','11111','00100','00100','00000'], '%':['11001','11010','00100','01000','10110','00110','00000'],
-  '(':['00010','00100','01000','01000','01000','00100','00010'], ')':['01000','00100','00010','00010','00010','00100','01000'],
-};
+const FONT_INDEX = new Map([...POSTCARD_FONT_CHARS].map((char, index) => [char, index]));
 
-function ascii(value: string): string {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, '').toUpperCase();
+function hexColor(value: string | null | undefined, fallback: RGB): RGB {
+  const match = String(value ?? '').match(/^#([0-9a-f]{6})$/i);
+  if (!match) return fallback;
+  const number = Number.parseInt(match[1], 16);
+  return [(number >> 16) & 255, (number >> 8) & 255, number & 255];
 }
-function hexColor(value: string | null | undefined, fallback: [number, number, number]): [number, number, number] {
-  const m = String(value ?? '').match(/^#([0-9a-f]{6})$/i);
-  if (!m) return fallback;
-  const n = Number.parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+function mix(a: RGB, b: RGB, factor: number): RGB {
+  return [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * factor)) as RGB;
 }
-function mix(a: [number,number,number], b: [number,number,number], t: number): [number,number,number] {
-  return [0,1,2].map((i) => Math.round(a[i] + (b[i]-a[i])*t)) as [number,number,number];
-}
-function crc32(buf: Buffer): number {
-  let c = 0xffffffff;
-  for (const byte of buf) {
-    c ^= byte;
-    for (let k=0;k<8;k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+function crc32(buffer: Buffer): number {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
   }
-  return (c ^ 0xffffffff) >>> 0;
+  return (crc ^ 0xffffffff) >>> 0;
 }
 function chunk(type: string, data: Buffer): Buffer {
-  const t = Buffer.from(type, 'ascii');
-  const out = Buffer.alloc(12 + data.length);
-  out.writeUInt32BE(data.length, 0); t.copy(out, 4); data.copy(out, 8);
-  out.writeUInt32BE(crc32(Buffer.concat([t,data])), 8 + data.length);
-  return out;
+  const typeBuffer = Buffer.from(type, 'ascii');
+  const output = Buffer.alloc(12 + data.length);
+  output.writeUInt32BE(data.length, 0);
+  typeBuffer.copy(output, 4);
+  data.copy(output, 8);
+  output.writeUInt32BE(crc32(Buffer.concat([typeBuffer, data])), 8 + data.length);
+  return output;
 }
 function encodePng(rgba: Buffer): Buffer {
   const row = W * 4;
   const raw = Buffer.alloc((row + 1) * H);
-  for (let y=0;y<H;y++) {
-    const dest = y * (row + 1); raw[dest] = 0;
-    rgba.copy(raw, dest + 1, y * row, (y + 1) * row);
+  for (let y = 0; y < H; y += 1) {
+    const destination = y * (row + 1);
+    raw[destination] = 0;
+    rgba.copy(raw, destination + 1, y * row, (y + 1) * row);
   }
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(W,0); ihdr.writeUInt32BE(H,4); ihdr[8]=8; ihdr[9]=6; ihdr[10]=0; ihdr[11]=0; ihdr[12]=0;
-  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk('IHDR',ihdr), chunk('IDAT',deflateSync(raw,{level:9})), chunk('IEND',Buffer.alloc(0))]);
+  ihdr.writeUInt32BE(W, 0);
+  ihdr.writeUInt32BE(H, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  return Buffer.concat([
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw, { level: 9 })),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+function normalizeText(value: string): string {
+  return String(value ?? '').replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function formatDate(value: string): string {
+  const iso = String(value ?? '').slice(0, 10);
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return value || '—';
+  const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+  return `${Number(match[3])} ${months[Number(match[2]) - 1]} ${match[1]}`;
 }
 
 class Canvas {
-  readonly pixels = Buffer.alloc(W*H*4);
-  set(x:number,y:number,c:[number,number,number],a=255) {
-    if (x<0||y<0||x>=W||y>=H) return;
-    const i=(y*W+x)*4; this.pixels[i]=c[0]; this.pixels[i+1]=c[1]; this.pixels[i+2]=c[2]; this.pixels[i+3]=a;
+  readonly pixels = Buffer.alloc(W * H * 4);
+
+  constructor(background: RGB = [255, 255, 255]) {
+    this.rect(0, 0, W, H, background);
   }
-  rect(x:number,y:number,w:number,h:number,c:[number,number,number]) { for(let yy=Math.max(0,y);yy<Math.min(H,y+h);yy++) for(let xx=Math.max(0,x);xx<Math.min(W,x+w);xx++) this.set(xx,yy,c); }
-  circle(cx:number,cy:number,r:number,c:[number,number,number]) { const rr=r*r; for(let y=Math.max(0,cy-r);y<Math.min(H,cy+r);y++) for(let x=Math.max(0,cx-r);x<Math.min(W,cx+r);x++){ const dx=x-cx,dy=y-cy;if(dx*dx+dy*dy<=rr)this.set(x,y,c);} }
-  text(value:string,x:number,y:number,scale:number,c:[number,number,number],maxWidth=1000): number {
-    const s=ascii(value); let cx=x; const cw=6*scale;
-    for(const ch of s){ if(cx+cw>x+maxWidth) break; const glyph=FONT[ch]??FONT['?']; for(let gy=0;gy<7;gy++) for(let gx=0;gx<5;gx++) if(glyph[gy][gx]==='1') this.rect(cx+gx*scale,y+gy*scale,scale,scale,c); cx+=cw; }
-    return cx;
+
+  set(x: number, y: number, color: RGB, alpha = 255) {
+    if (x < 0 || y < 0 || x >= W || y >= H || alpha <= 0) return;
+    const index = (y * W + x) * 4;
+    if (alpha >= 255) {
+      this.pixels[index] = color[0];
+      this.pixels[index + 1] = color[1];
+      this.pixels[index + 2] = color[2];
+      this.pixels[index + 3] = 255;
+      return;
+    }
+    const factor = alpha / 255;
+    this.pixels[index] = Math.round(color[0] * factor + this.pixels[index] * (1 - factor));
+    this.pixels[index + 1] = Math.round(color[1] * factor + this.pixels[index + 1] * (1 - factor));
+    this.pixels[index + 2] = Math.round(color[2] * factor + this.pixels[index + 2] * (1 - factor));
+    this.pixels[index + 3] = 255;
   }
-  wrapped(value:string,x:number,y:number,scale:number,c:[number,number,number],maxWidth:number,maxLines:number,lineGap=5) {
-    const words=ascii(value).split(/\s+/).filter(Boolean); const maxChars=Math.max(1,Math.floor(maxWidth/(6*scale))); const lines:string[]=[]; let line='';
-    for(const word of words){ const candidate=line?`${line} ${word}`:word; if(candidate.length<=maxChars) line=candidate; else { if(line) lines.push(line); line=word; if(lines.length>=maxLines) break; } }
-    if(lines.length<maxLines&&line) lines.push(line);
-    if(lines.length===maxLines && words.join(' ').length>lines.join(' ').length) lines[maxLines-1]=lines[maxLines-1].slice(0,Math.max(0,maxChars-3))+'...';
-    lines.forEach((l,i)=>this.text(l,x,y+i*(7*scale+lineGap),scale,c,maxWidth));
+
+  rect(x: number, y: number, width: number, height: number, color: RGB) {
+    for (let yy = Math.max(0, Math.floor(y)); yy < Math.min(H, Math.ceil(y + height)); yy += 1) {
+      for (let xx = Math.max(0, Math.floor(x)); xx < Math.min(W, Math.ceil(x + width)); xx += 1) this.set(xx, yy, color);
+    }
+  }
+
+  roundedRect(x: number, y: number, width: number, height: number, radius: number, color: RGB) {
+    this.rect(x + radius, y, width - radius * 2, height, color);
+    this.rect(x, y + radius, width, height - radius * 2, color);
+    for (let yy = 0; yy < radius; yy += 1) {
+      for (let xx = 0; xx < radius; xx += 1) {
+        const dx = radius - xx;
+        const dy = radius - yy;
+        if (dx * dx + dy * dy <= radius * radius) {
+          this.set(Math.floor(x + xx), Math.floor(y + yy), color);
+          this.set(Math.floor(x + width - 1 - xx), Math.floor(y + yy), color);
+          this.set(Math.floor(x + xx), Math.floor(y + height - 1 - yy), color);
+          this.set(Math.floor(x + width - 1 - xx), Math.floor(y + height - 1 - yy), color);
+        }
+      }
+    }
+  }
+
+  line(x: number, y: number, width: number, color: RGB) { this.rect(x, y, width, 1, color); }
+
+  private glyphData(weight: FontWeight) {
+    return weight === 'semibold'
+      ? { atlas: POSTCARD_FONT_SEMIBOLD, widths: POSTCARD_FONT_SEMIBOLD_WIDTHS }
+      : { atlas: POSTCARD_FONT_REGULAR, widths: POSTCARD_FONT_REGULAR_WIDTHS };
+  }
+
+  measure(value: string, size: number, weight: FontWeight = 'regular'): number {
+    const { widths } = this.glyphData(weight);
+    let width = 0;
+    for (const char of value) {
+      const index = FONT_INDEX.get(char) ?? FONT_INDEX.get('?')!;
+      width += Number(widths[index] ?? POSTCARD_FONT_BASE_SIZE * 0.5) * size / POSTCARD_FONT_BASE_SIZE;
+    }
+    return width;
+  }
+
+  text(value: string, x: number, y: number, size: number, color: RGB, maxWidth = Number.POSITIVE_INFINITY, weight: FontWeight = 'regular') {
+    const { atlas, widths } = this.glyphData(weight);
+    const scale = size / POSTCARD_FONT_BASE_SIZE;
+    let cursor = x;
+    for (const originalChar of String(value ?? '')) {
+      const char = FONT_INDEX.has(originalChar) ? originalChar : '?';
+      const index = FONT_INDEX.get(char)!;
+      const advance = Number(widths[index]) * scale;
+      if (cursor + advance > x + maxWidth) break;
+      if (char !== ' ') {
+        const sourceX = (index % POSTCARD_FONT_COLS) * POSTCARD_FONT_CELL_W;
+        const sourceY = Math.floor(index / POSTCARD_FONT_COLS) * POSTCARD_FONT_CELL_H;
+        const destinationWidth = Math.max(1, Math.ceil(POSTCARD_FONT_CELL_W * scale));
+        const destinationHeight = Math.max(1, Math.ceil(POSTCARD_FONT_CELL_H * scale));
+        for (let dy = 0; dy < destinationHeight; dy += 1) {
+          const sy = Math.min(POSTCARD_FONT_CELL_H - 1, Math.floor(dy / scale));
+          for (let dx = 0; dx < destinationWidth; dx += 1) {
+            const sx = Math.min(POSTCARD_FONT_CELL_W - 1, Math.floor(dx / scale));
+            const alpha = atlas[(sourceY + sy) * (POSTCARD_FONT_COLS * POSTCARD_FONT_CELL_W) + sourceX + sx];
+            if (alpha > 3) this.set(Math.round(cursor + dx), Math.round(y + dy), color, alpha);
+          }
+        }
+      }
+      cursor += advance;
+    }
+    return cursor;
+  }
+
+  wrapped(value: string, x: number, y: number, size: number, color: RGB, maxWidth: number, maxLines: number, lineHeight: number, weight: FontWeight = 'regular') {
+    const words = normalizeText(value).split(' ').filter(Boolean);
+    const lines: string[] = [];
+    let line = '';
+    for (const word of words) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (this.measure(candidate, size, weight) <= maxWidth) line = candidate;
+      else {
+        if (line) lines.push(line);
+        line = word;
+        if (lines.length >= maxLines) break;
+      }
+    }
+    if (lines.length < maxLines && line) lines.push(line);
+    if (lines.length === maxLines && words.join(' ') !== lines.join(' ')) {
+      let last = lines[maxLines - 1];
+      while (last.length > 1 && this.measure(`${last}…`, size, weight) > maxWidth) last = last.slice(0, -1);
+      lines[maxLines - 1] = `${last.trimEnd()}…`;
+    }
+    lines.forEach((text, index) => this.text(text, x, y + index * lineHeight, size, color, maxWidth, weight));
+    return lines.length;
   }
 }
 
 export function renderCertificationPostcardPng(input: PostcardRenderInput): Buffer {
-  const canvas=new Canvas();
-  const accent=hexColor(input.accent,[20,100,165]);
-  const dark=mix(accent,[5,18,38],0.68); const darker=mix(accent,[2,10,24],0.84); const light=mix(accent,[255,255,255],0.78);
-  for(let y=0;y<H;y++){ const c=mix(darker,dark,y/H); canvas.rect(0,y,W,1,c); }
-  canvas.circle(1080,90,210,mix(accent,[255,255,255],0.08));
-  canvas.circle(1110,610,290,mix(accent,[255,255,255],0.03));
-  canvas.rect(0,0,18,H,accent);
-  canvas.rect(76,74,88,8,accent);
-  canvas.text(input.eyebrow,76,108,3,light,760);
-  canvas.wrapped(input.title,76,158,7,[255,255,255],790,2,12);
-  canvas.wrapped(input.message,76,300,3,[220,230,242],730,4,8);
+  const primary = hexColor(input.accent, [20, 100, 165]);
+  const navy: RGB = [7, 33, 70];
+  const blue: RGB = mix(primary, [20, 100, 165], 0.45);
+  const sky: RGB = [229, 242, 252];
+  const ink: RGB = [18, 41, 69];
+  const muted: RGB = [83, 104, 128];
+  const border: RGB = [214, 225, 235];
+  const canvas = new Canvas([247, 249, 252]);
 
-  const cardX=835,cardY=186,cardW=285,cardH=330;
-  canvas.rect(cardX,cardY,cardW,cardH,[245,248,252]);
-  canvas.rect(cardX,cardY,cardW,10,accent);
-  canvas.text('RESULTADO',cardX+28,cardY+38,2,[85,100,120],220);
-  canvas.wrapped(input.resultLabel,cardX+28,cardY+78,4,dark,220,2,6);
-  canvas.rect(cardX+28,cardY+160,cardW-56,1,[205,215,226]);
-  canvas.text('INTENTO',cardX+28,cardY+186,2,[100,112,130],100);
-  canvas.text(input.attemptLabel,cardX+150,cardY+182,3,dark,90);
-  canvas.text('FECHA',cardX+28,cardY+230,2,[100,112,130],80);
-  canvas.wrapped(input.dateLabel,cardX+150,cardY+226,2,dark,105,2,3);
-  canvas.text('BFS TALENT',cardX+28,cardY+286,2,accent,180);
+  // Header institucional limpio.
+  canvas.rect(0, 0, W, 212, navy);
+  canvas.rect(0, 0, 14, H, blue);
+  canvas.rect(70, 58, 52, 5, [73, 171, 231]);
+  canvas.text('BFS TALENT  |  CERTIFICACIONES', 70, 78, 21, [190, 220, 242], 620, 'semibold');
+  canvas.wrapped(input.title, 70, 118, 46, [255, 255, 255], 760, 2, 54, 'semibold');
 
-  canvas.text('COLABORADOR',76,542,2,[150,172,198],170);
-  canvas.wrapped(input.fullName,76,572,3,[255,255,255],500,2,5);
-  canvas.text('CERTIFICACION',610,542,2,[150,172,198],190);
-  canvas.wrapped(input.certificationName,610,572,3,[255,255,255],500,2,5);
+  // Mensaje principal.
+  canvas.text(normalizeText(input.eyebrow), 70, 252, 19, blue, 700, 'semibold');
+  canvas.wrapped(input.message, 70, 292, 25, ink, 720, 4, 35, 'regular');
+
+  // Tarjeta de resultado.
+  const cardX = 835; const cardY = 246; const cardW = 300; const cardH = 286;
+  canvas.roundedRect(cardX, cardY, cardW, cardH, 18, [255, 255, 255]);
+  canvas.rect(cardX, cardY, 7, cardH, blue);
+  canvas.text('RESULTADO', cardX + 30, cardY + 27, 17, muted, 210, 'semibold');
+  canvas.wrapped(input.resultLabel, cardX + 30, cardY + 61, 31, navy, 225, 2, 38, 'semibold');
+  canvas.line(cardX + 30, cardY + 132, cardW - 58, border);
+  canvas.text('INTENTO', cardX + 30, cardY + 156, 15, muted, 90, 'semibold');
+  canvas.text(input.attemptLabel, cardX + 151, cardY + 151, 21, ink, 110, 'semibold');
+  canvas.text('FECHA', cardX + 30, cardY + 200, 15, muted, 90, 'semibold');
+  canvas.text(formatDate(input.dateLabel), cardX + 151, cardY + 195, 19, ink, 115, 'semibold');
+  canvas.roundedRect(cardX + 30, cardY + 242, 118, 25, 12, sky);
+  canvas.text('BFS TALENT', cardX + 46, cardY + 246, 14, blue, 94, 'semibold');
+
+  // Pie con datos de la persona y certificación.
+  canvas.line(70, 542, 1065, border);
+  canvas.text('COLABORADOR', 70, 566, 15, muted, 180, 'semibold');
+  canvas.wrapped(input.fullName, 70, 593, 23, ink, 475, 2, 29, 'semibold');
+  canvas.text('CERTIFICACIÓN', 610, 566, 15, muted, 180, 'semibold');
+  canvas.wrapped(input.certificationName, 610, 593, 23, ink, 525, 2, 29, 'semibold');
+
   return encodePng(canvas.pixels);
 }

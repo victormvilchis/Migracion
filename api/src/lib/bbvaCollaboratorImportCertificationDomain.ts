@@ -57,6 +57,7 @@ export interface ImportCertificationCurrentState {
   importedAttemptNumber: number | null;
   lastDataSource: string | null;
   lastImportFingerprint: string | null;
+  hasManualResult: boolean;
   attempts: Array<{
     id: string;
     cycleNumber: number;
@@ -352,13 +353,13 @@ export function parseCertificationEvidence(args: {
     issues.push({ code: 'ATTEMPT_WITHOUT_EVIDENCE', message: `${BLOCK_LABELS[block]} informa intento sin evidencia de aplicación.`, blocking: true });
   }
   if (applicable === false && (applicationDate || score.value !== null || attempt.value !== null || ['APROBADO','APROBADA','REPROBADO','REPROBADA'].includes(examKey))) {
-    issues.push({ code: 'NOT_APPLICABLE_WITH_EVIDENCE', message: `${BLOCK_LABELS[block]} está marcada como No aplica; los datos de fecha, resultado, promedio o intento se ignorarán para esta certificación.`, blocking: false });
+    issues.push({ code: 'NOT_APPLICABLE_WITH_EVIDENCE', message: `${BLOCK_LABELS[block]} está marcada como No aplica; los datos adicionales de esa certificación se omitirán.`, blocking: false });
   }
   if (applicable === false && ['APROBADO','APROBADA','SI','FORMADO'].includes(statusKey)) {
-    issues.push({ code: 'NOT_APPLICABLE_WITH_STATUS', message: `${BLOCK_LABELS[block]} está marcada como No aplica; el estado de aprobación/formación del Excel se conservará sólo como referencia y no bloqueará la importación.`, blocking: false });
+    issues.push({ code: 'NOT_APPLICABLE_WITH_STATUS', message: `${BLOCK_LABELS[block]} está marcada como No aplica; el estado informado no se aplicará.`, blocking: false });
   }
   if (applicable === true && !rawCertificationStatus && statusOnlyBlock(block)) {
-    issues.push({ code: 'APPLICABLE_WITHOUT_STATUS', message: `${BLOCK_LABELS[block]} aplica pero no contiene estado; no se inventará una aprobación.`, blocking: false });
+    issues.push({ code: 'APPLICABLE_WITHOUT_STATUS', message: `${BLOCK_LABELS[block]} aplica pero no contiene un estado.`, blocking: false });
   }
 
   let initialDueDate: string | null = null;
@@ -463,6 +464,24 @@ export function sameEffectiveImportCertificationState(
     && current.initialDueDate === evidence.initialDueDate
     && current.lastScore10 === evidence.score10
     && current.importedAttemptNumber === evidence.administrativeAttempt;
+}
+
+export function manualProtectedCertificationOutcomeChanged(
+  current: Pick<ImportCertificationCurrentState, 'applicable' | 'baseStatus'> | null,
+  evidence: ParsedCertificationEvidence,
+): boolean {
+  if (!current) return false;
+  const targetApplicable = evidence.applicable !== false;
+  const targetBaseStatus = evidence.baseStatus ?? (targetApplicable ? 'PENDING' : 'NOT_APPLICABLE');
+  return current.applicable !== targetApplicable || current.baseStatus !== targetBaseStatus;
+}
+
+export function requiresManualCertificationReconciliation(
+  current: Pick<ImportCertificationCurrentState, 'hasManualResult'> | null,
+  effectiveChanged: boolean,
+  hasDataError: boolean,
+): boolean {
+  return Boolean(current?.hasManualResult && effectiveChanged && !hasDataError);
 }
 
 export function certificationBlockLabel(block: ImportCertificationBlock): string {

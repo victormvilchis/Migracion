@@ -30,11 +30,14 @@ import {
   parseCertificationEvidence,
   sameImportCertificationAttemptEvidence,
   sameEffectiveImportCertificationState,
+  requiresManualCertificationReconciliation,
+  manualProtectedCertificationOutcomeChanged,
   type ImportCertificationCatalogConfig,
   type ImportCertificationCurrentState,
   type ParsedCertificationEvidence,
 } from './bbvaCollaboratorImportCertificationDomain.js';
 import { PersonLifecycleService } from './bbvaPersonLifecycleService.js';
+import { BbvaUserAdminService } from './bbvaUserAdminService.js';
 import {
   buildImportIdentityIndex,
   findDuplicateImportIdentityIssues,
@@ -45,6 +48,7 @@ const repository = new CollaboratorImportRepository();
 const certificationService = new CollaboratorCertificationService();
 const certificationRepository = new CollaboratorCertificationRepository();
 const lifecycleService = new PersonLifecycleService();
+const userAdminService = new BbvaUserAdminService();
 
 const HEADER_ALIASES = {
   fullName: ['NOMBRE EXTERNO', 'NOMBRE COMPLETO', 'COLABORADOR', 'NOMBRE', 'NAME'],
@@ -338,8 +342,9 @@ async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, 
 
   const resolvedEmail = clean(emailOverride, 255)?.toLowerCase() || applyField('email', row.email, existing?.email ?? null) || '';
   if (!isEmail(resolvedEmail)) throw Object.assign(new Error(`Captura un correo válido para ${resolvedFullName}.`), { code: 'INVALID_EMAIL' });
-  const resolvedDeliveryManager = clean(deliveryManagerOverride, 180) || clean(applyField('deliveryManager', row.deliveryManager, existing?.deliveryManager ?? null), 180);
-  if (!resolvedDeliveryManager) throw Object.assign(new Error(`DM es obligatorio para ${resolvedFullName}.`), { code: 'MISSING_DELIVERY_MANAGER' });
+  const requestedDeliveryManager = clean(deliveryManagerOverride, 180) || clean(applyField('deliveryManager', row.deliveryManager, existing?.deliveryManager ?? null), 180);
+  if (!requestedDeliveryManager) throw Object.assign(new Error(`Selecciona un Delivery Manager para ${resolvedFullName}.`), { code: 'MISSING_DELIVERY_MANAGER' });
+  const resolvedDeliveryManager = await userAdminService.resolveDeliveryManagerName(requestedDeliveryManager);
 
   const profileOption = await resolveCatalogForInput('profile', profile, existing?.profile, existing?.profileCatalogId, actorEmail, inferSeniority(profile, expertise));
   const technologyProfileOption = await resolveCatalogForInput('technologyProfile', technologyProfile, existing?.technologyProfile, existing?.technologyProfileCatalogId, actorEmail);
@@ -536,8 +541,8 @@ function prepareCertifications(
     const hasChanges = selected.config
       ? effectiveEvidenceChanged(current, evidence)
       : issues.some((issue) => issue.blocking && issue.code !== 'INVALID_CATALOG_MAPPING');
-    if ((current?.source === 'MANUAL' || current?.lastDataSource === 'MANUAL') && hasChanges && !issues.some(isCertificationDataError)) {
-      issues.push({ code:'MANUAL_HISTORY_DIFFERENCE', message:`${evidence.label} contiene información manual y el Excel propone valores diferentes.`, blocking:true });
+    if (requiresManualCertificationReconciliation(current, manualProtectedCertificationOutcomeChanged(current, evidence), issues.some(isCertificationDataError))) {
+      issues.push({ code:'MANUAL_HISTORY_DIFFERENCE', message:`${evidence.label} tiene resultados registrados manualmente y el Excel propone información diferente.`, blocking:true });
     }
     if (current && evidence.administrativeAttempt !== null && evidence.administrativeAttempt > 0 && evidence.applicationDate && evidence.baseStatus && ['APPROVED','FAILED'].includes(evidence.baseStatus)) {
       const occupiedAttempt = current.attempts.find((attempt) => attempt.cycleNumber === current.currentCycle && attempt.attemptNumber === evidence.administrativeAttempt);
@@ -559,7 +564,7 @@ function prepareCertifications(
     const excelCalculated = rawStatusToCalculated(evidence.rawCertificationStatus);
     const ruleGap: string | null = null;
     if (excelCalculated && evidence.calculatedStatus && excelCalculated !== evidence.calculatedStatus && selected.config?.expiringSoonDays != null) {
-      issues.push({ code:'EXCEL_STATUS_DIFFERS_FROM_CALCULATION', message:`${evidence.label}: el Excel informa ${evidence.rawCertificationStatus}, pero las reglas vigentes calculan ${evidence.calculatedStatus}. Se conservará el valor del Excel sólo como referencia y se usará el estado calculado.`, blocking:false });
+      issues.push({ code:'EXCEL_STATUS_DIFFERS_FROM_CALCULATION', message:`${evidence.label}: el Excel informa ${evidence.rawCertificationStatus} y la configuración vigente determina ${evidence.calculatedStatus}.`, blocking:false });
     }
 
     const currentFingerprint = currentCertificationResolutionFingerprint(current);
@@ -654,7 +659,7 @@ export class CollaboratorImportService {
             fullName: match.row.fullName,
             code: 'INACTIVE_CATALOG_VALUE',
             scope: 'ROW',
-            message: `El ${labels[inactive.type]} “${inactive.value}” existe en el catálogo pero está inactivo. La importación no lo reactivará ni lo asignará automáticamente.`,
+            message: `El ${labels[inactive.type]} “${inactive.value}” está inactivo. Selecciona un valor activo antes de continuar.`,
           });
         }
         continue;
@@ -844,7 +849,7 @@ export class CollaboratorImportService {
           name: fullName,
           stage: 'UNKNOWN',
           code: errorCode(error),
-          message: `Los datos aplicables se conservaron, pero no fue posible guardar la decisión de reconciliación (${context}). La próxima validación podría solicitarla nuevamente.`,
+          message: `No fue posible guardar la decisión de ${context}. Revísala nuevamente.`,
         });
       }
     };

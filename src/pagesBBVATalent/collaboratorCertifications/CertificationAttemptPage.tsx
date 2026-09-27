@@ -73,7 +73,6 @@ export const CertificationAttemptPage: React.FC = () => {
             <button type="button" onClick={() => void generate(false)} disabled={generateMutation.isPending} className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[11px] font-semibold text-white disabled:opacity-50"><ImagePlus className="h-4 w-4" />{generateMutation.isPending ? 'Generando...' : 'Generar postal'}</button>
             <button type="button" onClick={() => navigate(detailPath, { state: { returnTo, rootReturnTo, message: 'El intento fue registrado correctamente.' } })} className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-[11px] font-semibold text-slate-700"><MoveLeft className="h-3.5 w-3.5" />Ver detalle</button>
           </div>
-          <p className="mt-3 text-[10px] leading-4 text-slate-500">La postal es opcional. Si su generación falla, el intento permanece registrado.</p>
         </section>
         <CertificationCommunicationDialog
           open={Boolean(communication)}
