@@ -126,6 +126,7 @@ export interface ImportErrorItem {
   fullName: string;
   message: string;
   code?: string;
+  severity?: 'ERROR' | 'WARNING';
   scope?: 'ROW' | 'CERTIFICATION';
   certificationBlock?: ImportCertificationBlock;
   certificationLabel?: string;

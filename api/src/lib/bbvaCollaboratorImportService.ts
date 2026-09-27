@@ -40,7 +40,7 @@ import { PersonLifecycleService } from './bbvaPersonLifecycleService.js';
 import { BbvaUserAdminService } from './bbvaUserAdminService.js';
 import {
   buildImportIdentityIndex,
-  findDuplicateImportIdentityIssues,
+  prepareImportIdentityRows,
   resolveImportIdentity,
 } from './bbvaCollaboratorImportIdentity.js';
 
@@ -134,12 +134,17 @@ function upper(value: unknown, maxLength: number): string | null {
   return clean(value, maxLength)?.toUpperCase() ?? null;
 }
 
+function isPlaceholderValue(value: string | null): boolean {
+  if (!value) return true;
+  return ['#N/A', 'N/A', 'NA', 'TBD', 'NULL', 'SIN DATO', 'NO DISPONIBLE', '-'].includes(normalizeKey(value));
+}
+
 function valueByAliases(values: Record<string, string>, aliases: readonly string[]): string | null {
   const normalizedAliases = new Set(aliases.map(normalizeHeader));
   for (const [header, value] of Object.entries(values)) {
     if (!normalizedAliases.has(normalizeHeader(header))) continue;
     const candidate = clean(value, 1000);
-    if (candidate) return candidate;
+    if (candidate && !isPlaceholderValue(candidate)) return candidate;
   }
   return null;
 }
@@ -622,10 +627,19 @@ export class CollaboratorImportService {
       else rows.push(normalized);
     }
 
-    const duplicateIssues = findDuplicateImportIdentityIssues(rows);
-    const duplicateRows = new Set<number>(duplicateIssues.map((issue) => issue.rowNumber));
-    for (const issue of duplicateIssues) {
-      errors.push({ ...issue, scope: 'ROW' });
+    const identityPreparation = prepareImportIdentityRows(rows);
+    const effectiveRows = identityPreparation.rows;
+    const duplicateRows = new Set<number>(identityPreparation.issues.filter((issue) => issue.blocking).map((issue) => issue.rowNumber));
+    for (const issue of identityPreparation.issues) {
+      errors.push({
+        rowKey: issue.rowKey,
+        rowNumber: issue.rowNumber,
+        fullName: issue.fullName,
+        code: issue.code,
+        message: issue.message,
+        severity: issue.blocking ? 'ERROR' : 'WARNING',
+        scope: 'ROW',
+      });
     }
 
     const [people, certificationCatalog, certificationStates] = await Promise.all([
@@ -633,7 +647,7 @@ export class CollaboratorImportService {
       certificationRepository.listImportCatalog(),
       certificationRepository.listImportStates(),
     ]);
-    const matches = matchRows(rows, people);
+    const matches = matchRows(effectiveRows, people);
     const newItems: ImportNewCandidate[] = [];
     const changedItems: ImportChangedCandidate[] = [];
     const conflicts: ImportPreviewResponse['conflicts'] = [];
@@ -787,11 +801,11 @@ export class CollaboratorImportService {
 
   async apply(payload: ImportApplyRequest, actorEmail: string): Promise<ImportApplyResult> {
     const preview = await this.preview({ rows: payload.rows });
-    const normalizedRows = new Map<string, NormalizedRow>();
-    for (const source of payload.rows) {
-      const row = normalizeRow(source);
-      if (!('message' in row)) normalizedRows.set(row.rowKey, row);
-    }
+    const normalized = payload.rows
+      .map((source) => normalizeRow(source))
+      .filter((row): row is NormalizedRow => !('message' in row));
+    const preparedIdentityRows = prepareImportIdentityRows(normalized).rows;
+    const normalizedRows = new Map<string, NormalizedRow>(preparedIdentityRows.map((row) => [row.rowKey, row]));
     const people = await repository.listPeople();
     const peopleById = new Map(people.map((person) => [person.personId, person]));
     const changesByRow = collectAllChanges(preview);
@@ -807,7 +821,7 @@ export class CollaboratorImportService {
         rowConflictRows.add(conflict.rowKey);
       }
     }
-    const rowErrorRows = new Set(preview.errors.filter((item) => item.scope !== 'CERTIFICATION').map((item) => item.rowKey));
+    const rowErrorRows = new Set(preview.errors.filter((item) => item.scope !== 'CERTIFICATION' && item.severity !== 'WARNING').map((item) => item.rowKey));
     const blockedRows = new Set([...rowConflictRows, ...rowErrorRows]);
     const result: ImportApplyResult = {
       created:0,updated:0,reactivated:0,movedToTalentBank:0,skipped:blockedRows.size,certificationUpdated:0,resultsRegistered:0,

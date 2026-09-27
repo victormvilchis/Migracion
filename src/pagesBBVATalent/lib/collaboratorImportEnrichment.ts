@@ -50,7 +50,7 @@ function aliasValue(values: Record<string, string>, aliases: readonly string[]):
   for (const [header, raw] of Object.entries(values)) {
     if (!wanted.has(normalizedHeader(header))) continue;
     const value = String(raw ?? '').trim();
-    if (!value || ['#N/A', 'N/A', 'NA', 'TBD', 'NULL'].includes(normalizeValue(value))) continue;
+    if (!value || ['#N/A', 'N/A', 'NA', 'TBD', 'NULL', 'SIN DATO', 'NO DISPONIBLE', '-'].includes(normalizeValue(value))) continue;
     return value;
   }
   return null;
@@ -98,16 +98,23 @@ export function enrichImportRows(mainRows: ImportSourceRow[], supplementaryRows:
   }
 
   const warnings: string[] = [];
-  const duplicateChecks: Array<[string, Map<string, ParsedExcelRow[]>]> = [
-    ['IS', indexes.softtekCode],
-    ['Usuario BBVA/XM', indexes.corporateUser],
-    ['Correo Softtek', indexes.softtekEmail],
-    ['Correo BBVA', indexes.bbvaEmail],
+  const duplicatedSupplementaryValues = {
+    softtekCode: new Set<string>(),
+    corporateUser: new Set<string>(),
+    softtekEmail: new Set<string>(),
+    bbvaEmail: new Set<string>(),
+  };
+  const duplicateChecks: Array<[keyof typeof duplicatedSupplementaryValues, string, Map<string, ParsedExcelRow[]>]> = [
+    ['softtekCode', 'IS', indexes.softtekCode],
+    ['corporateUser', 'Usuario BBVA/XM', indexes.corporateUser],
+    ['softtekEmail', 'Correo Softtek', indexes.softtekEmail],
+    ['bbvaEmail', 'Correo BBVA', indexes.bbvaEmail],
   ];
-  for (const [label, index] of duplicateChecks) {
+  for (const [field, label, index] of duplicateChecks) {
     for (const [value, rows] of index.entries()) {
       if (rows.length <= 1) continue;
-      warnings.push(`${label} “${value}” aparece en ${rows.length} registros del archivo complementario: ${rows.slice(0, 3).map(displayName).join(', ')}${rows.length > 3 ? '…' : ''}.`);
+      duplicatedSupplementaryValues[field].add(value);
+      warnings.push(`${label} “${value}” aparece en ${rows.length} registros del archivo complementario y no se usará para completar identidades: ${rows.slice(0, 3).map(displayName).join(', ')}${rows.length > 3 ? '…' : ''}.`);
       if (warnings.length >= 12) break;
     }
     if (warnings.length >= 12) break;
@@ -161,6 +168,12 @@ export function enrichImportRows(mainRows: ImportSourceRow[], supplementaryRows:
       if (hasValue(values, ALIASES[field])) return;
       const complement = aliasValue(match!.values, ALIASES[field]);
       if (!complement) return;
+      const duplicateSet = field === 'softtekCode' ? duplicatedSupplementaryValues.softtekCode
+        : field === 'corporateUser' ? duplicatedSupplementaryValues.corporateUser
+          : field === 'softtekEmail' ? duplicatedSupplementaryValues.softtekEmail
+            : field === 'bbvaEmail' ? duplicatedSupplementaryValues.bbvaEmail
+              : null;
+      if (duplicateSet?.has(normalizeValue(complement))) return;
       values[CANONICAL[field]] = complement;
       fieldsAdded += 1;
     };

@@ -113,6 +113,7 @@ export interface ImportConflict {
 
 export interface ImportErrorItem extends ImportConflict {
   code?: string;
+  severity?: 'ERROR' | 'WARNING';
   scope?: 'ROW' | 'CERTIFICATION';
 }
 

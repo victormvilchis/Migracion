@@ -29,6 +29,8 @@ export interface ImportDuplicateIdentityIssue {
   fullName: string;
   code: string;
   message: string;
+  blocking: boolean;
+  field: 'softtekCode' | 'corporateUser' | 'email' | 'bbvaEmail' | 'fullName';
 }
 
 type IdentityIndex<TPerson extends ImportIdentityPerson> = {
@@ -123,6 +125,10 @@ const duplicateFields = [
   { key: 'bbvaEmail' as const, label: 'Correo BBVA', code: 'DUPLICATE_BBVA_EMAIL' },
 ];
 
+function hasAlternativeStrongIdentity(row: ImportIdentityRow): boolean {
+  return Boolean(normalizeIdentity(row.softtekCode) || normalizeIdentity(row.corporateUser) || normalizeIdentity(row.email));
+}
+
 export function findDuplicateImportIdentityIssues(rows: ImportIdentityRow[]): ImportDuplicateIdentityIssue[] {
   const issues: ImportDuplicateIdentityIssue[] = [];
 
@@ -136,13 +142,18 @@ export function findDuplicateImportIdentityIssues(rows: ImportIdentityRow[]): Im
     for (const [value, group] of groups) {
       if (group.length < 2) continue;
       const rowList = group.map((row) => row.rowNumber).sort((a, b) => a - b).join(', ');
+      const canOmitDuplicatedBbvaEmail = field.key === 'bbvaEmail' && group.every(hasAlternativeStrongIdentity);
       for (const row of group) {
         issues.push({
           rowKey: row.rowKey,
           rowNumber: row.rowNumber,
           fullName: row.fullName,
-          code: field.code,
-          message: `${field.label} ${value} está repetido dentro del Excel (filas ${rowList}).`,
+          code: canOmitDuplicatedBbvaEmail ? 'DUPLICATE_BBVA_EMAIL_OMITTED' : field.code,
+          message: canOmitDuplicatedBbvaEmail
+            ? `El correo BBVA ${value} aparece en varias personas (filas ${rowList}). Se omitirá ese correo en esas filas para continuar con los identificadores únicos disponibles.`
+            : `${field.label} ${value} está repetido dentro del Excel (filas ${rowList}).`,
+          blocking: !canOmitDuplicatedBbvaEmail,
+          field: field.key,
         });
       }
     }
@@ -166,9 +177,22 @@ export function findDuplicateImportIdentityIssues(rows: ImportIdentityRow[]): Im
         fullName: row.fullName,
         code: 'DUPLICATE_NAME_WITHOUT_STRONG_IDENTITY',
         message: `El nombre ${name} aparece repetido sin un identificador fuerte que permita distinguir las filas (${rowList}).`,
+        blocking: true,
+        field: 'fullName',
       });
     }
   }
 
   return issues;
+}
+
+export function prepareImportIdentityRows<T extends ImportIdentityRow>(rows: T[]): { rows: T[]; issues: ImportDuplicateIdentityIssue[] } {
+  const issues = findDuplicateImportIdentityIssues(rows);
+  const ignoredBbvaEmailRows = new Set(
+    issues.filter((issue) => !issue.blocking && issue.code === 'DUPLICATE_BBVA_EMAIL_OMITTED').map((issue) => issue.rowNumber),
+  );
+  return {
+    issues,
+    rows: rows.map((row) => ignoredBbvaEmailRows.has(row.rowNumber) ? { ...row, bbvaEmail: null } : row),
+  };
 }

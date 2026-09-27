@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   buildImportIdentityIndex,
   findDuplicateImportIdentityIssues,
+  prepareImportIdentityRows,
   resolveImportIdentity,
 } from '../dist/lib/bbvaCollaboratorImportIdentity.js';
 
@@ -82,4 +83,28 @@ const row = (overrides) => ({
   assert.equal(findDuplicateImportIdentityIssues(rows).length, 0);
 }
 
-console.log('OK: 8 escenarios de identidad y duplicados de importación BBVA.');
+
+{
+  const rows = [
+    row({ rowNumber:149, fullName:'Persona A', softtekCode:'ISA', corporateUser:'XMA', email:'persona.a@softtek.com', bbvaEmail:'correo.repetido@bbva.com' }),
+    row({ rowNumber:151, fullName:'Persona B', softtekCode:'ISB', corporateUser:'XMB', email:'persona.b@softtek.com', bbvaEmail:'correo.repetido@bbva.com' }),
+    row({ rowNumber:152, fullName:'Persona C', softtekCode:'ISC', corporateUser:'XMC', email:'persona.c@softtek.com', bbvaEmail:'correo.repetido@bbva.com' }),
+  ];
+  const prepared = prepareImportIdentityRows(rows);
+  assert.equal(prepared.issues.filter((issue) => issue.code === 'DUPLICATE_BBVA_EMAIL_OMITTED').length, 3);
+  assert.equal(prepared.issues.every((issue) => issue.blocking === false), true);
+  assert.equal(prepared.rows.every((item) => item.bbvaEmail === null), true);
+  assert.equal(prepared.rows.map((item) => item.softtekCode).join(','), 'ISA,ISB,ISC');
+}
+{
+  const rows = [
+    row({ rowNumber:160, fullName:'Sin IS Uno', bbvaEmail:'mismo@bbva.com' }),
+    row({ rowNumber:161, fullName:'Sin IS Dos', bbvaEmail:'mismo@bbva.com' }),
+  ];
+  const prepared = prepareImportIdentityRows(rows);
+  assert.equal(prepared.issues.filter((issue) => issue.code === 'DUPLICATE_BBVA_EMAIL').length, 2);
+  assert.equal(prepared.issues.every((issue) => issue.blocking === true), true);
+  assert.equal(prepared.rows.every((item) => item.bbvaEmail === 'mismo@bbva.com'), true);
+}
+
+console.log('OK: 10 escenarios de identidad y duplicados de importación BBVA.');
