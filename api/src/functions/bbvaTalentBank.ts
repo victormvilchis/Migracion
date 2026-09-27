@@ -2,11 +2,13 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { getCurrentUser } from '../lib/authzLocal.js';
 import { TalentService } from '../lib/bbvaTalentService.js';
 import { TalentConversionService } from '../lib/bbvaTalentConversionService.js';
+import { PersonLifecycleService } from '../lib/bbvaPersonLifecycleService.js';
 import { bbvaErrorResponse, readBbvaJson } from '../lib/bbvaHttp.js';
 import { assertBbvaPermission } from '../lib/bbvaAuthz.js';
 
 const service = new TalentService();
 const conversionService = new TalentConversionService();
+const lifecycleService = new PersonLifecycleService();
 
 export async function talentCollectionHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
@@ -32,17 +34,17 @@ export async function talentItemHandler(request: HttpRequest, context: Invocatio
 
     if (request.method === 'GET') {
       const item = await service.get(id);
-      return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
+      return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
     }
 
     if (request.method === 'PUT') {
       const item = await service.update(id, await readBbvaJson(request), user.email);
-      return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
+      return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
     }
 
     if (request.method === 'DELETE') {
       const deleted = await service.delete(id);
-      return deleted ? { status: 200, jsonBody: { deleted: true } } : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
+      return deleted ? { status: 200, jsonBody: { deleted: true } } : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
     }
 
     return { status: 405, jsonBody: { error: 'Método no permitido.' } };
@@ -59,7 +61,7 @@ export async function talentStageHandler(request: HttpRequest, context: Invocati
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
     const payload = await readBbvaJson(request);
     const item = await service.updateStage(id, payload?.stage, user.email);
-    return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
+    return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
   } catch (error) {
     return bbvaErrorResponse(error, context, 'TalentBank');
   }
@@ -72,7 +74,7 @@ export async function talentHistoryHandler(request: HttpRequest, context: Invoca
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
     const item = await service.get(id);
-    if (!item) return { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
+    if (!item) return { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
     return { status: 200, jsonBody: { items: await service.history(id) } };
   } catch (error) {
     return bbvaErrorResponse(error, context, 'TalentBank');
@@ -93,7 +95,7 @@ export async function talentCvHandler(request: HttpRequest, context: InvocationC
 
     if (request.method === 'PUT') {
       const item = await service.saveCv(id, await readBbvaJson(request), user.email);
-      return item ? { status: 200, jsonBody: { cv: item.cv } } : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
+      return item ? { status: 200, jsonBody: { cv: item.cv } } : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
     }
 
     return { status: 405, jsonBody: { error: 'Método no permitido.' } };
@@ -112,7 +114,24 @@ export async function talentConvertHandler(request: HttpRequest, context: Invoca
     const result = await conversionService.convert(id, user.email);
     return result
       ? { status: 200, jsonBody: { collaboratorId: result.collaboratorId, message: 'El talento se convirtió correctamente en colaborador.' } }
-      : { status: 404, jsonBody: { error: 'Registro de Talent Bank no encontrado.' } };
+      : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
+  } catch (error) {
+    return bbvaErrorResponse(error, context, 'TalentBank');
+  }
+}
+
+
+
+export async function talentLifecycleHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+  try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, 'TALENT_READ');
+    const id = request.params.id;
+    if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
+    const items = await lifecycleService.talentTimeline(id);
+    return items
+      ? { status: 200, jsonBody: { items } }
+      : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
   } catch (error) {
     return bbvaErrorResponse(error, context, 'TalentBank');
   }
@@ -160,3 +179,5 @@ app.http('bbvaTalentBankConvert', {
   route: 'bbva/talent-bank/{id}/convert',
   handler: talentConvertHandler,
 });
+
+app.http('bbvaTalentBankLifecycle', { methods: ['GET'], authLevel: 'anonymous', route: 'bbva/talent-bank/{id}/lifecycle', handler: talentLifecycleHandler });

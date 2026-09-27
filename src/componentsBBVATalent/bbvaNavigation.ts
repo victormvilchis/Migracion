@@ -45,7 +45,6 @@ export interface BBVANavGroup {
  * - Seguimiento de certificaciones es un solo módulo.
  * - Métricas de certificaciones es un solo módulo.
  * - Estudio agrupa Banco de Preguntas y Evaluaciones con sus módulos funcionales.
- * - El asistente IA es global al workspace y no aparece como opción del menú.
  */
 export const bbvaNavigation: BBVANavGroup[] = [
   {
@@ -200,6 +199,7 @@ export const getBbvaBreadcrumbAction = (pathname: string): string | undefined =>
   if (/\/convert$/.test(normalized)) return 'Convertir';
   if (/\/import$/.test(normalized)) return 'Importar Excel';
   if (/\/manage$/.test(normalized)) return 'Gestionar';
+  if (/\/move-to-talent$/.test(normalized)) return 'Mover a Banco de talento';
   if (/\/certifications$/.test(normalized) && normalized.includes('/collaborators/')) return 'Certificaciones';
 
   const match = findBbvaNavigationMatch(normalized);

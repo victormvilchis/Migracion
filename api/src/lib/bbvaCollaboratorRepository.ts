@@ -53,7 +53,7 @@ function bindPerson(request: sql.Request, input: CollaboratorInput) {
 export class CollaboratorRepository {
   async list(): Promise<CollaboratorRecord[]> {
     const pool = await getDbConnection();
-    const result = await pool.request().query(`${COLLABORATOR_SELECT} ORDER BY p.FirstName ASC, p.LastName ASC;`);
+    const result = await pool.request().query(`${COLLABORATOR_SELECT} WHERE c.Status=N'ACTIVE' ORDER BY p.FirstName ASC, p.LastName ASC;`);
     return result.recordset as CollaboratorRecord[];
   }
 
@@ -78,12 +78,18 @@ export class CollaboratorRepository {
       await new sql.Request(transaction)
         .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
         .input('personId', sql.UniqueIdentifier, personId)
-        .input('status', sql.NVarChar(20), input.startDate ? 'ACTIVE' : 'INACTIVE')
+        .input('status', sql.NVarChar(20), 'ACTIVE')
         .input('startDate', sql.Date, input.startDate)
         .input('endDate', sql.Date, input.endDate)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`INSERT INTO bbva.Collaborator (Id,PersonId,Status,StartDate,EndDate,CreatedByEmail,UpdatedByEmail) VALUES (@collaboratorId,@personId,@status,@startDate,@endDate,@actorEmail,@actorEmail);
                 INSERT INTO bbva.CollaboratorHistory (CollaboratorId,EventType,Description,CreatedByEmail) VALUES (@collaboratorId,N'CREATED',N'El colaborador fue registrado.',@actorEmail);`);
+      await new sql.Request(transaction)
+        .input('personId', sql.UniqueIdentifier, personId)
+        .input('effectiveDate', sql.Date, input.startDate || null)
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
+        .query(`INSERT INTO bbva.PersonLifecycleHistory (PersonId,EventType,ToState,EffectiveDate,Description,CreatedByEmail)
+                VALUES (@personId,N'ENTERED_COLLABORATOR',N'COLLABORATOR',@effectiveDate,N'La persona ingresó a Colaboradores.',@actorEmail);`);
       await transaction.commit();
       return (await this.findById(collaboratorId)) as CollaboratorRecord;
     } catch (error) { await transaction.rollback(); throw error; }
@@ -102,11 +108,10 @@ export class CollaboratorRepository {
         .query(`UPDATE bbva.Person SET SofttekCode=@softtekCode,CorporateUser=@corporateUser,Email=@email,FirstName=@firstName,LastName=@lastName,Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@personId;`);
       await new sql.Request(transaction)
         .input('id', sql.UniqueIdentifier, id)
-        .input('status', sql.NVarChar(20), input.startDate ? 'ACTIVE' : 'INACTIVE')
         .input('startDate', sql.Date, input.startDate)
         .input('endDate', sql.Date, input.endDate)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`UPDATE bbva.Collaborator SET Status=@status,StartDate=@startDate,EndDate=@endDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;
+        .query(`UPDATE bbva.Collaborator SET StartDate=@startDate,EndDate=@endDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;
                 INSERT INTO bbva.CollaboratorHistory (CollaboratorId,EventType,Description,CreatedByEmail) VALUES (@id,N'UPDATED',N'La información del colaborador fue actualizada.',@actorEmail);`);
       await transaction.commit();
       return this.findById(id);
@@ -120,8 +125,24 @@ export class CollaboratorRepository {
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
+      const dependencies = await new sql.Request(transaction)
+        .input('personId', sql.UniqueIdentifier, current.personId)
+        .query(`
+          SELECT
+            CASE WHEN EXISTS (SELECT 1 FROM bbva.TalentBankEntry WHERE PersonId=@personId) THEN 1 ELSE 0 END AS hasTalent,
+            CASE WHEN EXISTS (SELECT 1 FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId AND FromState IS NOT NULL) THEN 1 ELSE 0 END AS hasMovement;
+        `);
+      const dependency = dependencies.recordset[0] as { hasTalent: number; hasMovement: number };
+      if (Number(dependency.hasTalent) > 0 || Number(dependency.hasMovement) > 0) {
+        throw Object.assign(new Error('No es posible eliminar a esta persona porque ya tiene historial de ciclo de vida. Utiliza la acción Mover a Banco de talento.'), { statusCode: 409 });
+      }
+
       await new sql.Request(transaction).input('id', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.CollaboratorHistory WHERE CollaboratorId=@id; DELETE FROM bbva.Collaborator WHERE Id=@id;`);
-      await new sql.Request(transaction).input('personId', sql.UniqueIdentifier, current.personId).query(`DELETE FROM bbva.PersonDocument WHERE PersonId=@personId; DELETE FROM bbva.Person WHERE Id=@personId;`);
+      await new sql.Request(transaction).input('personId', sql.UniqueIdentifier, current.personId).query(`
+        DELETE FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId;
+        DELETE FROM bbva.PersonDocument WHERE PersonId=@personId;
+        DELETE FROM bbva.Person WHERE Id=@personId;
+      `);
       await transaction.commit();
       return true;
     } catch (error) { await transaction.rollback(); throw error; }

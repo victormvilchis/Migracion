@@ -96,8 +96,8 @@ export const TalentConvertPage: React.FC = () => {
     try {
       setError(null);
       await updateMutation.mutateAsync({ id, payload: toPayload(talent, values, profiles, technologyProfiles, technologies) });
-      await convertMutation.mutateAsync(id);
-      navigate('/bbva/collaborators', { state: { message: 'El talento se convirtió correctamente en colaborador.' } });
+      const result = await convertMutation.mutateAsync(id);
+      navigate(`/bbva/collaborators/${result.collaboratorId}/manage`, { state: { message: result.message } });
     } catch (conversionError) {
       setConfirmOpen(false);
       setError((conversionError as Error).message);

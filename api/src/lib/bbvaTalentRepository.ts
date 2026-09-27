@@ -93,8 +93,8 @@ function bindEntry(request: sql.Request, input: TalentInput) {
 
 function historyMessageForCreate(input: TalentInput): string {
   if (input.talentType === 'ACADEMY') return 'El talento fue registrado como integrante de Academia.';
-  if (input.talentType === 'BBVA_EXIT') return 'El colaborador fue dado de baja de BBVA y trasladado a Talent Bank.';
-  return 'El prospecto fue registrado en Talent Bank.';
+  if (input.talentType === 'BBVA_EXIT') return 'El colaborador fue dado de baja de BBVA y trasladado a Banco de talento.';
+  return 'El prospecto fue registrado en Banco de talento.';
 }
 
 function stageDescription(stage: TalentStage): string {
@@ -164,6 +164,14 @@ export class TalentRepository {
         .input('description', sql.NVarChar(500), historyMessageForCreate(input))
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`INSERT INTO bbva.TalentHistory (TalentBankEntryId, EventType, Description, CreatedByEmail) VALUES (@entryId, N'CREATED', @description, @actorEmail);`);
+
+      await new sql.Request(transaction)
+        .input('personId', sql.UniqueIdentifier, personId)
+        .input('effectiveDate', sql.Date, input.entryDate)
+        .input('description', sql.NVarChar(500), historyMessageForCreate(input))
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
+        .query(`INSERT INTO bbva.PersonLifecycleHistory (PersonId,EventType,ToState,EffectiveDate,Description,CreatedByEmail)
+                VALUES (@personId,N'ENTERED_TALENT_BANK',N'TALENT_BANK',@effectiveDate,@description,@actorEmail);`);
 
       await transaction.commit();
       const created = await this.findById(entryId);
@@ -257,7 +265,19 @@ export class TalentRepository {
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
-      await new sql.Request(transaction).input('personId', sql.UniqueIdentifier, current.personId).query(`DELETE FROM bbva.PersonDocument WHERE PersonId=@personId;`);
+      const dependencies = await new sql.Request(transaction)
+        .input('personId', sql.UniqueIdentifier, current.personId)
+        .query(`
+          SELECT
+            CASE WHEN EXISTS (SELECT 1 FROM bbva.Collaborator WHERE PersonId=@personId) THEN 1 ELSE 0 END AS hasCollaborator,
+            CASE WHEN EXISTS (SELECT 1 FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId AND FromState IS NOT NULL) THEN 1 ELSE 0 END AS hasMovement;
+        `);
+      const dependency = dependencies.recordset[0] as { hasCollaborator: number; hasMovement: number };
+      if (Number(dependency.hasCollaborator) > 0 || Number(dependency.hasMovement) > 0) {
+        throw Object.assign(new Error('No es posible eliminar a esta persona porque ya tiene historial de ciclo de vida.'), { statusCode: 409 });
+      }
+
+      await new sql.Request(transaction).input('personId', sql.UniqueIdentifier, current.personId).query(`DELETE FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId; DELETE FROM bbva.PersonDocument WHERE PersonId=@personId;`);
       await new sql.Request(transaction).input('entryId', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.TalentHistory WHERE TalentBankEntryId=@entryId;`);
       await new sql.Request(transaction).input('entryId', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.TalentBankEntry WHERE Id=@entryId;`);
       await new sql.Request(transaction).input('personId', sql.UniqueIdentifier, current.personId).query(`DELETE FROM bbva.Person WHERE Id=@personId;`);
@@ -268,6 +288,7 @@ export class TalentRepository {
       throw error;
     }
   }
+
 
   async listHistory(id: string): Promise<TalentHistoryRecord[]> {
     const pool = await getDbConnection();

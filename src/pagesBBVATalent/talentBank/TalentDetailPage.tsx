@@ -3,7 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
 import { TalentForm } from '../../componentsBBVATalent/TalentForm';
+import { PersonLifecycleTimeline } from '../../componentsBBVATalent/PersonLifecycleTimeline';
 import { useDeleteTalent, useTalent } from '../hooks/useTalent';
+import { useTalentLifecycle } from '../hooks/useLifecycle';
 
 interface TalentDetailPageProps {
   mode?: 'view' | 'delete';
@@ -14,6 +16,7 @@ export const TalentDetailPage: React.FC<TalentDetailPageProps> = ({ mode = 'view
   const navigate = useNavigate();
   const talentQuery = useTalent(id);
   const deleteMutation = useDeleteTalent();
+  const lifecycleQuery = useTalentLifecycle(mode === 'view' ? id : undefined);
   const [error, setError] = useState<string | null>(null);
   const talent = talentQuery.data?.item;
 
@@ -49,6 +52,12 @@ export const TalentDetailPage: React.FC<TalentDetailPageProps> = ({ mode = 'view
           onDelete={mode === 'delete' ? () => void remove() : undefined}
         />
       </div>
+      {mode === 'view' ? (
+        <section>
+          <div className="mb-2 text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Historial de la persona</div>
+          {lifecycleQuery.error ? <BBVAAlert tone="error">{(lifecycleQuery.error as Error).message}</BBVAAlert> : <PersonLifecycleTimeline items={lifecycleQuery.data?.items ?? []} loading={lifecycleQuery.isLoading} />}
+        </section>
+      ) : null}
     </div>
   );
 };

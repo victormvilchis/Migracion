@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { BBVAAssistant } from './BBVAAssistant';
 import { BBVAContextBar } from './BBVAContextBar';
 import { BBVASidebar } from './BBVASidebar';
 
@@ -67,7 +66,6 @@ export const BBVALayout: React.FC<BBVALayoutProps> = ({ children, themeMode = 'l
           </main>
         </div>
 
-        <BBVAAssistant />
       </div>
     </div>
   );

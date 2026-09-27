@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Header } from './components/layout/Header';
@@ -16,6 +16,8 @@ const CollaboratorsPage = React.lazy(() => import('./pagesBBVATalent/collaborato
 const CollaboratorDetailPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorDetailPage').then((m) => ({ default: m.CollaboratorDetailPage })));
 const CollaboratorEditorPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorEditorPage').then((m) => ({ default: m.CollaboratorEditorPage })));
 const CollaboratorImportPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorImportPage').then((m) => ({ default: m.CollaboratorImportPage })));
+const CollaboratorManagePage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorManagePage').then((m) => ({ default: m.CollaboratorManagePage })));
+const CollaboratorMoveToTalentPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorMoveToTalentPage').then((m) => ({ default: m.CollaboratorMoveToTalentPage })));
 const CatalogListPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogListPage').then((m) => ({ default: m.CatalogListPage })));
 const CatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogEditorPage').then((m) => ({ default: m.CatalogEditorPage })));
 const CatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogDetailPage').then((m) => ({ default: m.CatalogDetailPage })));
@@ -69,6 +71,8 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/collaborators/import" element={modulePage(<CollaboratorImportPage />)} />
               <Route path="/bbva/collaborators/:id/edit" element={modulePage(<CollaboratorEditorPage />)} />
               <Route path="/bbva/collaborators/:id/delete" element={modulePage(<CollaboratorDetailPage mode="delete" />)} />
+              <Route path="/bbva/collaborators/:id/manage" element={modulePage(<CollaboratorManagePage />)} />
+              <Route path="/bbva/collaborators/:id/move-to-talent" element={modulePage(<CollaboratorMoveToTalentPage />)} />
               <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage mode="view" />)} />
 
               <Route path="/bbva/admin/catalogs/categories" element={modulePage(<CatalogListPage type="categories" />)} />

@@ -234,3 +234,24 @@ El contrato visual y funcional es:
 - Las rutas de eliminación aparecen como `Eliminar` en breadcrumbs.
 - Esta regla aplica a Banco de talento, Colaboradores, Categorías, Tecnologías, Perfiles, Perfiles tecnológicos y Certificaciones, y es obligatoria para cualquier CRUD futuro de BBVA Workspace.
 - Las acciones ajenas al CRUD base (por ejemplo convertir talento, gestionar certificaciones o importar) pueden conservar flujos específicos, pero no deben alterar este contrato para Ver/Editar/Eliminar.
+
+## Patrón funcional — ciclo de vida de la persona
+
+Banco de talento y Colaboradores representan estados operativos de una misma persona; no son identidades independientes.
+
+- `bbva.Person` es la identidad única. Las transiciones reutilizan el mismo `PersonId` y, por tanto, conservan IS, correo, datos profesionales, observaciones y documentos asociados.
+- El CV permanece en `bbva.PersonDocument`; una transición entre Banco de talento y Colaboradores no crea una copia ni elimina el documento.
+- Banco de talento → Colaboradores reutiliza o reactiva el registro de `bbva.Collaborator` de la persona y marca la entrada de Banco de talento como convertida.
+- Colaboradores → Banco de talento inactiva al colaborador y crea o reactiva su misma `bbva.TalentBankEntry` como `BBVA_EXIT`, sin crear otra persona.
+- La lista de Colaboradores representa únicamente colaboradores activos. Una persona movida a Banco de talento deja de aparecer en ese listado, pero su registro histórico se conserva.
+- Los motivos de salida/retorno no se hardcodean en frontend: provienen de `bbva.LifecycleReasonCatalog`.
+- Toda transición se registra en `bbva.PersonLifecycleHistory` con estado origen/destino, motivo, fecha efectiva, observaciones y actor.
+- El historial 360 de la persona integra el historial de ciclo de vida con actividad previa de Banco de talento y Colaboradores.
+- Una persona con transiciones de ciclo de vida no puede eliminarse físicamente desde los CRUD. Debe utilizarse la transición funcional correspondiente.
+
+### Gestionar no es Editar
+
+- `Editar` modifica datos maestros de la ficha utilizando el formulario CRUD unificado.
+- `Gestionar` es el cockpit operativo del colaborador: muestra su contexto actual, accesos a edición/certificaciones, la acción `Mover a Banco de talento`, CV disponible, observaciones e historial de la persona.
+- `Regresar` permanece siempre en la esquina superior izquierda también en vistas de gestión y transición.
+- La conversión Banco de talento → Colaboradores finaliza en la vista `Gestionar` del colaborador para continuar el flujo operativo.
