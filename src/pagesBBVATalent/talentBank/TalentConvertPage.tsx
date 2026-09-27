@@ -39,6 +39,7 @@ function initialValues(talent: Talent | null | undefined, profiles: CatalogOptio
 function toPayload(talent: Talent, values: ReturnType<typeof initialValues>, profiles: CatalogOption[], technologyProfiles: CatalogOption[], technologies: CatalogOption[]): TalentPayload {
   return {
     talentType: talent.talentType,
+    affiliationType: talent.affiliationType,
     softtekCode: talent.softtekCode ?? '',
     corporateUser: values.corporateUser,
     email: talent.email,
@@ -115,7 +116,7 @@ export const TalentConvertPage: React.FC = () => {
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.05)]">
         <div className="mb-4 grid gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 to-white p-4 text-[11px] sm:grid-cols-2">
           <div><span className="font-semibold uppercase tracking-[0.04em] text-slate-500">Persona</span><div className="mt-1 font-semibold text-slate-900">{talent.fullName}</div><div className="text-[10px] text-slate-500">{talent.email}</div></div>
-          <div><span className="font-semibold uppercase tracking-[0.04em] text-slate-500">Origen</span><div className="mt-1 text-slate-900">{talent.talentType === 'ACADEMY' ? 'Academia' : talent.talentType === 'PROSPECT' ? 'Prospecto' : 'Baja de BBVA'}</div></div>
+          <div><span className="font-semibold uppercase tracking-[0.04em] text-slate-500">Origen</span><div className="mt-1 text-slate-900">{talent.talentType === 'ACADEMY' ? 'Academia' : talent.talentType === 'PROSPECT' ? 'Prospecto' : 'Excolaborador'}</div></div>
         </div>
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-4"><span className={labelClass}>Perfil *</span><BBVASearchableSelect value={values.profileCatalogId} onChange={(value) => setValues((v) => ({ ...v, profileCatalogId: value }))} options={toOptions(profiles)} disabled={catalogsLoading} ariaLabel="Perfil" /></label>

@@ -6,5 +6,4 @@ export const collaboratorApi = {
   get: (id: string) => fetchApi<{ item: Collaborator; storage: string }>(`/bbva/collaborators/${id}`),
   create: (payload: CollaboratorPayload) => fetchApi<{ item: Collaborator; storage: string }>('/bbva/collaborators', { method: 'POST', body: JSON.stringify(payload) }),
   update: (id: string, payload: CollaboratorPayload) => fetchApi<{ item: Collaborator; storage: string }>(`/bbva/collaborators/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
-  delete: (id: string) => fetchApi<{ deleted: boolean }>(`/bbva/collaborators/${id}`, { method: 'DELETE' }),
 };

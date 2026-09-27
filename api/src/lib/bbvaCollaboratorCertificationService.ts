@@ -54,6 +54,11 @@ export class CollaboratorCertificationService {
   }
 
   async addAttempt(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string) {
+    const current = await repository.detail(collaboratorId, recordId);
+    if (!current) return null;
+    if (current.item.baseStatus === 'APPROVED') {
+      throw Object.assign(new Error('La certificación ya está aprobada en el ciclo actual. Inicia una recertificación antes de registrar un nuevo intento.'), { statusCode: 409 });
+    }
     const result = String(valueOf(payload, 'result') ?? 'PENDING').toUpperCase();
     if (!['PENDING', 'APPROVED', 'FAILED'].includes(result)) {
       throw Object.assign(new Error('El resultado del intento no es válido.'), { statusCode: 400 });

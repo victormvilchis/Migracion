@@ -1,5 +1,9 @@
-export const TALENT_TYPES = ['ACADEMY', 'PROSPECT', 'BBVA_EXIT'] as const;
+export const TALENT_TYPES = ['ACADEMY', 'PROSPECT', 'FORMER_COLLABORATOR', 'BBVA_EXIT'] as const;
 export type TalentType = (typeof TALENT_TYPES)[number];
+
+export const TALENT_AFFILIATIONS = ['INTERNAL', 'EXTERNAL'] as const;
+export type TalentAffiliation = (typeof TALENT_AFFILIATIONS)[number];
+export type TalentRecordStatus = 'ACTIVE' | 'DELETED';
 
 export const TALENT_STAGES = [
   'REGISTERED',
@@ -23,6 +27,10 @@ export interface TalentRecord {
   id: string;
   personId: string;
   talentType: TalentType;
+  affiliationType: TalentAffiliation;
+  recordStatus: TalentRecordStatus;
+  deletedAt: string | null;
+  deletedByEmail: string | null;
   softtekCode: string | null;
   corporateUser: string | null;
   email: string;
@@ -56,6 +64,7 @@ export interface TalentRecord {
 
 export interface TalentInput {
   talentType: TalentType;
+  affiliationType: TalentAffiliation;
   softtekCode?: string | null;
   corporateUser?: string | null;
   email: string;

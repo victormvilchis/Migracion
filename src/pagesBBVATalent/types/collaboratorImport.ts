@@ -51,7 +51,7 @@ export interface ImportCertificationPreview {
 export interface ImportCatalogAction {
   type: 'profile' | 'technologyProfile' | 'technology';
   value: string;
-  action: 'USE_EXISTING' | 'CREATE';
+  action: 'USE_EXISTING' | 'CREATE' | 'INACTIVE';
 }
 
 export interface ImportNewCandidate {

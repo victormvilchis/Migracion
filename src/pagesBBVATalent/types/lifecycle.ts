@@ -5,6 +5,7 @@ export interface LifecycleReasonOption {
   code: string;
   name: string;
   defaultTalentStage: 'AVAILABLE' | 'UNASSIGNED';
+  reasonGroup: 'AVAILABLE' | 'UNASSIGNED' | 'BBVA_EXIT' | 'OTHER';
   sortOrder: number;
 }
 
@@ -27,6 +28,7 @@ export interface MoveCollaboratorToTalentPayload {
   reasonCode: string;
   effectiveDate: string;
   talentStage: 'AVAILABLE' | 'UNASSIGNED';
+  affiliationType: 'INTERNAL' | 'EXTERNAL';
   notes: string;
 }
 

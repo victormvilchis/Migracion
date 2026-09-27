@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TALENT_STAGES, TALENT_TYPES } from '../types/talent';
+import { TALENT_AFFILIATIONS, TALENT_STAGES, TALENT_TYPES } from '../types/talent';
 
 const optionalDate = z.union([
   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida.'),
@@ -8,6 +8,7 @@ const optionalDate = z.union([
 
 export const talentSchema = z.object({
   talentType: z.enum(TALENT_TYPES),
+  affiliationType: z.enum(TALENT_AFFILIATIONS),
   softtekCode: z.string().trim().max(80),
   corporateUser: z.string().trim().max(100),
   email: z.string().trim().email('Correo inválido.').max(255),

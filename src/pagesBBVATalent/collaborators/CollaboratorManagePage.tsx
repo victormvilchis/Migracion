@@ -1,17 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  AlertTriangle,
   ArrowRight,
   ArrowRightLeft,
   Award,
   Briefcase,
-  CalendarDays,
   FileText,
   History,
   User,
   Mail,
   Pencil,
-  ShieldCheck,
 } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
@@ -213,22 +210,16 @@ export const CollaboratorManagePage: React.FC = () => {
               )}
             </section>
 
-            <section>
-              <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100"><History className="h-4 w-4 text-slate-500" />Historial de la persona</div>
-              <PersonLifecycleTimeline items={lifecycleQuery.data?.items ?? []} loading={lifecycleQuery.isLoading} />
-            </section>
+            <details className="rounded-2xl border border-slate-200 bg-white [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/40">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">
+                <span className="inline-flex items-center gap-2"><History className="h-4 w-4 text-slate-500" />Historial de la persona</span>
+                <span className="text-[9.5px] font-normal text-slate-500">{lifecycleQuery.data?.items?.length ?? 0} movimientos</span>
+              </summary>
+              <div className="border-t border-slate-100 p-3 [.bbva-dark_&]:border-slate-800"><PersonLifecycleTimeline items={lifecycleQuery.data?.items ?? []} loading={lifecycleQuery.isLoading} /></div>
+            </details>
           </main>
 
           <aside className="space-y-3">
-            <section className="rounded-2xl border border-slate-200 bg-slate-50/65 p-4 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-950/30">
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-slate-500"><ShieldCheck className="h-3.5 w-3.5" />Identidad</div>
-              <div className="mt-3 space-y-3">
-                <DataItem label="IS" value={item.softtekCode} />
-                <DataItem label="Correo" value={item.email} />
-                <DataItem label="Usuario corporativo" value={item.corporateUser} />
-              </div>
-            </section>
-
             <section className="rounded-2xl border border-slate-200 p-4 [.bbva-dark_&]:border-slate-800">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.05em] text-slate-500">Currículum</div>
@@ -243,14 +234,6 @@ export const CollaboratorManagePage: React.FC = () => {
               <div className="mt-2 max-h-44 overflow-auto whitespace-pre-wrap break-words text-[10.5px] leading-5 text-slate-600 [.bbva-dark_&]:text-slate-300">{item.notes || 'Sin observaciones.'}</div>
             </section>
 
-            <section className="rounded-2xl border border-slate-200 p-4 [.bbva-dark_&]:border-slate-800">
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-slate-500"><CalendarDays className="h-3.5 w-3.5" />Ciclo actual</div>
-              <div className="mt-2 grid grid-cols-2 gap-3">
-                <DataItem label="Alta" value={formatDate(item.startDate)} />
-                <DataItem label="Contratación" value={formatDate(item.hireDate)} />
-              </div>
-              {attentionCount > 0 ? <div className="mt-3 flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-[9.5px] leading-4 text-amber-800 [.bbva-dark_&]:bg-amber-500/10 [.bbva-dark_&]:text-amber-200"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />Hay {attentionCount} certificación{attentionCount === 1 ? '' : 'es'} que requiere{attentionCount === 1 ? '' : 'n'} atención.</div> : null}
-            </section>
           </aside>
         </div>
       </section>

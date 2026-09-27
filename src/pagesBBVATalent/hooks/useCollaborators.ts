@@ -19,8 +19,3 @@ export function useUpdateCollaborator() {
   const client = useQueryClient();
   return useMutation({ mutationFn: ({ id, payload }: { id: string; payload: CollaboratorPayload }) => collaboratorApi.update(id, payload), onSuccess: (_data, variables) => { void client.invalidateQueries({ queryKey: ['collaborators'] }); void client.invalidateQueries({ queryKey: ['collaborators', variables.id] }); } });
 }
-
-export function useDeleteCollaborator() {
-  const client = useQueryClient();
-  return useMutation({ mutationFn: collaboratorApi.delete, onSuccess: () => client.invalidateQueries({ queryKey: ['collaborators'] }) });
-}

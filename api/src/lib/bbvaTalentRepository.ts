@@ -7,6 +7,10 @@ const TALENT_SELECT = `
     CAST(t.Id AS NVARCHAR(36)) AS id,
     CAST(p.Id AS NVARCHAR(36)) AS personId,
     t.TalentType AS talentType,
+    ISNULL(t.AffiliationType,N'INTERNAL') AS affiliationType,
+    CASE WHEN t.DeletedAt IS NULL THEN N'ACTIVE' ELSE N'DELETED' END AS recordStatus,
+    CONVERT(VARCHAR(33), t.DeletedAt, 127) AS deletedAt,
+    t.DeletedByEmail AS deletedByEmail,
     p.SofttekCode AS softtekCode,
     p.CorporateUser AS corporateUser,
     p.Email AS email,
@@ -98,6 +102,7 @@ function bindPerson(request: sql.Request, input: TalentInput) {
 function bindEntry(request: sql.Request, input: TalentInput) {
   return request
     .input('talentType', sql.NVarChar(30), input.talentType)
+    .input('affiliationType', sql.NVarChar(16), input.affiliationType)
     .input('stage', sql.NVarChar(30), input.stage)
     .input('active', sql.Bit, input.active)
     .input('platformStartDate', sql.Date, input.platformStartDate || null)
@@ -161,12 +166,12 @@ export class TalentRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail);
       const entryResult = await entryRequest.query(`
         INSERT INTO bbva.TalentBankEntry (
-          PersonId, TalentType, Stage, Active, PlatformStartDate,
+          PersonId, TalentType, AffiliationType, Stage, Active, PlatformStartDate,
           EntryDate, CreatedByEmail, UpdatedByEmail
         )
         OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
         VALUES (
-          @personId, @talentType, @stage, @active, @platformStartDate,
+          @personId, @talentType, @affiliationType, @stage, @active, @platformStartDate,
           @entryDate, @actorEmail, @actorEmail
         );
       `);
@@ -199,6 +204,7 @@ export class TalentRepository {
   async update(id: string, input: TalentInput, actorEmail: string): Promise<TalentRecord | null> {
     const current = await this.findById(id);
     if (!current) return null;
+    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado lógicamente y sólo puede consultarse.');
 
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
@@ -222,7 +228,7 @@ export class TalentRepository {
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.TalentBankEntry
-          SET TalentType=@talentType, Stage=@stage, Active=@active,
+          SET TalentType=@talentType, AffiliationType=@affiliationType, Stage=@stage, Active=@active,
               PlatformStartDate=@platformStartDate,
               EntryDate=@entryDate, UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
           WHERE Id=@id;
@@ -244,6 +250,7 @@ export class TalentRepository {
   async updateStage(id: string, stage: TalentStage, actorEmail: string): Promise<TalentRecord | null> {
     const current = await this.findById(id);
     if (!current) return null;
+    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado lógicamente y sólo puede consultarse.');
 
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
@@ -270,30 +277,34 @@ export class TalentRepository {
   }
 
 
-  async delete(id: string): Promise<boolean> {
+  async delete(id: string, actorEmail: string): Promise<boolean> {
     const current = await this.findById(id);
     if (!current) return false;
+    if (current.recordStatus === 'DELETED') return true;
 
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
-      const dependencies = await new sql.Request(transaction)
-        .input('personId', sql.UniqueIdentifier, current.personId)
+      await new sql.Request(transaction)
+        .input('entryId', sql.UniqueIdentifier, id)
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
-          SELECT
-            CASE WHEN EXISTS (SELECT 1 FROM bbva.Collaborator WHERE PersonId=@personId) THEN 1 ELSE 0 END AS hasCollaborator,
-            CASE WHEN EXISTS (SELECT 1 FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId AND FromState IS NOT NULL) THEN 1 ELSE 0 END AS hasMovement;
-        `);
-      const dependency = dependencies.recordset[0] as { hasCollaborator: number; hasMovement: number };
-      if (Number(dependency.hasCollaborator) > 0 || Number(dependency.hasMovement) > 0) {
-        throw Object.assign(new Error('No es posible eliminar a esta persona porque ya tiene historial de ciclo de vida.'), { statusCode: 409 });
-      }
+          UPDATE bbva.TalentBankEntry
+          SET Active=0, DeletedAt=SYSUTCDATETIME(), DeletedByEmail=@actorEmail,
+              UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
+          WHERE Id=@entryId AND DeletedAt IS NULL;
 
-      await new sql.Request(transaction).input('personId', sql.UniqueIdentifier, current.personId).query(`DELETE FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId; DELETE FROM bbva.PersonDocument WHERE PersonId=@personId;`);
-      await new sql.Request(transaction).input('entryId', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.TalentHistory WHERE TalentBankEntryId=@entryId;`);
-      await new sql.Request(transaction).input('entryId', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.TalentBankEntry WHERE Id=@entryId;`);
-      await new sql.Request(transaction).input('personId', sql.UniqueIdentifier, current.personId).query(`DELETE FROM bbva.Person WHERE Id=@personId;`);
+          INSERT INTO bbva.TalentHistory (TalentBankEntryId, EventType, Description, CreatedByEmail)
+          VALUES (@entryId, N'LOGICALLY_DELETED', N'El registro fue eliminado lógicamente de Banco de talento.', @actorEmail);
+        `);
+      await new sql.Request(transaction)
+        .input('personId', sql.UniqueIdentifier, current.personId)
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
+        .query(`
+          INSERT INTO bbva.PersonLifecycleHistory (PersonId,EventType,Description,CreatedByEmail)
+          VALUES (@personId,N'TALENT_LOGICAL_DELETE',N'El registro de Banco de talento fue eliminado lógicamente.',@actorEmail);
+        `);
       await transaction.commit();
       return true;
     } catch (error) {
@@ -316,6 +327,7 @@ export class TalentRepository {
   async saveCv(id: string, cv: TalentCvInput, actorEmail: string): Promise<TalentRecord | null> {
     const current = await this.findById(id);
     if (!current) return null;
+    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado lógicamente y no puede modificarse.');
 
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);

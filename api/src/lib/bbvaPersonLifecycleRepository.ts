@@ -16,7 +16,7 @@ export class PersonLifecycleRepository {
   async listReasons(): Promise<LifecycleReasonOption[]> {
     const pool = await getDbConnection();
     const result = await pool.request().query(`
-      SELECT Code AS code, Name AS name, DefaultTalentStage AS defaultTalentStage, SortOrder AS sortOrder
+      SELECT Code AS code, Name AS name, DefaultTalentStage AS defaultTalentStage, ISNULL(ReasonGroup,N'OTHER') AS reasonGroup, SortOrder AS sortOrder
       FROM bbva.LifecycleReasonCatalog
       WHERE Status=N'ACTIVE'
       ORDER BY SortOrder ASC, Name ASC;
@@ -103,22 +103,22 @@ export class PersonLifecycleRepository {
       const reasonResult = await new sql.Request(transaction)
         .input('reasonCode', sql.NVarChar(40), input.reasonCode)
         .query(`
-          SELECT TOP 1 Code AS code, Name AS name
+          SELECT TOP 1 Code AS code, Name AS name, ISNULL(ReasonGroup,N'OTHER') AS reasonGroup
           FROM bbva.LifecycleReasonCatalog
           WHERE Code=@reasonCode AND Status=N'ACTIVE';
         `);
-      const reason = reasonResult.recordset[0] as { code: string; name: string } | undefined;
+      const reason = reasonResult.recordset[0] as { code: string; name: string; reasonGroup: string } | undefined;
       if (!reason) conflict('El motivo seleccionado no está disponible. Actualiza la pantalla e inténtalo nuevamente.');
 
       const existingTalent = await new sql.Request(transaction)
         .input('personId', sql.UniqueIdentifier, collaborator.personId)
         .query(`
-          SELECT TOP 1 CAST(Id AS NVARCHAR(36)) AS id, Active AS active, Stage AS stage
+          SELECT TOP 1 CAST(Id AS NVARCHAR(36)) AS id, Active AS active, Stage AS stage, DeletedAt AS deletedAt
           FROM bbva.TalentBankEntry
           WHERE PersonId=@personId;
         `);
 
-      const existing = existingTalent.recordset[0] as { id: string; active: boolean; stage: string } | undefined;
+      const existing = existingTalent.recordset[0] as { id: string; active: boolean; stage: string; deletedAt: string | null } | undefined;
       if (existing?.active && existing.stage !== 'CONVERTED') {
         conflict('La persona ya tiene un registro activo en Banco de talento. No es posible duplicar su ciclo de vida.');
       }
@@ -130,11 +130,12 @@ export class PersonLifecycleRepository {
           .input('entryId', sql.UniqueIdentifier, talentBankEntryId)
           .input('stage', sql.NVarChar(30), input.talentStage)
           .input('effectiveDate', sql.Date, input.effectiveDate)
+          .input('affiliationType', sql.NVarChar(16), input.affiliationType)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
           .query(`
             UPDATE bbva.TalentBankEntry
-            SET TalentType=N'BBVA_EXIT', Stage=@stage, Active=1,
-                PlatformStartDate=NULL,
+            SET TalentType=N'FORMER_COLLABORATOR', AffiliationType=@affiliationType, Stage=@stage, Active=1,
+                PlatformStartDate=NULL, DeletedAt=NULL, DeletedByEmail=NULL,
                 EntryDate=@effectiveDate, ConvertedAt=NULL,
                 UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
             WHERE Id=@entryId;
@@ -144,13 +145,14 @@ export class PersonLifecycleRepository {
           .input('personId', sql.UniqueIdentifier, collaborator.personId)
           .input('stage', sql.NVarChar(30), input.talentStage)
           .input('effectiveDate', sql.Date, input.effectiveDate)
+          .input('affiliationType', sql.NVarChar(16), input.affiliationType)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
           .query(`
             INSERT INTO bbva.TalentBankEntry (
-              PersonId, TalentType, Stage, Active, EntryDate, CreatedByEmail, UpdatedByEmail
+              PersonId, TalentType, AffiliationType, Stage, Active, EntryDate, CreatedByEmail, UpdatedByEmail
             )
             OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
-            VALUES (@personId, N'BBVA_EXIT', @stage, 1, @effectiveDate, @actorEmail, @actorEmail);
+            VALUES (@personId, N'FORMER_COLLABORATOR', @affiliationType, @stage, 1, @effectiveDate, @actorEmail, @actorEmail);
           `);
         talentBankEntryId = String(created.recordset[0].id);
       }

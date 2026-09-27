@@ -35,10 +35,6 @@ export async function collaboratorItemHandler(request: HttpRequest, context: Inv
       const item = await service.update(id, await readBbvaJson(request), user.email);
       return item ? { status: 200, jsonBody: { item, storage: 'sql-server' } } : { status: 404, jsonBody: { error: 'Colaborador no encontrado.' } };
     }
-    if (request.method === 'DELETE') {
-      const deleted = await service.delete(id);
-      return deleted ? { status: 200, jsonBody: { deleted: true } } : { status: 404, jsonBody: { error: 'Colaborador no encontrado.' } };
-    }
     return { status: 405, jsonBody: { error: 'Método no permitido.' } };
   } catch (error) { return bbvaErrorResponse(error, context, 'Collaborators'); }
 }
@@ -80,7 +76,7 @@ export async function collaboratorMoveToTalentHandler(request: HttpRequest, cont
 }
 
 app.http('bbvaCollaboratorsCollection', { methods: ['GET', 'POST'], authLevel: 'anonymous', route: 'bbva/collaborators', handler: collaboratorsCollectionHandler });
-app.http('bbvaCollaboratorItem', { methods: ['GET', 'PUT', 'DELETE'], authLevel: 'anonymous', route: 'bbva/collaborators/{id}', handler: collaboratorItemHandler });
+app.http('bbvaCollaboratorItem', { methods: ['GET', 'PUT'], authLevel: 'anonymous', route: 'bbva/collaborators/{id}', handler: collaboratorItemHandler });
 
 app.http('bbvaCollaboratorLifecycle', { methods: ['GET'], authLevel: 'anonymous', route: 'bbva/collaborators/{id}/lifecycle', handler: collaboratorLifecycleHandler });
 app.http('bbvaLifecycleReasons', { methods: ['GET'], authLevel: 'anonymous', route: 'bbva/lifecycle/reasons', handler: lifecycleReasonsHandler });

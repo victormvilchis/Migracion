@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowRightLeft, Award, Briefcase, Eye, FileSpreadsheet, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, Award, Briefcase, Eye, FileSpreadsheet, Pencil, Plus, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
@@ -137,7 +137,6 @@ export const CollaboratorsPage: React.FC = () => {
                           { id: 'manage', label: 'Gestionar', icon: Briefcase, onClick: () => navigate(`/bbva/collaborators/${item.id}/manage`) },
                           { id: 'certifications', label: 'Certificaciones', icon: Award, onClick: () => navigate(`/bbva/collaborators/${item.id}/certifications`) },
                           { id: 'move-to-talent', label: 'Mover a Banco de talento', icon: ArrowRightLeft, onClick: () => navigate(`/bbva/collaborators/${item.id}/move-to-talent`) },
-                          { id: 'delete', label: 'Eliminar', icon: Trash2, tone: 'danger', onClick: () => navigate(`/bbva/collaborators/${item.id}/delete`) },
                         ]} />
                       </td>
                     </tr>

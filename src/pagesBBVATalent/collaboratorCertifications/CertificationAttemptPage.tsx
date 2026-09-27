@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVADatePicker } from '../../componentsBBVATalent/BBVADatePicker';
@@ -12,14 +12,10 @@ export const CertificationAttemptPage: React.FC = () => {
   const navigate = useNavigate();
   const query = useCollaboratorCertification(id, certificationRecordId);
   const mutation = useAddCertificationAttempt(id ?? '');
-  const [applicationDate, setApplicationDate] = useState('');
+  const [applicationDate, setApplicationDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [result, setResult] = useState<CertificationAttemptResult>('PENDING');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (query.data?.item.applicationDate) setApplicationDate(query.data.item.applicationDate);
-  }, [query.data]);
 
   if (query.isLoading) return <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando certificación...</div>;
   if (query.error || !query.data) return <BBVAAlert tone="error">{(query.error as Error)?.message || 'Certificación no encontrada.'}</BBVAAlert>;

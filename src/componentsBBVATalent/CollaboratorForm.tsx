@@ -5,6 +5,7 @@ import type { CatalogOption } from '../pagesBBVATalent/types/catalog';
 import type { Collaborator, CollaboratorPayload } from '../pagesBBVATalent/types/collaborator';
 import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
 import { BBVAFormActions, type BBVAFormMode, isBBVAFormReadOnly } from './BBVACrudForm';
+import { BBVAAlert } from './BBVAAlert';
 import { BBVASearchableSelect, type BBVASearchableSelectOption } from './BBVASearchableSelect';
 import { BBVADatePicker } from './BBVADatePicker';
 import { ISLookupField } from './ISLookupField';
@@ -14,7 +15,7 @@ const areaClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.
 const labelClass = 'mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:text-slate-400';
 
 function optionId(options: CatalogOption[], currentId: string | null | undefined, currentName: string | null | undefined): string {
-  if (currentId) return currentId;
+  if (currentId && options.some((option) => option.id === currentId)) return currentId;
   const name = (currentName ?? '').trim().toLocaleUpperCase('es-MX');
   return options.find((option) => option.name.trim().toLocaleUpperCase('es-MX') === name)?.id ?? '';
 }
@@ -23,12 +24,8 @@ function optionName(options: CatalogOption[], id: string): string {
   return options.find((option) => option.id === id)?.name ?? '';
 }
 
-function toSelectOptions(options: CatalogOption[], emptyLabel = 'Seleccionar', currentId?: string | null, currentName?: string | null): BBVASearchableSelectOption[] {
-  const mapped = options.map((option) => ({ value: option.id, label: option.name }));
-  if (currentId && currentName && !mapped.some((option) => option.value === currentId)) {
-    mapped.unshift({ value: currentId, label: currentName });
-  }
-  return [{ value: '', label: emptyLabel }, ...mapped];
+function toSelectOptions(options: CatalogOption[], emptyLabel = 'Seleccionar'): BBVASearchableSelectOption[] {
+  return [{ value: '', label: emptyLabel }, ...options.map((option) => ({ value: option.id, label: option.name }))];
 }
 
 const expertiseOptions: BBVASearchableSelectOption[] = [
@@ -52,13 +49,12 @@ function values(item: Collaborator | null | undefined, profiles: CatalogOption[]
 interface CollaboratorFormProps {
   selected?: Collaborator | null;
   saving?: boolean;
-  mode?: BBVAFormMode;
+  mode?: Exclude<BBVAFormMode, 'delete'>;
   onSubmit: (payload: CollaboratorPayload) => void;
   onCancel: () => void;
-  onDelete?: () => void;
 }
 
-export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, saving, mode = selected ? 'edit' : 'create', onSubmit, onCancel, onDelete }) => {
+export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, saving, mode = selected ? 'edit' : 'create', onSubmit, onCancel }) => {
   const readOnly = isBBVAFormReadOnly(mode);
   const profilesQuery = useCatalogOptions('profiles');
   const technologyProfilesQuery = useCatalogOptions('technology-profiles');
@@ -101,10 +97,17 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
     if (record.currentTechnology) setValue('currentTechnologyCatalogId', optionId(technologies, null, record.currentTechnology), { shouldDirty: true, shouldValidate: true });
   };
 
+  const hasInactiveReference = Boolean(selected && (
+    (selected.profileCatalogId && !profiles.some((option) => option.id === selected.profileCatalogId)) ||
+    (selected.technologyProfileCatalogId && !technologyProfiles.some((option) => option.id === selected.technologyProfileCatalogId)) ||
+    (selected.currentTechnologyCatalogId && !technologies.some((option) => option.id === selected.currentTechnologyCatalogId))
+  ));
+
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-3">
       <input type="hidden" {...register('startDate')} />
       <input type="hidden" {...register('hireDate')} />
+      {hasInactiveReference ? <BBVAAlert tone="warning">Este colaborador conserva referencias históricas a catálogos inactivos. No se ofrecen como opciones seleccionables; elige un registro activo antes de guardar.</BBVAAlert> : null}
       <section className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Identificación</h3>
         <div className="grid gap-3 md:grid-cols-12">
@@ -120,19 +123,19 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-4">
             <span className={labelClass}>Perfil *</span>
-            <BBVASearchableSelect value={profileCatalogId ?? ''} onChange={(value) => setValue('profileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(profiles, 'Seleccionar', selected?.profileCatalogId, selected?.profile)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil" />
+            <BBVASearchableSelect value={profileCatalogId ?? ''} onChange={(value) => setValue('profileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(profiles, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil" />
             <input type="hidden" {...register('profileCatalogId', { required: true })} />
             <input type="hidden" {...register('profile')} />
           </label>
           <label className="md:col-span-3">
             <span className={labelClass}>Perfil tecnológico *</span>
-            <BBVASearchableSelect value={technologyProfileCatalogId ?? ''} onChange={(value) => setValue('technologyProfileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologyProfiles, 'Seleccionar', selected?.technologyProfileCatalogId, selected?.technologyProfile)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil tecnológico" />
+            <BBVASearchableSelect value={technologyProfileCatalogId ?? ''} onChange={(value) => setValue('technologyProfileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologyProfiles, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil tecnológico" />
             <input type="hidden" {...register('technologyProfileCatalogId', { required: true })} />
             <input type="hidden" {...register('technologyProfile')} />
           </label>
           <label className="md:col-span-3">
             <span className={labelClass}>Tecnología actual *</span>
-            <BBVASearchableSelect value={currentTechnologyCatalogId ?? ''} onChange={(value) => setValue('currentTechnologyCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologies, 'Seleccionar', selected?.currentTechnologyCatalogId, selected?.currentTechnology)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Tecnología actual" />
+            <BBVASearchableSelect value={currentTechnologyCatalogId ?? ''} onChange={(value) => setValue('currentTechnologyCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologies, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Tecnología actual" />
             <input type="hidden" {...register('currentTechnologyCatalogId', { required: true })} />
             <input type="hidden" {...register('currentTechnology')} />
           </label>
@@ -156,10 +159,8 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
         busy={saving}
         submitDisabled={catalogsLoading}
         onBack={onCancel}
-        onDelete={onDelete}
         createLabel="Guardar"
         editLabel="Guardar cambios"
-        deleteLabel="Eliminar colaborador"
       />
     </form>
   );

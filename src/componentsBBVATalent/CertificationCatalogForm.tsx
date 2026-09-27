@@ -53,15 +53,19 @@ export const CertificationCatalogForm: React.FC<Props> = ({ selected, saving, mo
   const technologies = technologiesQuery.data?.items ?? [];
   const technologyOptions = [
     { value: '', label: 'Sin tecnología' },
-    ...(selected?.technologyId && selected.technologyName && !technologies.some((item) => item.id === selected.technologyId)
-      ? [{ value: selected.technologyId, label: selected.technologyName }]
-      : []),
     ...technologies.map((item) => ({ value: item.id, label: item.name })),
   ];
+  const hasInactiveTechnology = Boolean(selected?.technologyId && !technologies.some((item) => item.id === selected.technologyId));
   const [values, setValues] = useState<CertificationCatalogPayload>(() => initialPayload(selected));
   const [validation, setValidation] = useState<string | null>(null);
 
   useEffect(() => setValues(initialPayload(selected)), [selected]);
+  useEffect(() => {
+    if (!selected?.technologyId || technologiesQuery.isLoading) return;
+    if (!technologies.some((item) => item.id === selected.technologyId) && !readOnly) {
+      setValues((current) => ({ ...current, technologyId: '' }));
+    }
+  }, [readOnly, selected?.technologyId, technologies, technologiesQuery.isLoading]);
 
   const updateType = (type: CertificationType) => {
     if (readOnly) return;
@@ -112,6 +116,7 @@ export const CertificationCatalogForm: React.FC<Props> = ({ selected, saving, mo
   return (
     <form onSubmit={submit} className="space-y-3">
       {validation ? <BBVAAlert tone="error" onClose={() => setValidation(null)}>{validation}</BBVAAlert> : null}
+      {hasInactiveTechnology ? <BBVAAlert tone="warning">La tecnología histórica {selected?.technologyName ?? ''} está inactiva. Se conserva como trazabilidad, pero no puede seleccionarse de nuevo.</BBVAAlert> : null}
 
       <section className={sectionClass}>
         <div className="grid gap-3 md:grid-cols-12">

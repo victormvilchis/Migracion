@@ -76,7 +76,6 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/collaborators/new" element={modulePage(<CollaboratorEditorPage />)} />
               <Route path="/bbva/collaborators/import" element={modulePage(<CollaboratorImportPage />)} />
               <Route path="/bbva/collaborators/:id/edit" element={modulePage(<CollaboratorEditorPage />)} />
-              <Route path="/bbva/collaborators/:id/delete" element={modulePage(<CollaboratorDetailPage mode="delete" />)} />
               <Route path="/bbva/collaborators/:id/manage" element={modulePage(<CollaboratorManagePage />)} />
               <Route path="/bbva/collaborators/:id/move-to-talent" element={modulePage(<CollaboratorMoveToTalentPage />)} />
               <Route path="/bbva/collaborators/:id/certifications" element={modulePage(<CollaboratorCertificationsPage />)} />
@@ -84,7 +83,7 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/delete" element={modulePage(<CollaboratorCertificationDetailPage mode="delete" />)} />
               <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/attempt" element={modulePage(<CertificationAttemptPage />)} />
               <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId" element={modulePage(<CollaboratorCertificationDetailPage mode="view" />)} />
-              <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage mode="view" />)} />
+              <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage />)} />
 
               <Route path="/bbva/certifications/tracking" element={modulePage(<CertificationTrackingPage />)} />
               <Route path="/bbva/certifications/metrics" element={modulePage(<CertificationMetricsPage />)} />

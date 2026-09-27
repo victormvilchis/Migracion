@@ -26,11 +26,16 @@ function normalizeMovePayload(payload: Record<string, unknown> | null): MoveColl
   if (talentStage !== 'AVAILABLE' && talentStage !== 'UNASSIGNED') {
     throw Object.assign(new Error('La etapa destino debe ser Disponible o Desasignado.'), { statusCode: 400 });
   }
+  const affiliationType = String(payload?.affiliationType ?? 'INTERNAL').trim().toUpperCase();
+  if (affiliationType !== 'INTERNAL' && affiliationType !== 'EXTERNAL') {
+    throw Object.assign(new Error('La vinculación debe ser Interno o Externo.'), { statusCode: 400 });
+  }
   const notesValue = String(payload?.notes ?? '').trim();
   return {
     reasonCode: text(payload?.reasonCode, 'El motivo', 40).toUpperCase(),
     effectiveDate: date(payload?.effectiveDate, 'La fecha efectiva'),
     talentStage,
+    affiliationType: affiliationType as 'INTERNAL' | 'EXTERNAL',
     notes: notesValue ? notesValue.slice(0, 1000) : null,
   };
 }

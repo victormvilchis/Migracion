@@ -131,13 +131,10 @@ export class CollaboratorImportRepository {
     const existing = await this.findCatalog(kind, name);
     if (existing) {
       if (existing.status === 'INACTIVE') {
-        const pool = await getDbConnection();
-        const table = catalogTables[kind];
-        await pool.request()
-          .input('id', sql.UniqueIdentifier, existing.id)
-          .input('actorEmail', sql.NVarChar(255), actorEmail)
-          .query(`UPDATE ${table} SET Status=N'ACTIVE',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;`);
-        return { ...existing, status: 'ACTIVE' };
+        throw Object.assign(
+          new Error(`El valor de catálogo “${name}” existe pero está inactivo. Reactívalo explícitamente desde Administración antes de importarlo.`),
+          { statusCode: 409 },
+        );
       }
       return existing;
     }

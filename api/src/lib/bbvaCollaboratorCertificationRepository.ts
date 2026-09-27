@@ -21,9 +21,9 @@ import { importCertificationAttemptFingerprint } from './bbvaCollaboratorImportC
 const STATUS_CASE = `
   CASE
     WHEN pc.Applicable=0 OR pc.BaseStatus=N'NOT_APPLICABLE' THEN N'NOT_APPLICABLE'
-    WHEN pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=1 THEN N'RECERTIFICATION_PENDING'
-    WHEN pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) THEN N'EXPIRED'
-    WHEN pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND cc.ExpiringSoonDays IS NOT NULL AND pc.ExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,CONVERT(date,SYSUTCDATETIME())) THEN N'EXPIRING'
+    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=1 THEN N'RECERTIFICATION_PENDING'
+    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < CONVERT(date,SYSUTCDATETIME()) THEN N'EXPIRED'
+    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND cc.ExpiringSoonDays IS NOT NULL AND effectiveDates.EffectiveExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,CONVERT(date,SYSUTCDATETIME())) THEN N'EXPIRING'
     WHEN pc.BaseStatus=N'APPROVED' THEN N'VALID'
     WHEN pc.BaseStatus=N'FAILED' THEN N'FAILED'
     WHEN pc.BaseStatus=N'APPLIED' THEN N'APPLIED'
@@ -58,8 +58,8 @@ const BASE_SELECT = `
     ${STATUS_CASE} AS status,
     (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt a WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle) AS attemptCount,
     CONVERT(VARCHAR(10),pc.ApplicationDate,23) AS applicationDate,
-    CONVERT(VARCHAR(10),pc.ApprovedDate,23) AS approvedDate,
-    CONVERT(VARCHAR(10),pc.ExpirationDate,23) AS expirationDate,
+    CONVERT(VARCHAR(10),effectiveDates.EffectiveApprovedDate,23) AS approvedDate,
+    CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
     cc.ValidityMonths AS validityMonths,
     cc.ExpiringSoonDays AS expiringSoonDays,
     cc.RecertificationEnabled AS recertificationEnabled,
@@ -72,6 +72,27 @@ const BASE_SELECT = `
   INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
   LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
   INNER JOIN bbva.Collaborator c ON c.PersonId=pc.PersonId
+  OUTER APPLY (
+    SELECT MAX(a.ApplicationDate) AS LatestApprovedAttemptDate
+    FROM bbva.PersonCertificationAttempt a
+    WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle AND a.Result=N'APPROVED'
+  ) latestApproval
+  CROSS APPLY (
+    SELECT
+      CASE
+        WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL
+          AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate)
+          THEN latestApproval.LatestApprovedAttemptDate
+        ELSE pc.ApprovedDate
+      END AS EffectiveApprovedDate,
+      CASE
+        WHEN pc.BaseStatus=N'APPROVED'
+          AND cc.ValidityMonths IS NOT NULL
+          AND (CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END) IS NOT NULL
+          THEN DATEADD(month,cc.ValidityMonths,(CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END))
+        ELSE pc.ExpirationDate
+      END AS EffectiveExpirationDate
+  ) effectiveDates
 `;
 
 function toRecord(row: any): CollaboratorCertificationRecord {
@@ -511,14 +532,35 @@ export class CollaboratorCertificationRepository {
              cc.CertificationType AS certificationType,t.Name AS technologyName,pc.Source AS source,
              pc.Applicable AS applicable,pc.BaseStatus AS baseStatus,${STATUS_CASE} AS calculatedStatus,
              pc.CurrentCycle AS currentCycle,CONVERT(VARCHAR(10),pc.ApplicationDate,23) AS applicationDate,
-             CONVERT(VARCHAR(10),pc.ApprovedDate,23) AS approvedDate,CONVERT(VARCHAR(10),pc.ExpirationDate,23) AS expirationDate,
+             CONVERT(VARCHAR(10),effectiveDates.EffectiveApprovedDate,23) AS approvedDate,CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
              CONVERT(VARCHAR(10),pc.InitialDueDate,23) AS initialDueDate,
              pc.ImportedCertificationStatus AS importedCertificationStatus,pc.ImportedExamStatus AS importedExamStatus,
              pc.LastScore10 AS lastScore10,pc.ImportedAttemptNumber AS importedAttemptNumber,
              pc.LastDataSource AS lastDataSource,pc.LastImportFingerprint AS lastImportFingerprint
       FROM bbva.PersonCertification pc
       INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
-      LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId;
+      LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
+      OUTER APPLY (
+        SELECT MAX(a.ApplicationDate) AS LatestApprovedAttemptDate
+        FROM bbva.PersonCertificationAttempt a
+        WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle AND a.Result=N'APPROVED'
+      ) latestApproval
+      CROSS APPLY (
+        SELECT
+          CASE
+            WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL
+              AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate)
+              THEN latestApproval.LatestApprovedAttemptDate
+            ELSE pc.ApprovedDate
+          END AS EffectiveApprovedDate,
+          CASE
+            WHEN pc.BaseStatus=N'APPROVED'
+              AND cc.ValidityMonths IS NOT NULL
+              AND (CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END) IS NOT NULL
+              THEN DATEADD(month,cc.ValidityMonths,(CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END))
+            ELSE pc.ExpirationDate
+          END AS EffectiveExpirationDate
+      ) effectiveDates;
     `);
     const attempts = await pool.request().query(`
       SELECT CAST(a.Id AS NVARCHAR(36)) AS id,CAST(a.PersonCertificationId AS NVARCHAR(36)) AS recordId,

@@ -40,6 +40,44 @@ export const CollaboratorCertificationDetailPage: React.FC<Props> = ({ mode = 'v
   if (query.error || !detail) return <BBVAAlert tone="error">{(query.error as Error)?.message || 'Certificación no encontrada.'}</BBVAAlert>;
 
   const item = detail.item;
+
+  if (mode === 'view') {
+    return (
+      <div className="space-y-3 animate-fade-in">
+        <div className="flex justify-start"><BBVAFormBackButton onBack={() => navigate(`/bbva/collaborators/${id}/certifications`)} /></div>
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-[9px] font-semibold uppercase tracking-[0.05em] text-slate-400">Certificación</div>
+              <h1 className="mt-1 text-[16px] font-semibold text-slate-950">{item.certificationName}</h1>
+              <div className="mt-1 text-[10px] text-slate-500">{[item.technologyName, item.provider].filter(Boolean).join(' · ') || 'General'}</div>
+            </div>
+            <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-700">{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Última aprobación</div><div className="mt-1 text-[11px] font-semibold">{formatDate(item.approvedDate)}</div></div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Vencimiento</div><div className="mt-1 text-[11px] font-semibold">{formatDate(item.expirationDate)}</div></div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Ciclo actual</div><div className="mt-1 text-[11px] font-semibold">{item.currentCycle}</div></div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Intentos del ciclo</div><div className="mt-1 text-[11px] font-semibold">{item.attemptCount}</div></div>
+          </div>
+          {item.notes ? <div className="mt-3 rounded-xl border border-slate-200 px-3 py-2 text-[10.5px] text-slate-600"><span className="font-semibold text-slate-700">Observaciones: </span>{item.notes}</div> : null}
+        </section>
+
+        <details className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold text-slate-800">Intentos ({detail.attempts.length})</summary>
+          <div className="border-t border-slate-100 p-4">
+            <div className="space-y-2">{detail.attempts.length ? detail.attempts.map((attempt) => <div key={attempt.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2"><div><div className="text-[10.5px] font-semibold">Ciclo {attempt.cycleNumber} · Intento {attempt.attemptNumber}</div><div className="mt-0.5 text-[9.5px] text-slate-500">{formatDate(attempt.applicationDate)}</div></div><span className="text-[10px] font-medium text-slate-600">{attempt.result === 'APPROVED' ? 'Aprobado' : attempt.result === 'FAILED' ? 'Reprobado' : 'Pendiente'}</span></div>) : <div className="text-[10.5px] text-slate-500">Aún no hay intentos registrados.</div>}</div>
+          </div>
+        </details>
+
+        <details className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <summary className="cursor-pointer px-4 py-3 text-[11px] font-semibold text-slate-800">Historial técnico ({detail.history.length})</summary>
+          <div className="border-t border-slate-100 p-4"><div className="space-y-2">{detail.history.length ? detail.history.map((history) => <div key={history.id} className="border-l-2 border-blue-200 pl-3"><div className="text-[10px] font-medium text-slate-700">{history.description}</div><div className="mt-0.5 text-[9px] text-slate-400">{new Date(history.createdAt).toLocaleString('es-MX')}</div></div>) : <div className="text-[10.5px] text-slate-500">Sin movimientos registrados.</div>}</div></div>
+        </details>
+      </div>
+    );
+  }
+
   const save = async () => {
     if (!id || !certificationRecordId) return;
     try {
@@ -80,17 +118,6 @@ export const CollaboratorCertificationDetailPage: React.FC<Props> = ({ mode = 'v
 
         <BBVAFormActions mode={mode} busy={updateMutation.isPending || deleteMutation.isPending} onBack={() => navigate(`/bbva/collaborators/${id}/certifications`)} onDelete={() => setConfirmDelete(true)} editLabel="Guardar cambios" deleteLabel="Marcar no aplica" />
       </form>
-
-      <div className="grid gap-3 lg:grid-cols-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-[11px] font-semibold text-slate-900">Intentos</h2>
-          <div className="mt-3 space-y-2">{detail.attempts.length ? detail.attempts.map((attempt) => <div key={attempt.id} className="rounded-xl border border-slate-200 px-3 py-2"><div className="flex items-center justify-between gap-3"><span className="text-[10.5px] font-semibold">Ciclo {attempt.cycleNumber} · Intento {attempt.attemptNumber}</span><span className="text-[10px] text-slate-500">{attempt.result === 'APPROVED' ? 'Aprobado' : attempt.result === 'FAILED' ? 'Reprobado' : 'Pendiente'}</span></div><div className="mt-1 text-[9.5px] text-slate-500">Aplicación: {formatDate(attempt.applicationDate)}</div>{attempt.notes ? <div className="mt-1 text-[10px] text-slate-600">{attempt.notes}</div> : null}</div>) : <div className="text-[10.5px] text-slate-500">Aún no hay intentos registrados.</div>}</div>
-        </section>
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="text-[11px] font-semibold text-slate-900">Historial</h2>
-          <div className="mt-3 space-y-2">{detail.history.length ? detail.history.map((history) => <div key={history.id} className="border-l-2 border-blue-200 pl-3"><div className="text-[10px] font-semibold text-slate-800">{history.description}</div><div className="mt-0.5 text-[9px] text-slate-400">{new Date(history.createdAt).toLocaleString('es-MX')}</div></div>) : <div className="text-[10.5px] text-slate-500">Sin movimientos registrados.</div>}</div>
-        </section>
-      </div>
 
       <ConfirmDialog open={confirmDelete} title="Marcar certificación como no aplica" message="La certificación dejará de participar en el seguimiento actual. Sus intentos y su historial se conservarán." confirmLabel="Marcar no aplica" tone="danger" busy={deleteMutation.isPending} onCancel={() => setConfirmDelete(false)} onConfirm={() => void deleteRecord()} />
     </div>

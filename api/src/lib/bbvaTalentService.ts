@@ -8,6 +8,7 @@ import {
   type TalentRecord,
   type TalentStage,
   type TalentType,
+  type TalentAffiliation,
 } from './bbvaTalentDomain.js';
 import { TalentRepository } from './bbvaTalentRepository.js';
 import { resolveProfessionalCatalogReferences } from './bbvaProfessionalCatalogService.js';
@@ -31,6 +32,12 @@ function normalizeType(value: unknown): TalentType {
   const type = String(value ?? '').trim().toUpperCase() as TalentType;
   if (!TALENT_TYPES.includes(type)) throw new Error(`Tipo de talento inválido. Valores permitidos: ${TALENT_TYPES.join(', ')}.`);
   return type;
+}
+
+function normalizeAffiliation(value: unknown): TalentAffiliation {
+  const affiliation = String(value ?? 'INTERNAL').trim().toUpperCase() as TalentAffiliation;
+  if (affiliation !== 'INTERNAL' && affiliation !== 'EXTERNAL') throw new Error('La vinculación debe ser Interno o Externo.');
+  return affiliation;
 }
 
 function normalizeStage(value: unknown, type: TalentType): TalentStage {
@@ -77,6 +84,7 @@ async function normalizePayload(payload: any): Promise<TalentInput> {
 
   return {
     talentType,
+    affiliationType: normalizeAffiliation(payload?.affiliationType),
     softtekCode,
     corporateUser: cleanText(payload?.corporateUser, 100)?.toUpperCase() ?? null,
     email,
@@ -128,8 +136,8 @@ export class TalentService {
   get(id: string): Promise<TalentRecord | null> { return repository.findById(id); }
   async create(payload: any, actorEmail: string): Promise<TalentRecord> {
     const normalized = await normalizePayload(payload);
-    if (normalized.talentType === 'BBVA_EXIT') {
-      throw new Error('La Baja de BBVA no puede registrarse manualmente; se genera desde Colaboradores.');
+    if (normalized.talentType === 'BBVA_EXIT' || normalized.talentType === 'FORMER_COLLABORATOR') {
+      throw new Error('Los excolaboradores se generan desde el flujo Colaborador → Banco de talento.');
     }
     return repository.create(normalized, actorEmail);
   }
@@ -142,7 +150,7 @@ export class TalentService {
     return repository.updateStage(id, stage, actorEmail);
   }
 
-  delete(id: string): Promise<boolean> { return repository.delete(id); }
+  delete(id: string, actorEmail: string): Promise<boolean> { return repository.delete(id, actorEmail); }
   history(id: string): Promise<TalentHistoryRecord[]> { return repository.listHistory(id); }
   saveCv(id: string, payload: any, actorEmail: string) { return repository.saveCv(id, normalizeCv(payload), actorEmail); }
   getCv(id: string) { return repository.getCv(id); }

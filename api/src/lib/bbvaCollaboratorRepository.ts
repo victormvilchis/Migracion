@@ -136,31 +136,9 @@ export class CollaboratorRepository {
   async delete(id: string): Promise<boolean> {
     const current = await this.findById(id);
     if (!current) return false;
-    const pool = await getDbConnection();
-    const transaction = new sql.Transaction(pool);
-    await transaction.begin();
-    try {
-      const dependencies = await new sql.Request(transaction)
-        .input('personId', sql.UniqueIdentifier, current.personId)
-        .query(`
-          SELECT
-            CASE WHEN EXISTS (SELECT 1 FROM bbva.TalentBankEntry WHERE PersonId=@personId) THEN 1 ELSE 0 END AS hasTalent,
-            CASE WHEN EXISTS (SELECT 1 FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId AND FromState IS NOT NULL) THEN 1 ELSE 0 END AS hasMovement,
-            CASE WHEN EXISTS (SELECT 1 FROM bbva.PersonCertification WHERE PersonId=@personId) THEN 1 ELSE 0 END AS hasCertifications;
-        `);
-      const dependency = dependencies.recordset[0] as { hasTalent: number; hasMovement: number; hasCertifications: number };
-      if (Number(dependency.hasTalent) > 0 || Number(dependency.hasMovement) > 0 || Number(dependency.hasCertifications) > 0) {
-        throw Object.assign(new Error('No es posible eliminar a esta persona porque ya tiene historial de ciclo de vida. Utiliza la acción Mover a Banco de talento.'), { statusCode: 409 });
-      }
-
-      await new sql.Request(transaction).input('id', sql.UniqueIdentifier, id).query(`DELETE FROM bbva.CollaboratorHistory WHERE CollaboratorId=@id; DELETE FROM bbva.Collaborator WHERE Id=@id;`);
-      await new sql.Request(transaction).input('personId', sql.UniqueIdentifier, current.personId).query(`
-        DELETE FROM bbva.PersonLifecycleHistory WHERE PersonId=@personId;
-        DELETE FROM bbva.PersonDocument WHERE PersonId=@personId;
-        DELETE FROM bbva.Person WHERE Id=@personId;
-      `);
-      await transaction.commit();
-      return true;
-    } catch (error) { await transaction.rollback(); throw error; }
+    throw Object.assign(
+      new Error('Los colaboradores no se eliminan. Utiliza Mover a Banco de talento para conservar su identidad, certificaciones e historial.'),
+      { statusCode: 409 },
+    );
   }
 }

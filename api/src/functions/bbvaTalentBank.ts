@@ -43,7 +43,7 @@ export async function talentItemHandler(request: HttpRequest, context: Invocatio
     }
 
     if (request.method === 'DELETE') {
-      const deleted = await service.delete(id);
+      const deleted = await service.delete(id, user.email);
       return deleted ? { status: 200, jsonBody: { deleted: true } } : { status: 404, jsonBody: { error: 'Registro de Banco de talento no encontrado.' } };
     }
 

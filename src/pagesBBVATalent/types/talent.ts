@@ -1,11 +1,17 @@
-export const TALENT_TYPES = ['ACADEMY', 'PROSPECT', 'BBVA_EXIT'] as const;
+export const TALENT_TYPES = ['ACADEMY', 'PROSPECT', 'FORMER_COLLABORATOR', 'BBVA_EXIT'] as const;
 export type TalentType = (typeof TALENT_TYPES)[number];
 
 export const TALENT_TYPE_LABELS: Record<TalentType, string> = {
   ACADEMY: 'Academia',
   PROSPECT: 'Prospecto de colaborador',
-  BBVA_EXIT: 'Baja de BBVA',
+  FORMER_COLLABORATOR: 'Excolaborador',
+  BBVA_EXIT: 'Excolaborador',
 };
+
+export const TALENT_AFFILIATIONS = ['INTERNAL', 'EXTERNAL'] as const;
+export type TalentAffiliation = (typeof TALENT_AFFILIATIONS)[number];
+export const TALENT_AFFILIATION_LABELS: Record<TalentAffiliation, string> = { INTERNAL: 'Interno', EXTERNAL: 'Externo' };
+export type TalentRecordStatus = 'ACTIVE' | 'DELETED';
 
 export const TALENT_STAGES = [
   'REGISTERED',
@@ -43,6 +49,10 @@ export interface Talent {
   id: string;
   personId: string;
   talentType: TalentType;
+  affiliationType: TalentAffiliation;
+  recordStatus: TalentRecordStatus;
+  deletedAt: string | null;
+  deletedByEmail: string | null;
   softtekCode: string | null;
   corporateUser: string | null;
   email: string;
@@ -76,6 +86,7 @@ export interface Talent {
 
 export interface TalentPayload {
   talentType: TalentType;
+  affiliationType: TalentAffiliation;
   softtekCode: string;
   corporateUser: string;
   email: string;

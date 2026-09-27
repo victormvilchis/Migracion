@@ -289,7 +289,7 @@ async function catalogActions(row: NormalizedRow): Promise<ImportCatalogAction[]
   for (const candidate of candidates) {
     if (!candidate.value) continue;
     const existing = await repository.findCatalog(candidate.type, candidate.value);
-    actions.push({ type: candidate.type, value: candidate.value, action: existing?.status === 'ACTIVE' ? 'USE_EXISTING' : 'CREATE' });
+    actions.push({ type: candidate.type, value: candidate.value, action: existing ? (existing.status === 'ACTIVE' ? 'USE_EXISTING' : 'INACTIVE') : 'CREATE' });
   }
   return actions;
 }
@@ -565,6 +565,21 @@ export class CollaboratorImportService {
         continue;
       }
 
+      const rowCatalogActions = await catalogActions(match.row);
+      const inactiveCatalogs = rowCatalogActions.filter((action) => action.action === 'INACTIVE');
+      if (inactiveCatalogs.length > 0) {
+        const labels: Record<ImportCatalogAction['type'], string> = { profile: 'perfil', technologyProfile: 'perfil tecnológico', technology: 'tecnología' };
+        for (const inactive of inactiveCatalogs) {
+          conflicts.push({
+            rowKey: match.row.rowKey,
+            rowNumber: match.row.rowNumber,
+            fullName: match.row.fullName,
+            message: `El ${labels[inactive.type]} “${inactive.value}” existe en el catálogo pero está inactivo. Reactívalo explícitamente en Administración o corrige el Excel; la importación no lo reactivará automáticamente.`,
+          });
+        }
+        continue;
+      }
+
       const prepared = prepareCertifications(match.row, match.person, certificationCatalog, certificationStates);
       preparedByRow.set(match.row.rowKey, prepared);
       for (const cert of prepared) {
@@ -578,7 +593,7 @@ export class CollaboratorImportService {
           rowKey: match.row.rowKey,rowNumber: match.row.rowNumber,fullName: match.row.fullName,email: match.row.email,
           softtekCode: match.row.softtekCode,corporateUser: match.row.corporateUser,profile: match.row.profile,
           technologyProfile: match.row.technologyProfile,currentTechnology: match.row.currentTechnology,expertise: match.row.expertise,
-          startDate: match.row.startDate,catalogActions: await catalogActions(match.row),certifications: prepared.map((item) => item.preview),
+          startDate: match.row.startDate,catalogActions: rowCatalogActions,certifications: prepared.map((item) => item.preview),
         });
         continue;
       }
@@ -595,7 +610,7 @@ export class CollaboratorImportService {
         changedItems.push({
           rowKey: match.row.rowKey,rowNumber: match.row.rowNumber,collaboratorId: match.person.collaboratorId ?? '',personId: match.person.personId,
           fullName: match.row.fullName,reactivationRequired: match.person.collaboratorStatus !== 'ACTIVE',changes,
-          catalogActions: await catalogActions(match.row),certifications: prepared.map((item) => item.preview),
+          catalogActions: rowCatalogActions,certifications: prepared.map((item) => item.preview),
         });
       }
     }

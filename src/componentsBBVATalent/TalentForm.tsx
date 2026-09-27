@@ -6,6 +6,8 @@ import { useCatalogOptions } from '../pagesBBVATalent/hooks/useCatalog';
 import type { CatalogOption } from '../pagesBBVATalent/types/catalog';
 import {
   EXPERTISE_LEVELS,
+  TALENT_AFFILIATION_LABELS,
+  TALENT_AFFILIATIONS,
   TALENT_STAGES,
   TALENT_STAGE_LABELS,
   TALENT_TYPE_LABELS,
@@ -31,7 +33,7 @@ const labelClass = 'mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[
 const sectionClass = 'space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75';
 
 function optionId(options: CatalogOption[], currentId: string | null | undefined, currentName: string | null | undefined): string {
-  if (currentId) return currentId;
+  if (currentId && options.some((option) => option.id === currentId)) return currentId;
   const name = (currentName ?? '').trim().toLocaleUpperCase('es-MX');
   return options.find((option) => option.name.trim().toLocaleUpperCase('es-MX') === name)?.id ?? '';
 }
@@ -40,12 +42,8 @@ function optionName(options: CatalogOption[], id: string): string {
   return options.find((option) => option.id === id)?.name ?? '';
 }
 
-function toSelectOptions(options: CatalogOption[], emptyLabel = 'Seleccionar', currentId?: string | null, currentName?: string | null): BBVASearchableSelectOption[] {
-  const mapped = options.map((option) => ({ value: option.id, label: option.name }));
-  if (currentId && currentName && !mapped.some((option) => option.value === currentId)) {
-    mapped.unshift({ value: currentId, label: currentName });
-  }
-  return [{ value: '', label: emptyLabel }, ...mapped];
+function toSelectOptions(options: CatalogOption[], emptyLabel = 'Seleccionar'): BBVASearchableSelectOption[] {
+  return [{ value: '', label: emptyLabel }, ...options.map((option) => ({ value: option.id, label: option.name }))];
 }
 
 function toFormValues(
@@ -57,6 +55,7 @@ function toFormValues(
 ): TalentFormValues {
   return {
     talentType: talent?.talentType ?? initialType,
+    affiliationType: talent?.affiliationType ?? 'INTERNAL',
     softtekCode: talent?.softtekCode ?? '', corporateUser: talent?.corporateUser ?? '', email: talent?.email ?? '', firstName: talent?.firstName ?? '', lastName: talent?.lastName ?? '',
     profile: talent?.profile ?? '', profileCatalogId: optionId(profiles, talent?.profileCatalogId, talent?.profile),
     technologyProfile: talent?.technologyProfile ?? '', technologyProfileCatalogId: optionId(technologyProfiles, talent?.technologyProfileCatalogId, talent?.technologyProfile),
@@ -91,6 +90,7 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
   const technologies = useMemo(() => technologiesQuery.data?.items ?? [], [technologiesQuery.data]);
   const { register, handleSubmit, reset, watch, setValue } = useForm<TalentFormValues>({ defaultValues: toFormValues(selected, initialTalentType, [], [], []) });
   const talentType = watch('talentType');
+  const affiliationType = watch('affiliationType');
   const isValue = watch('softtekCode');
   const profileCatalogId = watch('profileCatalogId');
   const technologyProfileCatalogId = watch('technologyProfileCatalogId');
@@ -151,6 +151,7 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
   return (
     <form onSubmit={handleSubmit(submit)} className="space-y-3">
       <input type="hidden" {...register('talentType')} />
+      <input type="hidden" {...register('affiliationType')} />
       <input type="hidden" {...register('profile')} />
       <input type="hidden" {...register('technologyProfile')} />
       <input type="hidden" {...register('currentTechnology')} />
@@ -163,7 +164,7 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
       <input type="hidden" {...register('hireDate')} />
       <input type="hidden" {...register('entryDate')} />
 
-      {selected?.talentType === 'BBVA_EXIT' ? <BBVAAlert tone="info">Registro proveniente de una baja de BBVA. Conserva el formulario profesional completo.</BBVAAlert> : null}
+      {selected?.talentType === 'FORMER_COLLABORATOR' || selected?.talentType === 'BBVA_EXIT' ? <BBVAAlert tone="info">Excolaborador en Banco de talento. El movimiento conserva su motivo, etapa y trazabilidad histórica.</BBVAAlert> : null}
       {formError ? <BBVAAlert tone="error" onClose={() => setFormError(null)}>{formError}</BBVAAlert> : null}
 
       <section className={sectionClass}>
@@ -180,22 +181,28 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
         </div>
       </section>
 
+      {selected && (
+        (selected.profileCatalogId && !profiles.some((option) => option.id === selected.profileCatalogId)) ||
+        (selected.technologyProfileCatalogId && !technologyProfiles.some((option) => option.id === selected.technologyProfileCatalogId)) ||
+        (selected.currentTechnologyCatalogId && !technologies.some((option) => option.id === selected.currentTechnologyCatalogId))
+      ) ? <BBVAAlert tone="warning">Este registro conserva referencias históricas a catálogos inactivos. Se muestran como trazabilidad, pero no pueden volver a seleccionarse; elige valores activos para guardar cambios.</BBVAAlert> : null}
+
       <section className={sectionClass}>
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Información profesional</h3>
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-4">
             <span className={labelClass}>Perfil {talentType === 'ACADEMY' ? '*' : ''}</span>
-            <BBVASearchableSelect value={profileCatalogId ?? ''} onChange={(value) => setValue('profileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(profiles, 'Seleccionar', selected?.profileCatalogId, selected?.profile)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil" />
+            <BBVASearchableSelect value={profileCatalogId ?? ''} onChange={(value) => setValue('profileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(profiles, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil" />
           </label>
           {fullForm ? (
             <label className="md:col-span-3">
               <span className={labelClass}>Perfil tecnológico *</span>
-              <BBVASearchableSelect value={technologyProfileCatalogId ?? ''} onChange={(value) => setValue('technologyProfileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologyProfiles, 'Seleccionar', selected?.technologyProfileCatalogId, selected?.technologyProfile)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil tecnológico" />
+              <BBVASearchableSelect value={technologyProfileCatalogId ?? ''} onChange={(value) => setValue('technologyProfileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologyProfiles, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil tecnológico" />
             </label>
           ) : null}
           <label className={fullForm ? 'md:col-span-3' : 'md:col-span-5'}>
             <span className={labelClass}>Tecnología actual {talentType === 'ACADEMY' ? '*' : ''}</span>
-            <BBVASearchableSelect value={currentTechnologyCatalogId ?? ''} onChange={(value) => setValue('currentTechnologyCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologies, 'Seleccionar', selected?.currentTechnologyCatalogId, selected?.currentTechnology)} disabled={catalogsLoading || readOnly || saving} ariaLabel="Tecnología actual" />
+            <BBVASearchableSelect value={currentTechnologyCatalogId ?? ''} onChange={(value) => setValue('currentTechnologyCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologies, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Tecnología actual" />
           </label>
           {fullForm ? (
             <label className="md:col-span-2">
@@ -212,6 +219,10 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
           <label className="md:col-span-2"><span className={labelClass}>Inicio vigencia</span><BBVADatePicker value={platformStartDate} onChange={(value) => setValue('platformStartDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Inicio de vigencia" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Contratación</span><BBVADatePicker value={hireDate} onChange={(value) => setValue('hireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación" /></label>
           <label className="md:col-span-2"><span className={labelClass}>Alta Banco de talento</span><BBVADatePicker value={entryDate} onChange={(value) => setValue('entryDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta en Banco de talento" /></label>
+          <label className="md:col-span-2">
+            <span className={labelClass}>Vinculación</span>
+            <BBVASearchableSelect value={affiliationType ?? 'INTERNAL'} onChange={(value) => setValue('affiliationType', value as TalentFormValues['affiliationType'], { shouldDirty: true, shouldValidate: true })} options={TALENT_AFFILIATIONS.map((item) => ({ value: item, label: TALENT_AFFILIATION_LABELS[item] }))} disabled={readOnly || saving} ariaLabel="Vinculación" />
+          </label>
           <label className="md:col-span-2">
             <span className={labelClass}>Etapa</span>
             <BBVASearchableSelect value={stage ?? ''} onChange={(value) => setValue('stage', value as TalentFormValues['stage'], { shouldDirty: true, shouldValidate: true })} options={TALENT_STAGES.filter((item) => item !== 'CONVERTED').map((item) => ({ value: item, label: TALENT_STAGE_LABELS[item] }))} disabled={readOnly || saving} ariaLabel="Etapa" />
