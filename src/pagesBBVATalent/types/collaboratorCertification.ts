@@ -45,6 +45,7 @@ export interface CollaboratorCertification {
   expirationDate: string | null;
   validityMonths: number | null;
   expiringSoonDays: number | null;
+  maxAttempts: number | null;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;
@@ -108,10 +109,34 @@ export interface CertificationTrackingItem {
   currentCycle: number;
   attemptCount: number;
   nextAttemptNumber: number;
+  maxAttempts: number | null;
   scheduledDate: string | null;
   lastApplicationDate: string | null;
   approvedDate: string | null;
   expirationDate: string | null;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
+}
+
+export type CertificationCommunicationContext = 'APPROVED' | 'FIRST_FAILED' | 'INTERMEDIATE_FAILED' | 'LAST_FAILED' | 'LOW' | 'DEFAULT';
+export type CertificationCommunicationEmailStatus = 'NOT_PREPARED' | 'PREPARED' | 'SENT' | 'FAILED';
+
+export interface CertificationCommunication {
+  id: string;
+  certificationRecordId: string;
+  attemptId: string | null;
+  cycleNumber: number;
+  context: CertificationCommunicationContext;
+  postcardTemplateId: string;
+  postcardTemplateVersion: number;
+  pngBase64: string;
+  recipientEmail: string | null;
+  emailStatus: CertificationCommunicationEmailStatus;
+  emailTemplateId: string | null;
+  emailTemplateVersion: number | null;
+  emailSubject: string | null;
+  emailBody: string | null;
+  generatedAt: string;
+  providerConfigured: boolean;
+  providerMessage: string;
 }

@@ -49,8 +49,13 @@ export class CollaboratorCertificationService {
   }
 
   async update(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string) {
+    const scheduledDate = normalizeDate(valueOf(payload, 'scheduledDate'), 'La fecha programada');
+    if (scheduledDate) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (scheduledDate < today) throw Object.assign(new Error('La fecha programada no puede estar en el pasado.'), { statusCode: 400 });
+    }
     const input: CertificationUpdateInput = {
-      applicationDate: normalizeDate(valueOf(payload, 'applicationDate'), 'La fecha de aplicación'),
+      scheduledDate,
       notes: cleanText(valueOf(payload, 'notes'), 1500),
       mandatory: Boolean(valueOf(payload, 'mandatory')),
     };

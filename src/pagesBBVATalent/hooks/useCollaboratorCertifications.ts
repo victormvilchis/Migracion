@@ -30,7 +30,7 @@ export function useAddCollaboratorCertification(collaboratorId: string) {
 
 export function useUpdateCollaboratorCertification(collaboratorId: string) {
   const invalidate = useInvalidate(collaboratorId);
-  return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { applicationDate: string; notes: string; mandatory: boolean } }) => collaboratorCertificationApi.update(collaboratorId, recordId, payload), onSuccess: invalidate });
+  return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { scheduledDate: string; notes: string; mandatory: boolean } }) => collaboratorCertificationApi.update(collaboratorId, recordId, payload), onSuccess: invalidate });
 }
 
 export function useAddCertificationAttempt(collaboratorId: string) {
@@ -50,4 +50,12 @@ export function useMarkCertificationNotApplicable(collaboratorId: string) {
 
 export function useCertificationTracking() {
   return useQuery({ queryKey: ['certification-tracking'], queryFn: collaboratorCertificationApi.tracking });
+}
+
+export function useGenerateCertificationCommunication(collaboratorId: string) {
+  return useMutation({ mutationFn: ({ recordId, attemptId, regenerate = false }: { recordId: string; attemptId: string; regenerate?: boolean }) => collaboratorCertificationApi.generateCommunication(collaboratorId, recordId, attemptId, regenerate) });
+}
+
+export function usePrepareCertificationCommunicationEmail(collaboratorId: string) {
+  return useMutation({ mutationFn: ({ recordId, communicationId, payload }: { recordId: string; communicationId: string; payload: { recipientEmail?: string; subject?: string; body?: string } }) => collaboratorCertificationApi.prepareCommunicationEmail(collaboratorId, recordId, communicationId, payload) });
 }

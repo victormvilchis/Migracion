@@ -494,7 +494,6 @@ const CERTIFICATION_DATA_ERROR_CODES = new Set([
   'INVALID_NORMATIVE_LIMIT',
   'INVALID_SCORE',
   'INVALID_ATTEMPT',
-  'ATTEMPT_EXCEEDS_CONFIGURED_MAX',
   'INVALID_CATALOG_MAPPING',
   'APPROVED_WITHOUT_DATE',
   'FAILED_WITH_ATTEMPT_ZERO',
@@ -557,8 +556,10 @@ function prepareCertifications(
       }
     }
     const excelCalculated = rawStatusToCalculated(evidence.rawCertificationStatus);
-    const ruleGap: string | null = null;
-    if (excelCalculated && evidence.calculatedStatus && excelCalculated !== evidence.calculatedStatus && selected.config?.expiringSoonDays != null) {
+    let ruleGap: string | null = null;
+    if (evidence.expirationDate && selected.config?.expiringSoonDays == null && normalizeKey(evidence.rawCertificationStatus).includes('PROXIMO A VENCER')) {
+      ruleGap = `${evidence.label}: ExpiringSoonDays no está configurado; el umbral no se infirió del Excel.`;
+    } else if (excelCalculated && evidence.calculatedStatus && excelCalculated !== evidence.calculatedStatus && selected.config?.expiringSoonDays != null) {
       issues.push({ code:'EXCEL_STATUS_DIFFERS_FROM_CALCULATION', message:`${evidence.label}: el Excel informa ${evidence.rawCertificationStatus}, pero las reglas vigentes calculan ${evidence.calculatedStatus}. Se conservará el valor del Excel sólo como referencia y se usará el estado calculado.`, blocking:false });
     }
 

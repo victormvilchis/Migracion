@@ -3,8 +3,10 @@ import { getCurrentUser } from '../lib/authzLocal.js';
 import { assertBbvaPermission } from '../lib/bbvaAuthz.js';
 import { bbvaErrorResponse, readBbvaJson } from '../lib/bbvaHttp.js';
 import { CollaboratorCertificationService } from '../lib/bbvaCollaboratorCertificationService.js';
+import { CertificationCommunicationService } from '../lib/bbvaCertificationCommunicationService.js';
 
 const service = new CollaboratorCertificationService();
+const communicationService = new CertificationCommunicationService();
 
 export async function collaboratorCertificationCollectionHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
@@ -92,6 +94,45 @@ export async function certificationTrackingHandler(request: HttpRequest, context
   }
 }
 
+
+export async function collaboratorCertificationCommunicationHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+  try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, request.method === 'GET' ? 'COLLABORATOR_READ' : 'COLLABORATOR_WRITE');
+    const collaboratorId = request.params.id;
+    const recordId = request.params.certificationRecordId;
+    const communicationId = request.params.communicationId;
+    if (!collaboratorId || !recordId) return { status: 400, jsonBody: { error: 'Identificadores requeridos.' } };
+
+    if (request.method === 'POST' && !communicationId) {
+      const item = await communicationService.generate(collaboratorId, recordId, await readBbvaJson(request), user.email);
+      return item ? { status: 201, jsonBody: { item } } : { status: 404, jsonBody: { error: 'No se encontró el intento solicitado.' } };
+    }
+    if (request.method === 'GET' && communicationId) {
+      const item = await communicationService.get(recordId, communicationId);
+      return item ? { status: 200, jsonBody: { item } } : { status: 404, jsonBody: { error: 'Comunicación no encontrada.' } };
+    }
+    return { status: 405, jsonBody: { error: 'Método no permitido.' } };
+  } catch (error) {
+    return bbvaErrorResponse(error, context, 'CollaboratorCertifications');
+  }
+}
+
+export async function collaboratorCertificationCommunicationEmailHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+  try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, 'COLLABORATOR_WRITE');
+    const collaboratorId = request.params.id;
+    const recordId = request.params.certificationRecordId;
+    const communicationId = request.params.communicationId;
+    if (!collaboratorId || !recordId || !communicationId) return { status: 400, jsonBody: { error: 'Identificadores requeridos.' } };
+    const item = await communicationService.prepareEmail(collaboratorId, recordId, communicationId, await readBbvaJson(request));
+    return item ? { status: 200, jsonBody: { item } } : { status: 404, jsonBody: { error: 'Comunicación no encontrada.' } };
+  } catch (error) {
+    return bbvaErrorResponse(error, context, 'CollaboratorCertifications');
+  }
+}
+
 app.http('bbvaCollaboratorCertificationCollection', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
@@ -121,3 +162,6 @@ app.http('bbvaCollaboratorCertificationRecertify', {
 });
 
 app.http('bbvaCertificationTracking', { methods: ['GET'], authLevel: 'anonymous', route: 'bbva/certifications/tracking-items', handler: certificationTrackingHandler });
+
+app.http('bbvaCollaboratorCertificationCommunication', { methods: ['GET','POST'], authLevel: 'anonymous', route: 'bbva/collaborators/{id}/certifications/{certificationRecordId}/communications/{communicationId?}', handler: collaboratorCertificationCommunicationHandler });
+app.http('bbvaCollaboratorCertificationCommunicationEmail', { methods: ['POST'], authLevel: 'anonymous', route: 'bbva/collaborators/{id}/certifications/{certificationRecordId}/communications/{communicationId}/email', handler: collaboratorCertificationCommunicationEmailHandler });

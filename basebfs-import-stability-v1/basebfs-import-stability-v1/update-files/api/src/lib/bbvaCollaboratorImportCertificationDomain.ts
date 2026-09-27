@@ -32,7 +32,6 @@ export interface ImportCertificationCatalogConfig {
   expiringSoonDays: number | null;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
-  maxAttempts: number | null;
   requiresApplicationDate: boolean;
 }
 
@@ -324,13 +323,6 @@ export function parseCertificationEvidence(args: {
   if (score.invalid) issues.push({ code: 'INVALID_SCORE', message: `${BLOCK_LABELS[block]} contiene un promedio fuera de la escala 0–10 o con formato inválido: ${rawScore}.`, blocking: true });
   const attempt = parseAttempt(rawAttempt);
   if (attempt.invalid) issues.push({ code: 'INVALID_ATTEMPT', message: `${BLOCK_LABELS[block]} contiene un intento inválido: ${rawAttempt}.`, blocking: true });
-  if (!attempt.invalid && config?.requiresAttempts && config.maxAttempts !== null && attempt.value !== null && attempt.value > config.maxAttempts) {
-    issues.push({
-      code: 'ATTEMPT_EXCEEDS_CONFIGURED_MAX',
-      message: `${BLOCK_LABELS[block]} informa el intento ${attempt.value}, pero la certificación permite como máximo ${config.maxAttempts}.`,
-      blocking: true,
-    });
-  }
 
   const baseStatus = inferSimpleBaseStatus(block, applicable, rawCertificationStatus, rawExamStatus);
   const examKey = normalizeKey(rawExamStatus);
@@ -352,10 +344,10 @@ export function parseCertificationEvidence(args: {
     issues.push({ code: 'ATTEMPT_WITHOUT_EVIDENCE', message: `${BLOCK_LABELS[block]} informa intento sin evidencia de aplicación.`, blocking: true });
   }
   if (applicable === false && (applicationDate || score.value !== null || attempt.value !== null || ['APROBADO','APROBADA','REPROBADO','REPROBADA'].includes(examKey))) {
-    issues.push({ code: 'NOT_APPLICABLE_WITH_EVIDENCE', message: `${BLOCK_LABELS[block]} está marcada como No aplica; los datos de fecha, resultado, promedio o intento se ignorarán para esta certificación.`, blocking: false });
+    issues.push({ code: 'NOT_APPLICABLE_WITH_EVIDENCE', message: `${BLOCK_LABELS[block]} está marcada como No aplica pero contiene fecha, resultado, promedio o intento.`, blocking: true });
   }
   if (applicable === false && ['APROBADO','APROBADA','SI','FORMADO'].includes(statusKey)) {
-    issues.push({ code: 'NOT_APPLICABLE_WITH_STATUS', message: `${BLOCK_LABELS[block]} está marcada como No aplica; el estado de aprobación/formación del Excel se conservará sólo como referencia y no bloqueará la importación.`, blocking: false });
+    issues.push({ code: 'NOT_APPLICABLE_WITH_STATUS', message: `${BLOCK_LABELS[block]} está marcada como No aplica pero su estado indica aprobación/formación.`, blocking: true });
   }
   if (applicable === true && !rawCertificationStatus && statusOnlyBlock(block)) {
     issues.push({ code: 'APPLICABLE_WITHOUT_STATUS', message: `${BLOCK_LABELS[block]} aplica pero no contiene estado; no se inventará una aprobación.`, blocking: false });

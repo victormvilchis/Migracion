@@ -44,6 +44,7 @@ export interface CollaboratorCertificationRecord {
   expirationDate: string | null;
   validityMonths: number | null;
   expiringSoonDays: number | null;
+  maxAttempts: number | null;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;
@@ -116,6 +117,7 @@ export interface CertificationTrackingRecord {
   currentCycle: number;
   attemptCount: number;
   nextAttemptNumber: number;
+  maxAttempts: number | null;
   scheduledDate: string | null;
   lastApplicationDate: string | null;
   approvedDate: string | null;
@@ -131,7 +133,7 @@ export interface CertificationAttemptInput {
 }
 
 export interface CertificationUpdateInput {
-  applicationDate: string | null;
+  scheduledDate: string | null;
   notes: string | null;
   mandatory: boolean;
 }

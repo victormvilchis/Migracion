@@ -30,6 +30,7 @@ interface BaseRow {
   validityMonths: number | null;
   initialCompletionDays: number | null;
   expiringSoonDays: number | null;
+  maxAttempts: number | null;
   includesTraining: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
@@ -58,6 +59,7 @@ const BASE_SELECT = `
     c.ValidityMonths AS validityMonths,
     c.InitialCompletionDays AS initialCompletionDays,
     c.ExpiringSoonDays AS expiringSoonDays,
+    c.MaxAttempts AS maxAttempts,
     c.IncludesTraining AS includesTraining,
     c.RecertificationEnabled AS recertificationEnabled,
     c.RequiresAttempts AS requiresAttempts,
@@ -86,6 +88,7 @@ function toBaseRecord(row: BaseRow): CertificationCatalogRecord {
     validityMonths: row.validityMonths === null ? null : Number(row.validityMonths),
     initialCompletionDays: row.initialCompletionDays === null ? null : Number(row.initialCompletionDays),
     expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
+    maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
     requirementGroupMinimum: row.requirementGroupMinimum === null ? null : Number(row.requirementGroupMinimum),
   };
 }
@@ -252,6 +255,7 @@ export class BbvaCertificationCatalogRepository {
       .input('validityMonths', sql.Int, input.validityMonths)
       .input('initialCompletionDays', sql.Int, input.initialCompletionDays)
       .input('expiringSoonDays', sql.Int, input.expiringSoonDays)
+      .input('maxAttempts', sql.Int, input.maxAttempts)
                         .input('includesTraining', sql.Bit, input.includesTraining)
       .input('recertificationEnabled', sql.Bit, input.recertificationEnabled)
       .input('requiresAttempts', sql.Bit, input.requiresAttempts)
@@ -264,11 +268,11 @@ export class BbvaCertificationCatalogRepository {
     if (create) {
       await request.query(`
         INSERT INTO bbva.CertificationCatalog (
-          Id,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionDays,ExpiringSoonDays,IncludesTraining,
+          Id,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionDays,ExpiringSoonDays,MaxAttempts,IncludesTraining,
           RecertificationEnabled,RequiresAttempts,RequiresApplicationDate,DefaultMandatory,RequirementGroup,RequirementGroupMinimum,
           Status,CreatedByEmail,UpdatedByEmail
         ) VALUES (
-          @id,@name,@description,@certificationType,@provider,@technologyId,@validityMonths,@initialCompletionDays,@expiringSoonDays,@includesTraining,
+          @id,@name,@description,@certificationType,@provider,@technologyId,@validityMonths,@initialCompletionDays,@expiringSoonDays,@maxAttempts,@includesTraining,
           @recertificationEnabled,@requiresAttempts,@requiresApplicationDate,@defaultMandatory,@requirementGroup,@requirementGroupMinimum,
           N'ACTIVE',@actorEmail,@actorEmail
         );
@@ -277,7 +281,7 @@ export class BbvaCertificationCatalogRepository {
       await request.query(`
         UPDATE bbva.CertificationCatalog SET
           Name=@name,Description=@description,CertificationType=@certificationType,Provider=@provider,TechnologyId=@technologyId,
-          ValidityMonths=@validityMonths,InitialCompletionDays=@initialCompletionDays,ExpiringSoonDays=@expiringSoonDays,
+          ValidityMonths=@validityMonths,InitialCompletionDays=@initialCompletionDays,ExpiringSoonDays=@expiringSoonDays,MaxAttempts=@maxAttempts,
           IncludesTraining=@includesTraining,RecertificationEnabled=@recertificationEnabled,
           RequiresAttempts=@requiresAttempts,RequiresApplicationDate=@requiresApplicationDate,DefaultMandatory=@defaultMandatory,
           RequirementGroup=@requirementGroup,RequirementGroupMinimum=@requirementGroupMinimum,

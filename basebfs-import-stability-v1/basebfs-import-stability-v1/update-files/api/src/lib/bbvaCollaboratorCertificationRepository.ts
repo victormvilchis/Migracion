@@ -64,7 +64,6 @@ const BASE_SELECT = `
     CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
     cc.ValidityMonths AS validityMonths,
     cc.ExpiringSoonDays AS expiringSoonDays,
-    cc.MaxAttempts AS maxAttempts,
     cc.RecertificationEnabled AS recertificationEnabled,
     cc.RequiresAttempts AS requiresAttempts,
     cc.RequiresApplicationDate AS requiresApplicationDate,
@@ -107,7 +106,6 @@ function toRecord(row: any): CollaboratorCertificationRecord {
     attemptCount: Number(row.attemptCount),
     validityMonths: row.validityMonths === null ? null : Number(row.validityMonths),
     expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
-    maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
     lastScore10: row.lastScore10 === null ? null : Number(row.lastScore10),
     importedAttemptNumber: row.importedAttemptNumber === null ? null : Number(row.importedAttemptNumber),
     recertificationEnabled: Boolean(row.recertificationEnabled),
@@ -368,24 +366,22 @@ export class CollaboratorCertificationRepository {
     const pool = await getDbConnection();
     await pool.request()
       .input('recordId', sql.UniqueIdentifier, recordId)
-      .input('scheduledDate', sql.Date, input.scheduledDate)
+      .input('applicationDate', sql.Date, input.applicationDate)
       .input('notes', sql.NVarChar(1500), input.notes)
       .input('mandatory', sql.Bit, input.mandatory)
       .input('actorEmail', sql.NVarChar(255), actorEmail)
       .query(`
         UPDATE bbva.PersonCertification
-        SET NextScheduledDate=@scheduledDate,Notes=@notes,Mandatory=@mandatory,LastDataSource=N'MANUAL',
+        SET NextScheduledDate=@applicationDate,Notes=@notes,Mandatory=@mandatory,LastDataSource=N'MANUAL',
             BaseStatus=CASE
-              WHEN BaseStatus IN (N'PENDING',N'FAILED',N'APPLIED') AND @scheduledDate IS NOT NULL THEN N'SCHEDULED'
-              WHEN BaseStatus=N'SCHEDULED' AND @scheduledDate IS NULL THEN N'PENDING'
+              WHEN BaseStatus=N'PENDING' AND @applicationDate IS NOT NULL THEN N'SCHEDULED'
+              WHEN BaseStatus=N'SCHEDULED' AND @applicationDate IS NULL THEN N'PENDING'
               ELSE BaseStatus
             END,
             UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
         WHERE Id=@recordId;
-        INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,Source,CreatedByEmail)
-        VALUES(@recordId,CASE WHEN @scheduledDate IS NULL THEN N'EXAM_SCHEDULE_CLEARED' ELSE N'EXAM_SCHEDULED' END,
-               CASE WHEN @scheduledDate IS NULL THEN N'Se eliminó la fecha programada de presentación.' ELSE CONCAT(N'Examen programado para ',CONVERT(NVARCHAR(10),@scheduledDate,23),N'.') END,
-               N'MANUAL',@actorEmail);
+        INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
+        VALUES(@recordId,N'UPDATED',N'La configuración de seguimiento de la certificación fue actualizada.',@actorEmail);
       `);
     return (await this.detail(collaboratorId, recordId))?.item ?? null;
   }
@@ -403,7 +399,7 @@ export class CollaboratorCertificationRepository {
     await transaction.begin();
     try {
       const catalog = await new sql.Request(transaction).input('certificationId', sql.UniqueIdentifier, current.item.certificationId).query(`
-        SELECT ValidityMonths,RequiresApplicationDate,RequiresAttempts,MaxAttempts
+        SELECT ValidityMonths,RequiresApplicationDate
         FROM bbva.CertificationCatalog WHERE Id=@certificationId;
       `);
       const config = catalog.recordset[0] as any;
@@ -415,12 +411,7 @@ export class CollaboratorCertificationRepository {
         .input('recordId', sql.UniqueIdentifier, recordId)
         .input('cycle', sql.Int, current.item.currentCycle)
         .query(`SELECT COUNT(1) AS total FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle;`);
-      const attemptsUsed = Number(count.recordset[0]?.total ?? 0);
-      const maxAttempts = config?.MaxAttempts === null || config?.MaxAttempts === undefined ? null : Number(config.MaxAttempts);
-      if (Boolean(config?.RequiresAttempts) && maxAttempts !== null && attemptsUsed >= maxAttempts) {
-        throw Object.assign(new Error(`La certificación ya alcanzó el máximo configurado de ${maxAttempts} intento${maxAttempts === 1 ? '' : 's'} para este ciclo.`), { statusCode: 409, code: 'MAX_ATTEMPTS_REACHED' });
-      }
-      const attemptNumber = attemptsUsed + 1;
+      const attemptNumber = Number(count.recordset[0]?.total ?? 0) + 1;
       const approvedDate = input.result === 'APPROVED' ? (input.applicationDate || new Date().toISOString().slice(0, 10)) : null;
 
       await new sql.Request(transaction)
@@ -537,8 +528,7 @@ export class CollaboratorCertificationRepository {
         CONVERT(VARCHAR(10),effectiveDates.EffectiveApprovedDate,23) AS approvedDate,
         CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
         cc.RecertificationEnabled AS recertificationEnabled,
-        cc.RequiresAttempts AS requiresAttempts,
-        cc.MaxAttempts AS maxAttempts
+        cc.RequiresAttempts AS requiresAttempts
       FROM bbva.PersonCertification pc
       INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
       INNER JOIN bbva.Person p ON p.Id=pc.PersonId
@@ -564,7 +554,6 @@ export class CollaboratorCertificationRepository {
       currentCycle: Number(row.currentCycle),
       attemptCount: Number(row.attemptCount),
       nextAttemptNumber: Number(row.nextAttemptNumber),
-      maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
       recertificationEnabled: Boolean(row.recertificationEnabled),
       requiresAttempts: Boolean(row.requiresAttempts),
     })) as CertificationTrackingRecord[];
@@ -577,7 +566,7 @@ export class CollaboratorCertificationRepository {
       SELECT CAST(cc.Id AS NVARCHAR(36)) AS id,cc.Name AS name,cc.CertificationType AS certificationType,
              t.Name AS technologyName,cc.ValidityMonths AS validityMonths,
              cc.InitialCompletionDays AS initialCompletionDays,cc.ExpiringSoonDays AS expiringSoonDays,
-             cc.RecertificationEnabled AS recertificationEnabled,cc.RequiresAttempts AS requiresAttempts,cc.MaxAttempts AS maxAttempts,
+             cc.RecertificationEnabled AS recertificationEnabled,cc.RequiresAttempts AS requiresAttempts,
              cc.RequiresApplicationDate AS requiresApplicationDate
       FROM bbva.CertificationCatalog cc
       LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
@@ -591,7 +580,6 @@ export class CollaboratorCertificationRepository {
       expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
       recertificationEnabled: Boolean(row.recertificationEnabled),
       requiresAttempts: Boolean(row.requiresAttempts),
-      maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
       requiresApplicationDate: Boolean(row.requiresApplicationDate),
     })) as ImportCertificationCatalogConfig[];
   }

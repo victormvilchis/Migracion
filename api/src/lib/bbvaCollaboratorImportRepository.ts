@@ -215,6 +215,7 @@ export class CollaboratorImportRepository {
         .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
         .input('personId', sql.UniqueIdentifier, personId)
         .input('startDate', sql.Date, input.startDate)
+        .input('deliveryManager', sql.NVarChar(180), input.deliveryManager)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           INSERT INTO bbva.Collaborator(Id,PersonId,Status,StartDate,DeliveryManager,CreatedByEmail,UpdatedByEmail)
@@ -253,6 +254,7 @@ export class CollaboratorImportRepository {
       await new sql.Request(transaction)
         .input('collaboratorId', sql.UniqueIdentifier, record.collaboratorId)
         .input('startDate', sql.Date, input.startDate)
+        .input('deliveryManager', sql.NVarChar(180), input.deliveryManager)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.Collaborator SET StartDate=@startDate,DeliveryManager=@deliveryManager,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;
@@ -289,6 +291,7 @@ export class CollaboratorImportRepository {
         await new sql.Request(transaction)
           .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
           .input('startDate', sql.Date, input.startDate)
+          .input('deliveryManager', sql.NVarChar(180), input.deliveryManager)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
           .query(`
             UPDATE bbva.Collaborator SET Status=N'ACTIVE',StartDate=COALESCE(@startDate,StartDate),DeliveryManager=@deliveryManager,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@collaboratorId;
@@ -301,6 +304,7 @@ export class CollaboratorImportRepository {
           .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
           .input('personId', sql.UniqueIdentifier, record.personId)
           .input('startDate', sql.Date, input.startDate)
+          .input('deliveryManager', sql.NVarChar(180), input.deliveryManager)
           .input('actorEmail', sql.NVarChar(255), actorEmail)
           .query(`
             INSERT INTO bbva.Collaborator(Id,PersonId,Status,StartDate,DeliveryManager,CreatedByEmail,UpdatedByEmail)

@@ -20,6 +20,7 @@ export interface CertificationCatalogInput {
   validityMonths: number | null;
   initialCompletionDays: number | null;
   expiringSoonDays: number | null;
+  maxAttempts: number | null;
   includesTraining: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
@@ -41,6 +42,7 @@ export interface CertificationCatalogRecord {
   validityMonths: number | null;
   initialCompletionDays: number | null;
   expiringSoonDays: number | null;
+  maxAttempts: number | null;
   includesTraining: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;

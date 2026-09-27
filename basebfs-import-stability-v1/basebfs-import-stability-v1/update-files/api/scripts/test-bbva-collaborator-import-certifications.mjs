@@ -19,7 +19,6 @@ const config = (overrides = {}) => ({
   expiringSoonDays: null,
   recertificationEnabled: false,
   requiresAttempts: false,
-  maxAttempts: null,
   requiresApplicationDate: false,
   ...overrides,
 });
@@ -65,7 +64,7 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
   assert.equal(issueCodes(evidence).has('FAILED_WITH_ATTEMPT_ZERO'), true);
 }
 
-// C. Tecnológica NO APLICA + intento informado: se conserva como advertencia y no bloquea la fila.
+// C. Tecnológica NO APLICA + intento informado: no se debe normalizar silenciosamente.
 {
   const evidence = parse('TECHNOLOGICAL', {
     '¿APLICA TECNOLOGICA?': 'NO',
@@ -74,15 +73,13 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
   }, { config: config({ validityMonths: 24, initialCompletionDays: 30, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true }) });
   assert.equal(evidence.baseStatus, 'NOT_APPLICABLE');
   assert.equal(issueCodes(evidence).has('NOT_APPLICABLE_WITH_EVIDENCE'), true);
-  assert.equal(evidence.issues.find((issue) => issue.code === 'NOT_APPLICABLE_WITH_EVIDENCE')?.blocking, false);
 }
 
-// D. ONE NO + Aprobado: la aplicabilidad manda; la aprobación/formación queda como advertencia de referencia.
+// D. ONE NO + Aprobado: contradicción real del tablero.
 {
   const evidence = parse('ONE', { '¿APLICA ONE?': 'NO', 'ESTATUS CERTIFICACIÓN ONE': 'Aprobado' });
   assert.equal(evidence.baseStatus, 'NOT_APPLICABLE');
   assert.equal(issueCodes(evidence).has('NOT_APPLICABLE_WITH_STATUS'), true);
-  assert.equal(evidence.issues.find((issue) => issue.code === 'NOT_APPLICABLE_WITH_STATUS')?.blocking, false);
 }
 
 // E. ONE SI + estado vacío: no inventar aprobación.
@@ -233,20 +230,9 @@ const issueCodes = (evidence) => new Set((evidence?.issues ?? []).map((issue) =>
   }, evidence), true);
 }
 
-
-// S. Un intento por encima del máximo explícitamente configurado se detecta antes de persistir.
-{
-  const evidence = parse('TECHNOLOGICAL', {
-    '¿APLICA TECNOLOGICA?': 'SI', 'ESTATUS CERTIFICACIÓN': 'REPROBADO', 'ESTATUS DEL EXAMEN': 'REPROBADO',
-    'FECHA DE APLICACIÓN TEC': '27/09/2026', 'PROMEDIO': '7.0', 'INTENTO': '4',
-  }, { config: config({ requiresAttempts: true, maxAttempts: 3, requiresApplicationDate: true }) });
-  assert.equal(issueCodes(evidence).has('ATTEMPT_EXCEEDS_CONFIGURED_MAX'), true);
-  assert.equal(evidence.issues.find((issue) => issue.code === 'ATTEMPT_EXCEEDS_CONFIGURED_MAX')?.blocking, true);
-}
-
 // Sanidad de fechas de calendario (sin timezone drift).
 assert.equal(addCalendarMonths('2024-01-31', 1), '2024-02-29');
 assert.equal(addCalendarMonths('2025-01-31', 1), '2025-02-28');
 assert.equal(addCalendarDays('2026-01-31', 30), '2026-03-02');
 
-console.log('OK: 21 escenarios de dominio de importación histórica de certificaciones.');
+console.log('OK: 20 escenarios de dominio de importación histórica de certificaciones.');

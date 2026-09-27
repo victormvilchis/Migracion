@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { Award, Eye, Plus, RefreshCw, Search, ShieldAlert } from 'lucide-react';
+import { Award, CalendarClock, Eye, Plus, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
+import { CertificationScheduleDialog } from '../../componentsBBVATalent/CertificationScheduleDialog';
 import { useCertificationCatalogOptions } from '../hooks/useCertificationCatalog';
 import { useCollaborator } from '../hooks/useCollaborators';
 import {
@@ -13,6 +14,7 @@ import {
   useCollaboratorCertifications,
   useMarkCertificationNotApplicable,
   useRecertifyCollaboratorCertification,
+  useUpdateCollaboratorCertification,
 } from '../hooks/useCollaboratorCertifications';
 import { COLLABORATOR_CERTIFICATION_STATUS_LABELS, type CollaboratorCertification, type CollaboratorCertificationStatus } from '../types/collaboratorCertification';
 
@@ -33,6 +35,7 @@ function followUp(item: CollaboratorCertification) {
   if (item.status === 'RECERTIFICATION_PENDING') return 'Recertificar';
   if (item.status === 'EXPIRED') return 'Vencida';
   if (item.status === 'EXPIRING') return `Vence ${formatDate(item.expirationDate)}`;
+  if (item.requiresAttempts && item.maxAttempts && item.attemptCount >= item.maxAttempts) return `Intentos agotados (${item.maxAttempts})`;
   if (item.status === 'FAILED') return 'Nuevo intento';
   if (item.status === 'SCHEDULED' && item.scheduledDate) return `Programada ${formatDate(item.scheduledDate)}`;
   if (['PENDING', 'SCHEDULED', 'APPLIED'].includes(item.status)) return 'Pendiente de aprobación';
@@ -51,11 +54,13 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const addMutation = useAddCollaboratorCertification(id ?? '');
   const recertifyMutation = useRecertifyCollaboratorCertification(id ?? '');
   const notApplicableMutation = useMarkCertificationNotApplicable(id ?? '');
+  const updateMutation = useUpdateCollaboratorCertification(id ?? '');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'ALL' | CollaboratorCertificationStatus>('ALL');
   const [certificationId, setCertificationId] = useState('');
   const [pendingRecertify, setPendingRecertify] = useState<CollaboratorCertification | null>(null);
   const [pendingNoApply, setPendingNoApply] = useState<CollaboratorCertification | null>(null);
+  const [pendingSchedule, setPendingSchedule] = useState<CollaboratorCertification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const collaborator = collaboratorQuery.data?.item;
   const items = query.data?.items ?? [];
@@ -121,6 +126,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
                 <thead className="border-b border-slate-200 bg-slate-50 text-[8.5px] font-semibold uppercase tracking-[0.04em] text-slate-500"><tr><th className="w-[34%] px-3 py-2">Certificación</th><th className="w-[18%] px-3 py-2">Estado</th><th className="w-[17%] px-3 py-2">Última aprobación</th><th className="w-[19%] px-3 py-2">Seguimiento</th><th className="w-[12%] px-3 py-2 text-right">Acciones</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">{filtered.map((item) => {
                   const approvedCycle = item.baseStatus === 'APPROVED';
+                  const attemptLimitReached = Boolean(item.requiresAttempts && item.maxAttempts && item.attemptCount >= item.maxAttempts);
                   return <tr key={item.id} className="transition hover:bg-slate-50/70">
                     <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{item.certificationName}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName, item.provider].filter(Boolean).join(' · ') || 'General'}</div></td>
                     <td className="px-3 py-2.5"><span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span></td>
@@ -128,7 +134,8 @@ export const CollaboratorCertificationsPage: React.FC = () => {
                     <td className="px-3 py-2.5"><span className="text-[9.5px] font-medium text-slate-600">{followUp(item)}</span></td>
                     <td className="px-3 py-2.5 text-right"><BBVAActionMenu items={[
                       { id: 'view', label: 'Ver detalle', icon: Eye, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },
-                      { id: 'attempt', label: 'Registrar intento', icon: Award, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}/attempt`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },
+                      { id: 'schedule', label: item.scheduledDate ? 'Reprogramar examen' : 'Programar examen', icon: CalendarClock, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle || attemptLimitReached, onClick: () => setPendingSchedule(item) },
+                      { id: 'attempt', label: 'Registrar intento', icon: Award, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle || attemptLimitReached, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}/attempt`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },
                       { id: 'recertify', label: 'Iniciar recertificación', icon: RefreshCw, disabled: !item.recertificationEnabled || !approvedCycle, onClick: () => setPendingRecertify(item) },
                       { id: 'not-applicable', label: 'Quitar certificación', icon: ShieldAlert, tone: 'danger', disabled: item.status === 'NOT_APPLICABLE', onClick: () => setPendingNoApply(item) },
                     ]} /></td>
@@ -141,6 +148,23 @@ export const CollaboratorCertificationsPage: React.FC = () => {
         </div>
       </section>
 
+      <CertificationScheduleDialog
+        open={Boolean(pendingSchedule)}
+        certificationName={pendingSchedule?.certificationName ?? ''}
+        initialDate={pendingSchedule?.scheduledDate}
+        busy={updateMutation.isPending}
+        onCancel={() => setPendingSchedule(null)}
+        onConfirm={(date) => {
+          if (!pendingSchedule) return;
+          updateMutation.mutate({
+            recordId: pendingSchedule.id,
+            payload: { scheduledDate: date, notes: pendingSchedule.notes ?? '', mandatory: pendingSchedule.mandatory },
+          }, {
+            onSuccess: () => { setPendingSchedule(null); setError(null); },
+            onError: (e) => { setPendingSchedule(null); setError((e as Error).message); },
+          });
+        }}
+      />
       <ConfirmDialog open={Boolean(pendingRecertify)} title="Iniciar recertificación" message={`Se cerrará el seguimiento de la aprobación actual de “${pendingRecertify?.certificationName ?? ''}” y se abrirá un nuevo ciclo. El historial anterior se conserva.`} confirmLabel="Iniciar recertificación" tone="warning" busy={recertifyMutation.isPending} onCancel={() => setPendingRecertify(null)} onConfirm={() => { if (!pendingRecertify) return; recertifyMutation.mutate(pendingRecertify.id, { onSuccess: () => setPendingRecertify(null), onError: (e) => { setPendingRecertify(null); setError((e as Error).message); } }); }} />
       <ConfirmDialog open={Boolean(pendingNoApply)} title="Quitar certificación" message={`“${pendingNoApply?.certificationName ?? ''}” dejará de aparecer en las certificaciones activas de esta persona. Sus intentos e historial se conservarán.`} confirmLabel="Quitar certificación" tone="danger" busy={notApplicableMutation.isPending} onCancel={() => setPendingNoApply(null)} onConfirm={() => { if (!pendingNoApply) return; notApplicableMutation.mutate(pendingNoApply.id, { onSuccess: () => setPendingNoApply(null), onError: (e) => { setPendingNoApply(null); setError((e as Error).message); } }); }} />
     </div>
