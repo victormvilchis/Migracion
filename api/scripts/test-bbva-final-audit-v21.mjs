@@ -49,7 +49,7 @@ assert.doesNotMatch(certificationsPage, /CRITICAL_EXIT_TYPES/);
 assert.match(certificationsPage, /item\.criticalActionRequired === true/);
 const collaboratorDetail = read('src/pagesBBVATalent/collaborators/CollaboratorDetailPage.tsx');
 assert.doesNotMatch(collaboratorDetail, /DEVELOPMENT_SECURITY.*TECHNOLOGICAL.*NORMATIVE_TESTING/s);
-assert.match(collaboratorDetail, /item\.criticalActionRequired === true/);
+assert.match(collaboratorDetail, /mode="view"/);
 const trackingLib = read('src/pagesBBVATalent/lib/certificationTracking.ts');
 assert.doesNotMatch(trackingLib, /CRITICAL_EXIT_CERTIFICATION_TYPES/);
 assert.match(trackingLib, /item\.criticalActionRequired === true/);

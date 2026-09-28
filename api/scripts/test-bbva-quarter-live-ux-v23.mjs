@@ -37,7 +37,8 @@ const standards = read('AGENTS.md');
 
 // Panel y Métricas: Q visible/seleccionable, filtros primarios y vencimientos del Q siempre visibles.
 for (const source of [dashboard, metrics]) {
-  assert.match(source, /BBVAQuarterSelector/);
+  assert.doesNotMatch(source, /BBVAQuarterSelector/);
+  assert.match(source, /ariaLabel="Q"/);
   assert.match(source, /quarterCode/);
   assert.match(source, /Estructura nivel 2/);
   assert.match(source, /Estructura nivel 3/);

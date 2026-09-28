@@ -643,3 +643,12 @@ BFS remains its own product, architecture and source of truth.
 - Banco de talento muestra días de permanencia. Más de 60 días sin asignación activan la señal determinística «Urgente de asignar»; el número histórico de entradas no determina urgencia.
 - El movimiento visual debe ser perceptible pero no distractor: respiración ligera de tarjetas, progreso Q animado e indicadores vivos, siempre respetando prefers-reduced-motion.
 - En dashboards se conservan únicamente KPIs esenciales; el resto vive en paneles de detalle, histórico o drill-down.
+
+### V25 operational display and drill-down standards
+
+- `Ver` de Colaboradores reutiliza exactamente el formulario CRUD en modo `view`: mismos campos, sólo lectura y únicamente la acción superior `Regresar`; no debe incluir CTAs a Certificaciones, Editar u otros módulos.
+- Los nombres de certificaciones se muestran en MAYÚSCULAS en las superficies BBVA BFS. La persistencia no se altera por esta regla de presentación.
+- El selector de Q forma parte de la misma barra de filtros de Panel y Métricas; no se crea un segundo header/strip independiente para Q.
+- El KPI `Críticos 2/2` y su drill-down deben compartir el mismo predicado de backend: ciclo `FAILED`, tipo crítico, 2/2 agotados, último intento `FAILED` y resolución abierta.
+- La permanencia en Banco de talento se calcula para todo registro activo desde el último hito real de entrada al Banco (`COLLABORATOR_TO_TALENT` o `ENTERED_TALENT_BANK`), con fallback a `EntryDate`; más de 60 días se marca urgente.
+- En Banco de talento, la tabla principal muestra CV y el contexto expandido no duplica ese mismo dato.

@@ -122,8 +122,8 @@ function CertificationBlock({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[10.5px] font-semibold text-slate-900">{certification.label}</span>
-            {certification.certificationName && certification.certificationName !== certification.label ? <span className="rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-slate-500">{certification.certificationName}</span> : null}
+            <span className="text-[10.5px] font-semibold text-slate-900">{certification.label.toLocaleUpperCase('es-MX')}</span>
+            {certification.certificationName && certification.certificationName !== certification.label ? <span className="rounded-full bg-white px-2 py-0.5 text-[8px] font-semibold text-slate-500">{certification.certificationName.toLocaleUpperCase('es-MX')}</span> : null}
             {lifecycle ? <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[8px] font-semibold text-blue-700">{lifecycle === 'RECERTIFICATION' ? 'Recertificación' : lifecycle === 'INITIAL' ? 'Inicial' : lifecycle === 'STATUS_ONLY' ? 'Solo estado' : 'No aplica'}</span> : null}
           </div>
           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-slate-500">

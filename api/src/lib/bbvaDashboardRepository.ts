@@ -120,7 +120,7 @@ export class BbvaDashboardRepository {
              CAST(pc.CertificationId AS NVARCHAR(36)) AS certificationId,cc.Name AS certificationName,
              cc.CertificationType AS certificationType,
              pc.Applicable AS applicable,pc.Mandatory AS mandatory,pc.BaseStatus AS baseStatus,
-             CONVERT(VARCHAR(10),pc.ExpirationDate,23) AS expirationDate,
+             CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
              cc.RecertificationEnabled AS recertificationEnabled,cc.ExpiringSoonDays AS expiringSoonDays,
              cc.MaxAttempts AS maxAttempts,pc.CurrentCycle AS currentCycle,
              (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt a WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle) AS attemptCount,
@@ -135,6 +135,20 @@ export class BbvaDashboardRepository {
         WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle
         ORDER BY a.AttemptNumber DESC,a.CreatedAt DESC,a.Id DESC
       ) latestAttempt
+      OUTER APPLY (
+        SELECT MAX(a.ApplicationDate) AS LatestApprovedAttemptDate
+        FROM bbva.PersonCertificationAttempt a
+        WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle AND a.Result=N'APPROVED'
+      ) latestApproval
+      CROSS APPLY (
+        SELECT CASE
+          WHEN pc.BaseStatus=N'APPROVED'
+            AND cc.ValidityMonths IS NOT NULL
+            AND (CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END) IS NOT NULL
+            THEN DATEADD(month,cc.ValidityMonths,(CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END))
+          ELSE pc.ExpirationDate
+        END AS EffectiveExpirationDate
+      ) effectiveDates
       OUTER APPLY (
         SELECT TOP 1 cr.ResolutionStatus
         FROM bbva.CertificationCriticalResolution cr

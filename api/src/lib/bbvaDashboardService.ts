@@ -427,7 +427,8 @@ export class BbvaDashboardService {
         else if (status === 'RECERTIFICATION_PENDING') result.recertificationPending += 1;
         else result.pending += 1;
         if (
-          isCriticalTwoAttemptExhausted(cert)
+          cert.baseStatus === 'FAILED'
+          && isCriticalTwoAttemptExhausted(cert)
           && isCriticalResolutionOpen(cert.criticalResolutionStatus)
         ) result.critical += 1;
       }
@@ -508,7 +509,8 @@ export class BbvaDashboardService {
         unresolvedByPerson.set(cert.personId, (unresolvedByPerson.get(cert.personId) ?? 0) + 1);
       }
       if (
-        isCriticalTwoAttemptExhausted(cert)
+        cert.baseStatus === 'FAILED'
+        && isCriticalTwoAttemptExhausted(cert)
         && isCriticalResolutionOpen(cert.criticalResolutionStatus)
       ) exhaustedByPerson.add(cert.personId);
     }

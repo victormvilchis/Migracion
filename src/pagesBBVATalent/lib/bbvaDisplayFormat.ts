@@ -40,3 +40,7 @@ export function displayStructure(value: string | null | undefined, fallback = 'N
   const text = String(value ?? '').trim().replace(/\s+/g, ' ');
   return text || fallback;
 }
+
+export function displayCertificationName(value: string | null | undefined, fallback = 'No disponible'): string {
+  return upperDisplay(value, fallback);
+}

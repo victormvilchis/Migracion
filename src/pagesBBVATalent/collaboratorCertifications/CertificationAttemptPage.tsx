@@ -14,6 +14,7 @@ import {
   usePrepareCertificationCommunicationEmail,
 } from '../hooks/useCollaboratorCertifications';
 import type { CertificationAttempt, CertificationAttemptResult, CertificationCommunication } from '../types/collaboratorCertification';
+import { displayCertificationName } from '../lib/bbvaDisplayFormat';
 
 export const CertificationAttemptPage: React.FC = () => {
   const { id, certificationRecordId } = useParams();
@@ -68,7 +69,7 @@ export const CertificationAttemptPage: React.FC = () => {
         {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
         <section className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
           <div className="text-[9px] font-semibold uppercase tracking-[.06em] text-emerald-700">Intento registrado</div>
-          <h1 className="mt-1 text-[17px] font-semibold text-slate-950">{item.certificationName}</h1>
+          <h1 className="mt-1 text-[17px] font-semibold text-slate-950">{displayCertificationName(item.certificationName)}</h1>
           <p className="mt-2 text-[11px] text-slate-600">Ciclo {savedAttempt.cycleNumber} · Intento {savedAttempt.attemptNumber} · {savedAttempt.result === 'APPROVED' ? 'Aprobado' : savedAttempt.result === 'FAILED' ? 'No aprobado' : 'Pendiente'}</p>
           <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
             <button type="button" onClick={() => void generate(false)} disabled={generateMutation.isPending} className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[11px] font-semibold text-white disabled:opacity-50"><ImagePlus className="h-4 w-4" />{generateMutation.isPending ? 'Generando...' : 'Generar postal'}</button>
@@ -78,7 +79,7 @@ export const CertificationAttemptPage: React.FC = () => {
         <CertificationCommunicationDialog
           open={Boolean(communication)}
           communication={communication}
-          certificationName={item.certificationName}
+          certificationName={displayCertificationName(item.certificationName)}
           busy={generateMutation.isPending || prepareEmailMutation.isPending}
           onClose={() => setCommunication(null)}
           onPrepareEmail={prepare}
@@ -93,7 +94,7 @@ export const CertificationAttemptPage: React.FC = () => {
       <div className="flex justify-start"><BBVAFormBackButton onBack={() => backToList()} /></div>
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
       <form onSubmit={(event) => { event.preventDefault(); void submit(); }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">Registrar intento</div><h1 className="mt-1 text-base font-semibold text-slate-950">{item.certificationName}</h1><div className="mt-1 text-[10px] text-slate-500">Ciclo {item.currentCycle} · Intento {item.attemptCount + 1}{item.maxAttempts ? ` de ${item.maxAttempts}` : ''}</div></div>
+        <div className="mb-4"><div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-slate-400">Registrar intento</div><h1 className="mt-1 text-base font-semibold text-slate-950">{displayCertificationName(item.certificationName)}</h1><div className="mt-1 text-[10px] text-slate-500">Ciclo {item.currentCycle} · Intento {item.attemptCount + 1}{item.maxAttempts ? ` de ${item.maxAttempts}` : ''}</div></div>
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-4"><span className="mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500">Fecha de aplicación {item.requiresApplicationDate ? '*' : ''}</span><BBVADatePicker value={applicationDate} onChange={setApplicationDate} ariaLabel="Fecha de aplicación" /></label>
           <label className="md:col-span-4"><span className="mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500">Resultado</span><BBVASearchableSelect value={result} onChange={(value) => setResult(value as CertificationAttemptResult)} options={[{ value: 'PENDING', label: 'Pendiente' }, { value: 'APPROVED', label: 'Aprobado' }, { value: 'FAILED', label: 'Reprobado' }]} ariaLabel="Resultado" /></label>

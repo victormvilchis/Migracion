@@ -11,7 +11,7 @@ import { CertificationCriticalResolutionDialog } from '../../componentsBBVATalen
 import { CertificationScheduleDialog } from '../../componentsBBVATalent/CertificationScheduleDialog';
 import { useCertificationCatalogOptions } from '../hooks/useCertificationCatalog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
-import { sentenceCaseData } from '../lib/bbvaDisplayFormat';
+import { displayCertificationName, sentenceCaseData } from '../lib/bbvaDisplayFormat';
 import { useCollaborator } from '../hooks/useCollaborators';
 import {
   useAddCollaboratorCertification,
@@ -90,7 +90,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('es-MX');
     const rows = visibleItems.filter((item) => {
-      const matches = !term || `${item.certificationName} ${item.technologyName ?? ''} ${item.provider ?? ''}`.toLocaleLowerCase('es-MX').includes(term);
+      const matches = !term || `${displayCertificationName(item.certificationName)} ${item.technologyName ?? ''} ${item.provider ?? ''}`.toLocaleLowerCase('es-MX').includes(term);
       return matches && (status === 'ALL' || item.status === status);
     });
     const value = (item: CollaboratorCertification) => sort === 'certificationName' ? item.certificationName : sort === 'status' ? item.status : sort === 'approvedDate' ? (item.approvedDate ?? '') : followUp(item);
@@ -180,7 +180,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
                   const criticalDecision = isCriticalDecisionPending(item);
                   const criticalOpen = isCriticalExitOpen(item);
                   return <tr key={item.id} className={`transition ${criticalOpen ? 'bg-rose-50/70 ring-1 ring-inset ring-rose-200 hover:bg-rose-50' : 'hover:bg-slate-50/70'}`}>
-                    <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{sentenceCaseData(item.certificationName)}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName ? sentenceCaseData(item.technologyName) : null, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider ? sentenceCaseData(item.provider) : null].filter(Boolean).join(' · ') || 'General'}</div></td>
+                    <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{displayCertificationName(item.certificationName)}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName ? sentenceCaseData(item.technologyName) : null, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider ? sentenceCaseData(item.provider) : null].filter(Boolean).join(' · ') || 'General'}</div></td>
                     <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[8.5px] font-bold uppercase text-white">Crítico</span> : <span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>}</td>
                     <td className="px-3 py-2.5"><div>{formatDate(item.approvedDate)}</div>{item.attemptCount > 0 ? <div className="mt-0.5 text-[9px] text-slate-400">{item.attemptCount} intento{item.attemptCount === 1 ? '' : 's'} en ciclo {item.currentCycle}</div> : null}</td>
                     <td className="px-3 py-2.5"><span className="text-[9.5px] font-medium text-slate-600">{followUp(item)}</span></td>
@@ -205,14 +205,14 @@ export const CollaboratorCertificationsPage: React.FC = () => {
       <CertificationCriticalResolutionDialog
         open={Boolean(pendingCritical)}
         collaboratorName={collaborator?.fullName ?? ''}
-        certificationName={pendingCritical?.certificationName ?? ''}
+        certificationName={displayCertificationName(pendingCritical?.certificationName, '')}
         busy={resolveCriticalMutation.isPending}
         onCancel={() => setPendingCritical(null)}
         onResolve={(resolution, notes) => void resolveCritical(resolution, notes)}
       />
       <CertificationScheduleDialog
         open={Boolean(pendingSchedule)}
-        certificationName={pendingSchedule?.certificationName ?? ''}
+        certificationName={displayCertificationName(pendingSchedule?.certificationName, '')}
         initialDate={pendingSchedule?.scheduledDate}
         busy={updateMutation.isPending}
         onCancel={() => setPendingSchedule(null)}
@@ -227,8 +227,8 @@ export const CollaboratorCertificationsPage: React.FC = () => {
           });
         }}
       />
-      <ConfirmDialog open={Boolean(pendingRecertify)} title="Iniciar recertificación" message={`Se cerrará el seguimiento de la aprobación actual de “${pendingRecertify?.certificationName ?? ''}” y se abrirá un nuevo ciclo. El historial anterior se conserva.`} confirmLabel="Iniciar recertificación" tone="warning" busy={recertifyMutation.isPending} onCancel={() => setPendingRecertify(null)} onConfirm={() => { if (!pendingRecertify) return; recertifyMutation.mutate(pendingRecertify.id, { onSuccess: () => setPendingRecertify(null), onError: (e) => { setPendingRecertify(null); setError((e as Error).message); } }); }} />
-      <ConfirmDialog open={Boolean(pendingNoApply)} title="Quitar certificación" message={`“${pendingNoApply?.certificationName ?? ''}” dejará de aparecer en las certificaciones activas de esta persona. Sus intentos e historial se conservarán.`} confirmLabel="Quitar certificación" tone="danger" busy={notApplicableMutation.isPending} onCancel={() => setPendingNoApply(null)} onConfirm={() => { if (!pendingNoApply) return; notApplicableMutation.mutate(pendingNoApply.id, { onSuccess: () => setPendingNoApply(null), onError: (e) => { setPendingNoApply(null); setError((e as Error).message); } }); }} />
+      <ConfirmDialog open={Boolean(pendingRecertify)} title="Iniciar recertificación" message={`Se cerrará el seguimiento de la aprobación actual de “${displayCertificationName(pendingRecertify?.certificationName, '')}” y se abrirá un nuevo ciclo. El historial anterior se conserva.`} confirmLabel="Iniciar recertificación" tone="warning" busy={recertifyMutation.isPending} onCancel={() => setPendingRecertify(null)} onConfirm={() => { if (!pendingRecertify) return; recertifyMutation.mutate(pendingRecertify.id, { onSuccess: () => setPendingRecertify(null), onError: (e) => { setPendingRecertify(null); setError((e as Error).message); } }); }} />
+      <ConfirmDialog open={Boolean(pendingNoApply)} title="Quitar certificación" message={`“${displayCertificationName(pendingNoApply?.certificationName, '')}” dejará de aparecer en las certificaciones activas de esta persona. Sus intentos e historial se conservarán.`} confirmLabel="Quitar certificación" tone="danger" busy={notApplicableMutation.isPending} onCancel={() => setPendingNoApply(null)} onConfirm={() => { if (!pendingNoApply) return; notApplicableMutation.mutate(pendingNoApply.id, { onSuccess: () => setPendingNoApply(null), onError: (e) => { setPendingNoApply(null); setError((e as Error).message); } }); }} />
     </div>
   );
 };

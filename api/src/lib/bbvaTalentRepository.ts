@@ -37,6 +37,13 @@ const TALENT_SELECT = `
     CONVERT(VARCHAR(10), t.PlatformStartDate, 23) AS platformStartDate,
     CONVERT(VARCHAR(10), p.HireDate, 23) AS hireDate,
     CONVERT(VARCHAR(10), t.EntryDate, 23) AS entryDate,
+    CASE
+      WHEN lifecycle.EventType=N'COLLABORATOR_TO_TALENT' THEN lifecycle.EffectiveDate
+      WHEN lifecycle.EffectiveDate IS NOT NULL AND CONVERT(date,t.CreatedAt) < CONVERT(date,lifecycle.EffectiveDate) THEN CONVERT(VARCHAR(10),t.CreatedAt,23)
+      WHEN lifecycle.EffectiveDate IS NOT NULL THEN lifecycle.EffectiveDate
+      WHEN t.EntryDate IS NOT NULL AND CONVERT(date,t.CreatedAt) < t.EntryDate THEN CONVERT(VARCHAR(10),t.CreatedAt,23)
+      ELSE COALESCE(CONVERT(VARCHAR(10),t.EntryDate,23),CONVERT(VARCHAR(10),t.CreatedAt,23))
+    END AS bankSinceDate,
     entryStats.EntryCount AS talentBankEntryCount,
     p.Notes AS notes,
     lifecycle.ReasonCode AS lifecycleReasonCode,
@@ -62,18 +69,20 @@ const TALENT_SELECT = `
   ) entryStats
   OUTER APPLY (
     SELECT TOP 1
+      h.EventType,
       h.ReasonCode,
       r.Name AS ReasonName,
       CONVERT(VARCHAR(10), h.EffectiveDate, 23) AS EffectiveDate,
       h.Notes
     FROM bbva.PersonLifecycleHistory h
     LEFT JOIN bbva.LifecycleReasonCatalog r ON r.Code=h.ReasonCode
-    WHERE h.PersonId=p.Id AND h.EventType=N'COLLABORATOR_TO_TALENT'
+    WHERE h.PersonId=p.Id AND h.EventType IN (N'COLLABORATOR_TO_TALENT',N'ENTERED_TALENT_BANK')
     ORDER BY h.CreatedAt DESC,h.Id DESC
   ) lifecycle
 `;
 
 interface TalentRow extends Omit<TalentRecord, 'cv' | 'daysInTalentBank' | 'urgentAssignment'> {
+  bankSinceDate: string | null;
   cvFileName: string | null;
   cvContentType: string | null;
   cvFileSizeBytes: number | null;
@@ -81,14 +90,16 @@ interface TalentRow extends Omit<TalentRecord, 'cv' | 'daysInTalentBank' | 'urge
 }
 
 function mapTalent(row: TalentRow): TalentRecord {
-  const { cvFileName, cvContentType, cvFileSizeBytes, cvUpdatedAt, ...base } = row;
+  const { bankSinceDate, cvFileName, cvContentType, cvFileSizeBytes, cvUpdatedAt, ...base } = row;
   const referenceDate = bbvaBusinessDate();
-  const entry = Date.parse(`${base.entryDate}T00:00:00Z`);
+  const effectiveEntryDate = bankSinceDate || base.entryDate;
+  const entry = effectiveEntryDate ? Date.parse(`${effectiveEntryDate}T00:00:00Z`) : Number.NaN;
   const reference = Date.parse(`${referenceDate}T00:00:00Z`);
   const daysInTalentBank = Number.isFinite(entry) && Number.isFinite(reference) ? Math.max(0, Math.floor((reference - entry) / 86400000)) : 0;
   const talentBankEntryCount = Number(base.talentBankEntryCount ?? 1);
   return {
     ...base,
+    entryDate: effectiveEntryDate || base.entryDate,
     daysInTalentBank,
     talentBankEntryCount,
     urgentAssignment: daysInTalentBank > 60,

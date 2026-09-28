@@ -7,6 +7,7 @@ import { BBVAFormActions, BBVAFormBackButton, type BBVAFormMode, isBBVAFormReadO
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { CertificationCommunicationDialog } from '../../componentsBBVATalent/CertificationCommunicationDialog';
 import { useCollaboratorCertification, useGenerateCertificationCommunication, useMarkCertificationNotApplicable, usePrepareCertificationCommunicationEmail, useUpdateCollaboratorCertification } from '../hooks/useCollaboratorCertifications';
+import { displayCertificationName } from '../lib/bbvaDisplayFormat';
 import { COLLABORATOR_CERTIFICATION_STATUS_LABELS, type CertificationAttempt, type CertificationCommunication } from '../types/collaboratorCertification';
 
 interface Props { mode?: Extract<BBVAFormMode, 'view' | 'edit' | 'delete'>; }
@@ -61,7 +62,7 @@ export const CollaboratorCertificationDetailPage: React.FC<Props> = ({ mode = 'v
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="text-[9px] font-semibold uppercase tracking-[0.05em] text-slate-400">Certificación</div>
-              <h1 className="mt-1 text-[16px] font-semibold text-slate-950">{item.certificationName}</h1>
+              <h1 className="mt-1 text-[16px] font-semibold text-slate-950">{displayCertificationName(item.certificationName)}</h1>
               <div className="mt-1 text-[10px] text-slate-500">{[item.technologyName, item.provider].filter(Boolean).join(' · ') || 'General'}</div>
             </div>
             <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-700">{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>
@@ -92,7 +93,7 @@ export const CollaboratorCertificationDetailPage: React.FC<Props> = ({ mode = 'v
         <CertificationCommunicationDialog
           open={Boolean(communication)}
           communication={communication}
-          certificationName={item.certificationName}
+          certificationName={displayCertificationName(item.certificationName)}
           busy={generateMutation.isPending || prepareEmailMutation.isPending}
           onClose={() => { setCommunication(null); setCommunicationAttempt(null); }}
           onPrepareEmail={async (payload) => {
@@ -137,7 +138,7 @@ export const CollaboratorCertificationDetailPage: React.FC<Props> = ({ mode = 'v
 
       <form onSubmit={(event) => { event.preventDefault(); if (mode === 'edit') void save(); }} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-5"><span className="mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500">Certificación</span><input value={item.certificationName} disabled className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] text-slate-700" /></label>
+          <label className="md:col-span-5"><span className="mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500">Certificación</span><input value={displayCertificationName(item.certificationName)} disabled className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] text-slate-700" /></label>
           <label className="md:col-span-3"><span className="mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500">Estado</span><input value={COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]} disabled className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] text-slate-700" /></label>
           <label className="md:col-span-2"><span className="mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500">Ciclo</span><input value={item.currentCycle} disabled className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-[11px] text-slate-700" /></label>
           <label className="md:col-span-2"><span className="mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500">Obligatoria</span><span className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-[11px]"><input type="checkbox" checked={mandatory} disabled={readOnly || mode === 'delete'} onChange={(e) => setMandatory(e.target.checked)} className="accent-blue-600" />Sí</span></label>
