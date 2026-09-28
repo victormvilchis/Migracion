@@ -55,6 +55,7 @@ export interface Collaborator {
   certificationExpired: number;
   certificationPending: number;
   certificationRecertificationPending: number;
+  certificationCritical: number;
   createdAt: string;
   updatedAt: string;
   /** Alias de compatibilidad durante la migración de identidad. */

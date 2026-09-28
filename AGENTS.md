@@ -625,3 +625,9 @@ BFS remains its own product, architecture and source of truth.
 - Toda mutación BBVA debe invalidar/publicar el cambio para mantener coherencia entre vistas y pestañas abiertas.
 - Los casos de edición de entidades mutables deben utilizar control optimista de versión/`UpdatedAt` cuando el repositorio lo soporte; ante una escritura obsoleta se debe rechazar con conflicto y solicitar recarga, nunca sobrescribir silenciosamente.
 - Estas reglas aplican a módulos existentes y futuros de BBVA Workspace.
+
+## UX rules — BBVA Workspace
+- Every visible asynchronous/server action must expose an immediate pending state and a final success/error acknowledgement. Never leave a server-triggering click without feedback.
+- A client-side choice that is not yet persisted must visibly show its selected state and explain that it will be applied only when the user confirms the server action.
+- Breadcrumbs are metadata-driven navigation. Every non-current breadcrumb level must be keyboard-accessible and navigate to its real module/section destination; the current level is not a link.
+- Operational list/table views keep the table as the primary content. Analytical insights belong in Panel/Métricas unless the user explicitly opens them.

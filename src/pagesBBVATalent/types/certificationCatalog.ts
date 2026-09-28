@@ -84,4 +84,5 @@ export interface CertificationCatalogOption {
   expiringSoonDays: number | null;
   recertificationEnabled: boolean;
   defaultMandatory: boolean;
+  allowedLevels: CertificationLevel[];
 }

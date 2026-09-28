@@ -13,6 +13,7 @@ export interface TrackingSummary {
   pending: number;
   applied: number;
   limitReached: number;
+  criticalExit: number;
 }
 
 export interface TrackingInsight {
@@ -39,7 +40,19 @@ export const calendarDaysFromToday = (value?: string | null, now = new Date()) =
   return Math.round((target.getTime() - today.getTime()) / 86_400_000);
 };
 
+export const CRITICAL_EXIT_CERTIFICATION_TYPES = new Set(['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING']);
+
+export const requiresCriticalExitReview = (item: CertificationTrackingItem) => item.criticalActionRequired === true
+  || (item.criticalActionRequired === undefined
+    && item.requiresAttempts
+    && item.maxAttempts === 2
+    && item.attemptCount >= 2
+    && item.latestAttemptResult === 'FAILED'
+    && item.status === 'FAILED'
+    && CRITICAL_EXIT_CERTIFICATION_TYPES.has(item.certificationType));
+
 export const trackingPriority = (item: CertificationTrackingItem) => {
+  if (requiresCriticalExitReview(item)) return 0;
   if (item.status === 'EXPIRED') return 1;
   if (item.status === 'RECERTIFICATION_PENDING') return 2;
   if (item.status === 'EXPIRING') return 3;
@@ -103,6 +116,7 @@ export const buildTrackingSummary = (items: CertificationTrackingItem[]): Tracki
   pending: items.filter((item) => item.status === 'PENDING').length,
   applied: items.filter((item) => item.status === 'APPLIED').length,
   limitReached: items.filter(hasAttemptLimitReached).length,
+  criticalExit: items.filter(requiresCriticalExitReview).length,
 });
 
 const certificationConcentration = (items: CertificationTrackingItem[]) => {
@@ -135,6 +149,19 @@ export const buildTrackingInsights = (items: CertificationTrackingItem[], now = 
   const expiring = items.filter((item) => item.status === 'EXPIRING');
   const failed = items.filter((item) => item.status === 'FAILED');
   const limitReached = items.filter(hasAttemptLimitReached);
+  const criticalExit = items.filter(requiresCriticalExitReview);
+
+  if (criticalExit.length) {
+    insights.push({
+      id: 'critical-exit',
+      eyebrow: 'Crítico',
+      title: `${criticalExit.length} ${criticalExit.length === 1 ? 'persona agotó' : 'personas agotaron'} los 2 intentos configurados.`,
+      description: 'Desarrollo Seguro, Tecnológica o Normativa: revisar de inmediato si corresponde solicitar baja o gestionar el caso como becario.',
+      tone: 'rose',
+      status: 'FAILED',
+      actionLabel: 'Revisar críticos',
+    });
+  }
 
   if (expired.length) {
     insights.push({

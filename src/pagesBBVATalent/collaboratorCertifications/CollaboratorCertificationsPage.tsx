@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Award, CalendarClock, Eye, Plus, RefreshCw, Search, ShieldAlert } from 'lucide-react';
+import { ArrowRightLeft, Award, CalendarClock, Eye, Plus, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
@@ -32,7 +32,13 @@ function formatDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+const CRITICAL_EXIT_TYPES = new Set(['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING']);
+function isCriticalExit(item: CollaboratorCertification) {
+  return item.baseStatus === 'FAILED' && item.requiresAttempts && item.maxAttempts === 2 && item.attemptCount >= 2 && CRITICAL_EXIT_TYPES.has(item.certificationType);
+}
+
 function followUp(item: CollaboratorCertification) {
+  if (isCriticalExit(item)) return 'CRÍTICO · Solicitar baja / revisar becario';
   if (item.status === 'NOT_APPLICABLE') return 'Sin seguimiento';
   if (item.status === 'RECERTIFICATION_PENDING') return 'Recertificar';
   if (item.status === 'EXPIRED') return 'Vencida';
@@ -48,7 +54,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo ?? `/bbva/collaborators/${id}/manage`;
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo ?? '/bbva/collaborators';
   const listPath = `/bbva/collaborators/${id}/certifications`;
   const collaboratorQuery = useCollaborator(id);
   const query = useCollaboratorCertifications(id);
@@ -60,6 +66,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const listMemory = useBBVAListMemory('collaborator-certifications', { search:'', status:'ALL' as 'ALL' | CollaboratorCertificationStatus, sort:'certificationName' as 'certificationName'|'status'|'approvedDate'|'followUp', direction:'asc' as 'asc'|'desc' });
   const { search, status, sort, direction } = listMemory.state;
   const [certificationId, setCertificationId] = useState('');
+  const [certificationLevel, setCertificationLevel] = useState('');
   const [pendingRecertify, setPendingRecertify] = useState<CollaboratorCertification | null>(null);
   const [pendingNoApply, setPendingNoApply] = useState<CollaboratorCertification | null>(null);
   const [pendingSchedule, setPendingSchedule] = useState<CollaboratorCertification | null>(null);
@@ -81,11 +88,15 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const changeSort=(field:'certificationName'|'status'|'approvedDate'|'followUp')=>listMemory.patch(sort===field?{direction:direction==='asc'?'desc':'asc'}:{sort:field,direction:'asc'});
 
   const availableOptions = (optionsQuery.data?.items ?? []).filter((option) => !items.some((item) => item.certificationId === option.id && item.status !== 'NOT_APPLICABLE'));
+  const selectedCatalogOption = availableOptions.find((option) => option.id === certificationId) ?? null;
+  const needsLevel = selectedCatalogOption?.certificationType === 'TECHNOLOGICAL';
+  const criticalItems = visibleItems.filter(isCriticalExit);
   const attentionCount = (summary?.expiring ?? 0) + (summary?.expired ?? 0) + (summary?.failed ?? 0) + (summary?.pending ?? 0) + (summary?.recertificationPending ?? 0);
 
   const add = async () => {
     if (!certificationId) return;
-    try { setError(null); await addMutation.mutateAsync(certificationId); setCertificationId(''); }
+    if (needsLevel && !certificationLevel) return setError('Selecciona el nivel de la certificación tecnológica.');
+    try { setError(null); await addMutation.mutateAsync({ certificationId, certificationLevel: needsLevel ? certificationLevel : undefined }); setCertificationId(''); setCertificationLevel(''); }
     catch (e) { setError((e as Error).message); }
   };
 
@@ -97,6 +108,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
     <div className="space-y-3 animate-fade-in">
       <div className="flex justify-start"><BBVAFormBackButton onBack={() => navigate(returnTo)} /></div>
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
+      {criticalItems.length ? <BBVAAlert tone="error" persistent title="Atención crítica">{criticalItems.length} certificación{criticalItems.length === 1 ? '' : 'es'} de Desarrollo Seguro, Tecnológica o Normativa agotaron 2/2 intentos. Revisa si corresponde solicitar baja o gestionar el caso como becario.</BBVAAlert> : null}
       {(summary?.expiring ?? 0) > 0 ? <BBVAAlert tone="info">Una certificación aprobada no extiende su vigencia registrando otro intento en el mismo ciclo. Para renovarla utiliza <strong>Iniciar recertificación</strong> y registra el intento en el nuevo ciclo.</BBVAAlert> : null}
 
       <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
@@ -106,14 +118,15 @@ export const CollaboratorCertificationsPage: React.FC = () => {
               <h1 className="truncate text-[17px] font-semibold text-slate-950 [.bbva-dark_&]:text-white">{collaborator.fullName}</h1>
               <div className="mt-1 text-[10px] text-slate-500">{[collaborator.profile, collaborator.currentTechnology, collaborator.expertise].filter(Boolean).join(' · ')}</div>
             </div>
-            <div className="flex w-full max-w-xl gap-2">
-              <div className="min-w-0 flex-1"><BBVASearchableSelect value={certificationId} onChange={setCertificationId} options={[{ value: '', label: 'Seleccionar certificación' }, ...availableOptions.map((option) => ({ value: option.id, label: option.name }))]} ariaLabel="Agregar certificación" /></div>
-              <button type="button" onClick={() => void add()} disabled={!certificationId || addMutation.isPending} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-[10.5px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50"><Plus className="h-3.5 w-3.5" />Agregar</button>
+            <div className="flex w-full max-w-3xl gap-2">
+              <div className="min-w-0 flex-1"><BBVASearchableSelect value={certificationId} onChange={(value)=>{setCertificationId(value);setCertificationLevel('');}} options={[{ value: '', label: 'Seleccionar certificación' }, ...availableOptions.map((option) => ({ value: option.id, label: option.name, description: option.certificationType === 'TECHNOLOGICAL' ? `${option.technologyName ?? 'Tecnológica'} · niveles ${option.allowedLevels.join(', ') || 'sin configurar'}` : undefined }))]} ariaLabel="Agregar certificación" /></div>
+              {needsLevel ? <div className="w-[180px]"><BBVASearchableSelect value={certificationLevel} onChange={setCertificationLevel} options={[{value:'',label:'Nivel'},...(selectedCatalogOption?.allowedLevels ?? []).filter((level)=>level!=='GENERIC').map((level)=>({value:level,label:level}))]} ariaLabel="Nivel de certificación" /></div> : null}
+              <button type="button" onClick={() => void add()} disabled={!certificationId || (needsLevel && !certificationLevel) || addMutation.isPending} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 text-[10.5px] font-semibold text-white hover:bg-blue-500 disabled:opacity-50"><Plus className="h-3.5 w-3.5" />Agregar</button>
             </div>
           </div>
 
           <div className="mt-3 grid overflow-hidden rounded-xl border border-slate-200 bg-white sm:grid-cols-3 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/70">
-            <div className="border-b border-slate-100 px-3 py-2.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">Cobertura</div><div className="mt-1 text-[17px] font-semibold text-blue-700">{summary?.coveragePercent ?? 100}%</div><div className="text-[9.5px] text-slate-500">{summary?.valid ?? 0} vigentes de {summary?.applicable ?? 0} aplicables</div></div>
+            <div className="border-b border-slate-100 px-3 py-2.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">Cobertura</div><div className="mt-1 text-[17px] font-semibold text-blue-700">{summary?.coveragePercent ?? 100}%</div><div className="text-[9.5px] text-slate-500">{(summary?.valid ?? 0) + (summary?.expiring ?? 0)} cubiertas de {summary?.applicable ?? 0} aplicables</div></div>
             <div className="border-b border-slate-100 px-3 py-2.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">Atención</div><div className={`mt-1 text-[17px] font-semibold ${attentionCount ? 'text-amber-700' : 'text-emerald-700'}`}>{attentionCount}</div><div className="text-[9.5px] text-slate-500">pendientes, vencidas o por recertificar</div></div>
             <div className="px-3 py-2.5"><div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">Próximas a vencer</div><div className="mt-1 text-[17px] font-semibold text-amber-700">{summary?.expiring ?? 0}</div><div className="text-[9.5px] text-slate-500">seguimiento preventivo</div></div>
           </div>
@@ -132,12 +145,14 @@ export const CollaboratorCertificationsPage: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">{filtered.map((item) => {
                   const approvedCycle = item.baseStatus === 'APPROVED';
                   const attemptLimitReached = Boolean(item.requiresAttempts && item.maxAttempts && item.attemptCount >= item.maxAttempts);
-                  return <tr key={item.id} className="transition hover:bg-slate-50/70">
-                    <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{item.certificationName}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName, item.provider].filter(Boolean).join(' · ') || 'General'}</div></td>
-                    <td className="px-3 py-2.5"><span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span></td>
+                  const criticalExit = isCriticalExit(item);
+                  return <tr key={item.id} className={`transition ${criticalExit ? 'bg-rose-50/70 ring-1 ring-inset ring-rose-200 hover:bg-rose-50' : 'hover:bg-slate-50/70'}`}>
+                    <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{item.certificationName}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider].filter(Boolean).join(' · ') || 'General'}</div></td>
+                    <td className="px-3 py-2.5">{criticalExit ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[8.5px] font-bold uppercase text-white">Crítico</span> : <span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>}</td>
                     <td className="px-3 py-2.5"><div>{formatDate(item.approvedDate)}</div>{item.attemptCount > 0 ? <div className="mt-0.5 text-[9px] text-slate-400">{item.attemptCount} intento{item.attemptCount === 1 ? '' : 's'} en ciclo {item.currentCycle}</div> : null}</td>
                     <td className="px-3 py-2.5"><span className="text-[9.5px] font-medium text-slate-600">{followUp(item)}</span></td>
                     <td className="px-3 py-2.5 text-right"><BBVAActionMenu items={[
+                      ...(criticalExit ? [{ id: 'critical-exit', label: 'Solicitar baja / revisar becario', icon: ArrowRightLeft, tone: 'danger' as const, onClick: () => navigate(`/bbva/collaborators/${id}/move-to-talent`, { state: { criticalCertification: item.certificationName, criticalMessage: '2/2 intentos agotados. Revisar si corresponde solicitar baja o gestionar el caso como becario.' } }) }] : []),
                       { id: 'view', label: 'Ver detalle', icon: Eye, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },
                       { id: 'schedule', label: item.scheduledDate ? 'Reprogramar examen' : 'Programar examen', icon: CalendarClock, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle || attemptLimitReached, onClick: () => setPendingSchedule(item) },
                       { id: 'attempt', label: 'Registrar intento', icon: Award, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle || attemptLimitReached, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}/attempt`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },

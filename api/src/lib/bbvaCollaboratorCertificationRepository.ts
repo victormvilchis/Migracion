@@ -43,6 +43,7 @@ const BASE_SELECT = `
     cc.CertificationType AS certificationType,
     cc.Provider AS provider,
     t.Name AS technologyName,
+    pc.CertificationLevel AS certificationLevel,
     pc.Mandatory AS mandatory,
     pc.Applicable AS applicable,
     pc.Source AS source,
@@ -203,10 +204,11 @@ export class CollaboratorCertificationRepository {
             );
 
           INSERT INTO bbva.PersonCertification (
-            PersonId,CertificationId,Applicable,Mandatory,Source,CurrentCycle,BaseStatus,CreatedByEmail,UpdatedByEmail
+            PersonId,CertificationId,CertificationLevel,Applicable,Mandatory,Source,CurrentCycle,BaseStatus,CreatedByEmail,UpdatedByEmail
           )
-          SELECT @personId,a.CertificationId,1,a.Mandatory,N'AUTO',1,N'PENDING',@actorEmail,@actorEmail
+          SELECT @personId,a.CertificationId,CASE WHEN cc.CertificationType=N'TECHNOLOGICAL' THEN @seniority ELSE N'GENERIC' END,1,a.Mandatory,N'AUTO',1,N'PENDING',@actorEmail,@actorEmail
           FROM @Applicable a
+          INNER JOIN bbva.CertificationCatalog cc ON cc.Id=a.CertificationId
           WHERE NOT EXISTS (
             SELECT 1 FROM bbva.PersonCertification pc
             WHERE pc.PersonId=@personId AND pc.CertificationId=a.CertificationId
@@ -226,10 +228,12 @@ export class CollaboratorCertificationRepository {
           UPDATE pc
           SET Applicable=1,
               Mandatory=a.Mandatory,
+              CertificationLevel=CASE WHEN cc.CertificationType=N'TECHNOLOGICAL' THEN @seniority ELSE N'GENERIC' END,
               UpdatedAt=SYSUTCDATETIME(),
               UpdatedByEmail=@actorEmail
           FROM bbva.PersonCertification pc
           INNER JOIN @Applicable a ON a.CertificationId=pc.CertificationId
+          INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
           WHERE pc.PersonId=@personId
             AND pc.Source=N'AUTO'
             AND pc.BaseStatus<>N'NOT_APPLICABLE';
@@ -310,18 +314,26 @@ export class CollaboratorCertificationRepository {
     };
   }
 
-  async addManual(collaboratorId: string, certificationId: string, actorEmail: string): Promise<CollaboratorCertificationRecord | null> {
+  async addManual(collaboratorId: string, certificationId: string, certificationLevel: string | null, actorEmail: string): Promise<CollaboratorCertificationRecord | null> {
     const personId = await this.collaboratorPersonId(collaboratorId);
     if (!personId) return null;
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
-      const catalog = await new sql.Request(transaction).input('certificationId', sql.UniqueIdentifier, certificationId).query(`
-        SELECT DefaultMandatory AS mandatory,Status AS status FROM bbva.CertificationCatalog WHERE Id=@certificationId;
-      `);
-      if (!catalog.recordset[0]) throw Object.assign(new Error('La certificación no existe.'), { statusCode: 404 });
-      if (String(catalog.recordset[0].status) !== 'ACTIVE') throw Object.assign(new Error('La certificación está inactiva.'), { statusCode: 409 });
+      const catalog = await new sql.Request(transaction)
+        .input('certificationId', sql.UniqueIdentifier, certificationId)
+        .query(`SELECT DefaultMandatory AS mandatory,Status AS status,CertificationType AS certificationType
+                FROM bbva.CertificationCatalog WHERE Id=@certificationId;
+                SELECT LevelCode FROM bbva.CertificationAllowedLevel WHERE CertificationId=@certificationId;`);
+      const catalogRow = catalog.recordsets[0]?.[0] as { mandatory?: boolean; status?: string; certificationType?: string } | undefined;
+      if (!catalogRow) throw Object.assign(new Error('La certificación no existe.'), { statusCode: 404 });
+      if (String(catalogRow.status) !== 'ACTIVE') throw Object.assign(new Error('La certificación está inactiva.'), { statusCode: 409 });
+      const allowedLevels = new Set((catalog.recordsets[1] ?? []).map((row:any)=>String(row.LevelCode)));
+      const selectedLevel = String(catalogRow.certificationType) === 'TECHNOLOGICAL' ? String(certificationLevel ?? '').toUpperCase() : 'GENERIC';
+      if (String(catalogRow.certificationType) === 'TECHNOLOGICAL' && (!selectedLevel || !allowedLevels.has(selectedLevel))) {
+        throw Object.assign(new Error('Selecciona un nivel válido para la certificación tecnológica.'), { statusCode: 400 });
+      }
 
       const existing = await new sql.Request(transaction)
         .input('personId', sql.UniqueIdentifier, personId)
@@ -333,18 +345,20 @@ export class CollaboratorCertificationRepository {
         recordId = String(existing.recordset[0].id);
         await new sql.Request(transaction)
           .input('id', sql.UniqueIdentifier, recordId)
-          .input('mandatory', sql.Bit, Boolean(catalog.recordset[0].mandatory))
+          .input('mandatory', sql.Bit, Boolean(catalogRow.mandatory))
           .input('actorEmail', sql.NVarChar(255), actorEmail)
-          .query(`UPDATE bbva.PersonCertification SET Applicable=1,Mandatory=@mandatory,Source=N'MANUAL',LastDataSource=N'MANUAL',BaseStatus=CASE WHEN BaseStatus=N'NOT_APPLICABLE' THEN N'PENDING' ELSE BaseStatus END,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;`);
+          .input('certificationLevel',sql.NVarChar(16),selectedLevel)
+          .query(`UPDATE bbva.PersonCertification SET Applicable=1,Mandatory=@mandatory,CertificationLevel=@certificationLevel,Source=N'MANUAL',LastDataSource=N'MANUAL',BaseStatus=CASE WHEN BaseStatus=N'NOT_APPLICABLE' THEN N'PENDING' ELSE BaseStatus END,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;`);
       } else {
         const created = await new sql.Request(transaction)
           .input('personId', sql.UniqueIdentifier, personId)
           .input('certificationId', sql.UniqueIdentifier, certificationId)
-          .input('mandatory', sql.Bit, Boolean(catalog.recordset[0].mandatory))
+          .input('mandatory', sql.Bit, Boolean(catalogRow.mandatory))
           .input('actorEmail', sql.NVarChar(255), actorEmail)
-          .query(`INSERT INTO bbva.PersonCertification(PersonId,CertificationId,Applicable,Mandatory,Source,CurrentCycle,BaseStatus,CreatedByEmail,UpdatedByEmail)
+          .input('certificationLevel',sql.NVarChar(16),selectedLevel)
+          .query(`INSERT INTO bbva.PersonCertification(PersonId,CertificationId,CertificationLevel,Applicable,Mandatory,Source,CurrentCycle,BaseStatus,CreatedByEmail,UpdatedByEmail)
                   OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id
-                  VALUES(@personId,@certificationId,1,@mandatory,N'MANUAL',1,N'PENDING',@actorEmail,@actorEmail);`);
+                  VALUES(@personId,@certificationId,@certificationLevel,1,@mandatory,N'MANUAL',1,N'PENDING',@actorEmail,@actorEmail);`);
         recordId = String(created.recordset[0].id);
       }
 
@@ -540,7 +554,8 @@ export class CollaboratorCertificationRepository {
         cc.RequiresAttempts AS requiresAttempts,
         cc.MaxAttempts AS maxAttempts,
         CAST(latestAttempt.Id AS NVARCHAR(36)) AS latestAttemptId,
-        latestAttempt.Result AS latestAttemptResult
+        latestAttempt.Result AS latestAttemptResult,
+        CASE WHEN pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND latestAttempt.Result=N'FAILED' AND (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt ca WHERE ca.PersonCertificationId=pc.Id AND ca.CycleNumber=pc.CurrentCycle) >= 2 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS criticalActionRequired
       FROM bbva.PersonCertification pc
       INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
       INNER JOIN bbva.Person p ON p.Id=pc.PersonId
@@ -549,8 +564,8 @@ export class CollaboratorCertificationRepository {
       OUTER APPLY (
         SELECT TOP 1 a.Id,a.Result
         FROM bbva.PersonCertificationAttempt a
-        WHERE a.PersonCertificationId=pc.Id
-        ORDER BY a.CycleNumber DESC,a.AttemptNumber DESC,a.CreatedAt DESC,a.Id DESC
+        WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle
+        ORDER BY a.AttemptNumber DESC,a.CreatedAt DESC,a.Id DESC
       ) latestAttempt
       OUTER APPLY (
         SELECT MAX(a.ApplicationDate) AS LatestApprovedAttemptDate
@@ -564,7 +579,8 @@ export class CollaboratorCertificationRepository {
             THEN DATEADD(month,cc.ValidityMonths,(CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END)) ELSE pc.ExpirationDate END AS EffectiveExpirationDate
       ) effectiveDates
       WHERE pc.Applicable=1 AND pc.BaseStatus<>N'NOT_APPLICABLE' AND cc.Status=N'ACTIVE'
-      ORDER BY CASE ${STATUS_CASE} WHEN N'EXPIRED' THEN 1 WHEN N'RECERTIFICATION_PENDING' THEN 1 WHEN N'EXPIRING' THEN 2 WHEN N'FAILED' THEN 3 WHEN N'SCHEDULED' THEN 4 WHEN N'PENDING' THEN 5 ELSE 6 END,
+      ORDER BY CASE WHEN pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND latestAttempt.Result=N'FAILED' AND (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt ca WHERE ca.PersonCertificationId=pc.Id AND ca.CycleNumber=pc.CurrentCycle) >= 2 THEN 0 ELSE 1 END,
+               CASE ${STATUS_CASE} WHEN N'EXPIRED' THEN 1 WHEN N'RECERTIFICATION_PENDING' THEN 1 WHEN N'EXPIRING' THEN 2 WHEN N'FAILED' THEN 3 WHEN N'SCHEDULED' THEN 4 WHEN N'PENDING' THEN 5 ELSE 6 END,
                effectiveDates.EffectiveExpirationDate ASC,pc.NextScheduledDate ASC,p.FirstName ASC,cc.Name ASC;
     `);
     const rows = result.recordset.map((row: any) => ({
@@ -575,6 +591,7 @@ export class CollaboratorCertificationRepository {
       maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
       recertificationEnabled: Boolean(row.recertificationEnabled),
       requiresAttempts: Boolean(row.requiresAttempts),
+      criticalActionRequired: Boolean(row.criticalActionRequired),
     })) as CertificationTrackingRecord[];
     return rows.filter((row) => row.status !== 'VALID' && row.status !== 'NOT_APPLICABLE');
   }
@@ -598,6 +615,7 @@ export class CollaboratorCertificationRepository {
       expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
       recertificationEnabled: Boolean(row.recertificationEnabled),
       requiresAttempts: Boolean(row.requiresAttempts),
+      criticalActionRequired: Boolean(row.criticalActionRequired),
       maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
       requiresApplicationDate: Boolean(row.requiresApplicationDate),
       status: row.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',

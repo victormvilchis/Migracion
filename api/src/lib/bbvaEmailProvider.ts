@@ -1,5 +1,6 @@
 export interface EmailMessage {
   to: string;
+  cc?: string[];
   subject: string;
   body: string;
   attachments?: Array<{ filename: string; contentType: string; content: Buffer }>;

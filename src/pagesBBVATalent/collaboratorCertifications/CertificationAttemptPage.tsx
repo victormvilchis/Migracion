@@ -20,7 +20,7 @@ export const CertificationAttemptPage: React.FC = () => {
   const location = useLocation();
   const navState = (location.state as { returnTo?: string; rootReturnTo?: string } | null) ?? {};
   const returnTo = navState.returnTo ?? `/bbva/collaborators/${id}/certifications`;
-  const rootReturnTo = navState.rootReturnTo ?? `/bbva/collaborators/${id}/manage`;
+  const rootReturnTo = navState.rootReturnTo ?? '/bbva/collaborators';
   const detailPath = `/bbva/collaborators/${id}/certifications/${certificationRecordId}`;
   const backToList = () => navigate(returnTo, returnTo.includes('/certifications') ? { state: { returnTo: rootReturnTo } } : undefined);
   const query = useCollaboratorCertification(id, certificationRecordId);

@@ -25,7 +25,7 @@ function useInvalidate(collaboratorId: string) {
 
 export function useAddCollaboratorCertification(collaboratorId: string) {
   const invalidate = useInvalidate(collaboratorId);
-  return useMutation({ mutationFn: (certificationId: string) => collaboratorCertificationApi.add(collaboratorId, certificationId), onSuccess: invalidate });
+  return useMutation({ mutationFn: ({ certificationId, certificationLevel }: { certificationId: string; certificationLevel?: string }) => collaboratorCertificationApi.add(collaboratorId, certificationId, certificationLevel), onSuccess: invalidate });
 }
 
 export function useUpdateCollaboratorCertification(collaboratorId: string) {
@@ -57,5 +57,5 @@ export function useGenerateCertificationCommunication(collaboratorId: string) {
 }
 
 export function usePrepareCertificationCommunicationEmail(collaboratorId: string) {
-  return useMutation({ mutationFn: ({ recordId, communicationId, payload }: { recordId: string; communicationId: string; payload: { recipientEmail?: string; subject?: string; body?: string } }) => collaboratorCertificationApi.prepareCommunicationEmail(collaboratorId, recordId, communicationId, payload) });
+  return useMutation({ mutationFn: ({ recordId, communicationId, payload }: { recordId: string; communicationId: string; payload: { subject?: string; body?: string } }) => collaboratorCertificationApi.prepareCommunicationEmail(collaboratorId, recordId, communicationId, payload) });
 }

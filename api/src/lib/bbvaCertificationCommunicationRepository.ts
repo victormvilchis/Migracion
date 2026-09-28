@@ -74,7 +74,7 @@ export class CertificationCommunicationRepository {
                cc.Name AS certificationName,cc.CertificationType AS certificationType,t.Name AS technologyName,
                LTRIM(RTRIM(CONCAT(ISNULL(p.FirstName,N''),N' ',ISNULL(p.LastName,N'')))) AS fullName,
                ISNULL(p.FirstName,N'') AS firstName,
-               COALESCE(NULLIF(p.BbvaEmail,N''),NULLIF(p.SofttekEmail,N''),NULLIF(p.Email,N'')) AS recipientEmail,
+               NULLIF(LTRIM(RTRIM(p.SofttekEmail)),N'') AS recipientEmail,
                a.CycleNumber AS currentCycle,cc.MaxAttempts AS maxAttempts,pc.BaseStatus AS baseStatus,
                CAST(a.Id AS NVARCHAR(36)) AS attemptId,a.AttemptNumber AS attemptNumber,
                CONVERT(VARCHAR(10),a.ApplicationDate,23) AS attemptDate,a.Result AS result,a.Score10 AS score10
@@ -97,6 +97,43 @@ export class CertificationCommunicationRepository {
       attemptNumber: Number(row.attemptNumber),
       score10: row.score10 === null ? null : Number(row.score10),
     } as CertificationCommunicationSource;
+  }
+
+
+  async automaticCc(collaboratorId: string, actorEmail: string): Promise<string[]> {
+    const pool = await getDbConnection();
+    const result = await pool.request()
+      .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
+      .input('actorEmail', sql.NVarChar(255), actorEmail)
+      .query(`
+        SELECT DISTINCT LTRIM(RTRIM(src.Email)) AS email
+        FROM (
+          SELECT NULLIF(LTRIM(RTRIM(@actorEmail)),N'') AS Email
+          UNION ALL
+          SELECT NULLIF(LTRIM(RTRIM(u.Email)),N'')
+          FROM bbva.Collaborator c
+          INNER JOIN bbva.SystemUser u
+            ON u.Status=N'ACTIVE'
+           AND UPPER(LTRIM(RTRIM(u.FullName)))=UPPER(LTRIM(RTRIM(ISNULL(c.DeliveryManager,N''))))
+          WHERE c.Id=@collaboratorId
+            AND EXISTS (
+              SELECT 1 FROM bbva.SystemUserRole ur
+              INNER JOIN bbva.SystemRole r ON r.Id=ur.RoleId
+              WHERE ur.UserId=u.Id AND r.Status=N'ACTIVE' AND r.IsDeliveryManager=1
+            )
+          UNION ALL
+          SELECT NULLIF(LTRIM(RTRIM(u.Email)),N'')
+          FROM bbva.SystemUser u
+          WHERE u.Status=N'ACTIVE'
+            AND EXISTS (
+              SELECT 1 FROM bbva.SystemUserRole ur
+              INNER JOIN bbva.SystemRole r ON r.Id=ur.RoleId
+              WHERE ur.UserId=u.Id AND r.Status=N'ACTIVE' AND r.Code=N'ADMINISTRATOR'
+            )
+        ) src
+        WHERE src.Email IS NOT NULL;
+      `);
+    return (result.recordset as Array<{ email: string }>).map((row) => String(row.email).trim()).filter(Boolean);
   }
 
   async postcardTemplate(certificationId: string, context: CertificationCommunicationContext): Promise<CertificationPostcardTemplateRecord | null> {

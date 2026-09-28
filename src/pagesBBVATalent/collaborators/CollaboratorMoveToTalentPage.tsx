@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowRightLeft } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
@@ -30,6 +30,8 @@ function today(): string {
 export const CollaboratorMoveToTalentPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const criticalState = (location.state as { criticalCertification?: string; criticalMessage?: string } | null) ?? {};
   const collaboratorQuery = useCollaborator(id);
   const reasonsQuery = useLifecycleReasons();
   const moveMutation = useMoveCollaboratorToTalent();
@@ -86,7 +88,8 @@ export const CollaboratorMoveToTalentPage: React.FC = () => {
 
   return (
     <div className="space-y-3 animate-fade-in">
-      <div className="flex justify-start"><BBVAFormBackButton onBack={() => navigate(`/bbva/collaborators/${item.id}/manage`)} disabled={moveMutation.isPending} /></div>
+      <div className="flex justify-start"><BBVAFormBackButton onBack={() => navigate('/bbva/collaborators')} disabled={moveMutation.isPending} /></div>
+      {criticalState.criticalMessage ? <BBVAAlert tone="warning" persistent title="Revisión crítica de certificación">{criticalState.criticalCertification ? `${criticalState.criticalCertification}: ` : ''}{criticalState.criticalMessage}</BBVAAlert> : null}
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
       {reasonsQuery.error ? <BBVAAlert tone="error">{(reasonsQuery.error as Error).message}</BBVAAlert> : null}
 

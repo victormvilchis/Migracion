@@ -32,6 +32,7 @@ export interface CollaboratorCertification {
   certificationType: string;
   provider: string | null;
   technologyName: string | null;
+  certificationLevel: 'JR' | 'STD' | 'SR' | 'GENERIC' | null;
   mandatory: boolean;
   applicable: boolean;
   source: 'AUTO' | 'MANUAL';
@@ -118,6 +119,7 @@ export interface CertificationTrackingItem {
   requiresAttempts: boolean;
   latestAttemptId: string | null;
   latestAttemptResult: CertificationAttemptResult | null;
+  criticalActionRequired: boolean;
 }
 
 export type CertificationCommunicationContext = 'APPROVED' | 'FIRST_FAILED' | 'INTERMEDIATE_FAILED' | 'LAST_FAILED' | 'LOW' | 'DEFAULT';
@@ -133,6 +135,7 @@ export interface CertificationCommunication {
   postcardTemplateVersion: number;
   pngBase64: string;
   recipientEmail: string | null;
+  ccEmails: string[];
   emailStatus: CertificationCommunicationEmailStatus;
   emailTemplateId: string | null;
   emailTemplateVersion: number | null;

@@ -59,7 +59,7 @@ export const ISLookupField: React.FC<ISLookupFieldProps> = ({ value, onChange, o
             }
           }}
           className={fieldClass}
-          placeholder="Ej. XMF5048"
+          placeholder="Ej. LFCC1"
           maxLength={80}
           disabled={disabled || searching}
           autoFocus={autoFocus}

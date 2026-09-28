@@ -318,3 +318,10 @@ Banco de talento y Colaboradores representan estados operativos de una misma per
 ## Regla transversal: sin autoguardado y paralelismo
 
 BBVA Workspace no utiliza autoguardado para datos persistentes. La edición ocurre localmente y sólo se persiste mediante una acción explícita del usuario (`Guardar`, `Confirmar`, `Aplicar`). Las mutaciones deben propagar invalidación de datos entre vistas/pestañas BBVA y, para entidades editables concurrentemente, validar la versión esperada (`UpdatedAt` o equivalente) para evitar escrituras perdidas.
+
+## Estándares UX obligatorios BBVA Workspace
+
+- Toda acción que invoque backend debe mostrar estado inmediato de procesamiento (`Guardando…`, `Aplicando…`, spinner o equivalente) y cerrar con confirmación explícita de éxito o error proveniente de la respuesta del servidor.
+- Una selección local que todavía no haya sido persistida debe marcar visualmente la opción elegida y dejar claro que se aplicará al confirmar la operación; no debe aparentar que ya se ejecutó en servidor.
+- Los breadcrumbs forman parte de la navegación: cada nivel anterior al actual debe ser clicable, navegable con teclado y resolver su ruta desde la metadata oficial de BBVA Workspace. El último nivel representa la vista actual y no se enlaza.
+- Las vistas operativas basadas en tablas conservan la tabla como contenido principal. Insights y análisis extensos viven en Panel/Métricas y no desplazan la operación principal salvo solicitud funcional explícita.

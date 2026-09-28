@@ -23,7 +23,7 @@ function accentFor(_source: CertificationCommunicationSource, fallback: string |
   return fallback ?? '#1464A5';
 }
 
-function asRecord(stored: StoredCertificationCommunication, provider: EmailProvider): CertificationCommunicationRecord {
+function asRecord(stored: StoredCertificationCommunication, provider: EmailProvider, overrides?: { recipientEmail?: string | null; ccEmails?: string[] }): CertificationCommunicationRecord {
   return {
     id: stored.id,
     certificationRecordId: stored.certificationRecordId,
@@ -33,7 +33,8 @@ function asRecord(stored: StoredCertificationCommunication, provider: EmailProvi
     postcardTemplateId: stored.postcardTemplateId,
     postcardTemplateVersion: stored.postcardTemplateVersion,
     pngBase64: stored.pngData.toString('base64'),
-    recipientEmail: stored.recipientEmail,
+    recipientEmail: overrides?.recipientEmail !== undefined ? overrides.recipientEmail : stored.recipientEmail,
+    ccEmails: overrides?.ccEmails ?? [],
     emailStatus: stored.emailStatus,
     emailTemplateId: stored.emailTemplateId,
     emailTemplateVersion: stored.emailTemplateVersion,
@@ -48,6 +49,19 @@ function asRecord(stored: StoredCertificationCommunication, provider: EmailProvi
 export class CertificationCommunicationService {
   constructor(private readonly emailProvider: EmailProvider = new UnconfiguredEmailProvider()) {}
 
+  private async presentationRecipients(collaboratorId: string, actorEmail: string, recipientEmail: string | null): Promise<{ recipientEmail: string | null; ccEmails: string[] }> {
+    const cc = await repository.automaticCc(collaboratorId, actorEmail);
+    const recipientKey = String(recipientEmail ?? '').trim().toLocaleLowerCase('en-US');
+    const seen = new Set<string>();
+    const ccEmails = cc.filter((email) => {
+      const key = email.toLocaleLowerCase('en-US');
+      if (!key || key === recipientKey || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return { recipientEmail, ccEmails };
+  }
+
   async generate(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string): Promise<CertificationCommunicationRecord | null> {
     const attemptId = String(valueOf(payload, 'attemptId') ?? '').trim();
     if (!attemptId) throw Object.assign(new Error('Selecciona un intento real para generar la postal.'), { statusCode: 400 });
@@ -59,7 +73,10 @@ export class CertificationCommunicationService {
     const standardKey = `ATTEMPT:${attemptId}:POSTCARD`;
     if (!regenerate) {
       const existing = await repository.findByIdempotencyKey(standardKey);
-      if (existing) return asRecord(existing, this.emailProvider);
+      if (existing) {
+        const recipients = await this.presentationRecipients(collaboratorId, actorEmail, source.recipientEmail);
+        return asRecord(existing, this.emailProvider, recipients);
+      }
     }
 
     const template = await repository.postcardTemplate(source.certificationId, context);
@@ -88,15 +105,21 @@ export class CertificationCommunicationService {
       idempotencyKey: regenerate ? `REGEN:${attemptId}:${crypto.randomUUID()}` : standardKey,
       actorEmail,
     });
-    return asRecord(created, this.emailProvider);
+    const recipients = await this.presentationRecipients(collaboratorId, actorEmail, source.recipientEmail);
+    return asRecord(created, this.emailProvider, recipients);
   }
 
-  async get(recordId: string, communicationId: string): Promise<CertificationCommunicationRecord | null> {
+  async get(collaboratorId: string, recordId: string, communicationId: string, actorEmail: string): Promise<CertificationCommunicationRecord | null> {
     const item = await repository.findById(recordId, communicationId);
-    return item ? asRecord(item, this.emailProvider) : null;
+    if (!item) return null;
+    if (!item.attemptId) return asRecord(item, this.emailProvider);
+    const source = await repository.source(collaboratorId, recordId, item.attemptId);
+    if (!source) return asRecord(item, this.emailProvider);
+    const recipients = await this.presentationRecipients(collaboratorId, actorEmail, source.recipientEmail);
+    return asRecord(item, this.emailProvider, recipients);
   }
 
-  async prepareEmail(collaboratorId: string, recordId: string, communicationId: string, payload: unknown): Promise<CertificationCommunicationRecord | null> {
+  async prepareEmail(collaboratorId: string, recordId: string, communicationId: string, payload: unknown, actorEmail: string): Promise<CertificationCommunicationRecord | null> {
     const communication = await repository.findById(recordId, communicationId);
     if (!communication?.attemptId) return null;
     const source = await repository.source(collaboratorId, recordId, communication.attemptId);
@@ -104,12 +127,15 @@ export class CertificationCommunicationService {
     const template = await repository.emailTemplate(source.certificationId, communication.context);
     if (!template) throw Object.assign(new Error('No existe una plantilla activa de correo para este resultado.'), { statusCode: 409 });
     const variables = communicationVariables(source);
-    const defaultSubject = renderCommunicationTemplate(template.subjectTemplate, variables);
+    const defaultSubject = `Resultados de ${source.certificationName}`;
     const defaultBody = renderCommunicationTemplate(template.bodyTemplate, variables).replace(/\\n/g, '\n');
-    const recipientEmail = cleanText(valueOf(payload, 'recipientEmail'), 255) ?? communication.recipientEmail ?? source.recipientEmail;
+    const recipientEmail = source.recipientEmail;
+    if (!recipientEmail) throw Object.assign(new Error('El colaborador no tiene correo Softtek registrado. Completa ese dato antes de preparar la comunicación.'), { statusCode: 409 });
     const subject = cleanText(valueOf(payload, 'subject'), 300) ?? defaultSubject;
     const body = cleanText(valueOf(payload, 'body'), 12000) ?? defaultBody;
     const prepared = await repository.prepareEmail({ recordId, communicationId, template, recipientEmail, subject, body });
-    return prepared ? asRecord(prepared, this.emailProvider) : null;
+    if (!prepared) return null;
+    const recipients = await this.presentationRecipients(collaboratorId, actorEmail, recipientEmail);
+    return asRecord(prepared, this.emailProvider, recipients);
   }
 }

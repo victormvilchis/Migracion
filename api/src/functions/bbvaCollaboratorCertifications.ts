@@ -88,7 +88,7 @@ export async function certificationTrackingHandler(request: HttpRequest, context
   try {
     const user = getCurrentUser(request);
     assertBbvaPermission(user, 'COLLABORATOR_READ');
-    return { status: 200, jsonBody: { items: await service.tracking() } };
+    return { status: 200, jsonBody: await service.tracking() };
   } catch (error) {
     return bbvaErrorResponse(error, context, 'CollaboratorCertifications');
   }
@@ -109,7 +109,7 @@ export async function collaboratorCertificationCommunicationHandler(request: Htt
       return item ? { status: 201, jsonBody: { item } } : { status: 404, jsonBody: { error: 'No se encontró el intento solicitado.' } };
     }
     if (request.method === 'GET' && communicationId) {
-      const item = await communicationService.get(recordId, communicationId);
+      const item = await communicationService.get(collaboratorId, recordId, communicationId, user.email);
       return item ? { status: 200, jsonBody: { item } } : { status: 404, jsonBody: { error: 'Comunicación no encontrada.' } };
     }
     return { status: 405, jsonBody: { error: 'Método no permitido.' } };
@@ -126,7 +126,7 @@ export async function collaboratorCertificationCommunicationEmailHandler(request
     const recordId = request.params.certificationRecordId;
     const communicationId = request.params.communicationId;
     if (!collaboratorId || !recordId || !communicationId) return { status: 400, jsonBody: { error: 'Identificadores requeridos.' } };
-    const item = await communicationService.prepareEmail(collaboratorId, recordId, communicationId, await readBbvaJson(request));
+    const item = await communicationService.prepareEmail(collaboratorId, recordId, communicationId, await readBbvaJson(request), user.email);
     return item ? { status: 200, jsonBody: { item } } : { status: 404, jsonBody: { error: 'Comunicación no encontrada.' } };
   } catch (error) {
     return bbvaErrorResponse(error, context, 'CollaboratorCertifications');

@@ -175,7 +175,7 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
         </div>
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-3"><span className={labelClass}>IS</span><ISLookupField value={isValue ?? ''} onChange={(value) => setValue('softtekCode', value, { shouldDirty: true })} onResolved={hydrateFromDirectory} disabled={saving || readOnly} /></label>
-          {fullForm ? <label className="md:col-span-2"><span className={labelClass}>Usuario BBVA</span><input {...register('bbvaUser')} disabled={readOnly || saving} className={fieldClass} /></label> : null}
+          {fullForm ? <label className="md:col-span-2"><span className={labelClass}>Usuario BBVA</span><input {...register('bbvaUser')} disabled={readOnly || saving} className={fieldClass} placeholder="Ej. XMK4244, XL..., T... o EC..." /></label> : null}
           <label className={fullForm ? 'md:col-span-3' : 'md:col-span-4'}><span className={labelClass}>Correo Softtek</span><input {...register('softtekEmail')} type="email" disabled={readOnly || saving} className={fieldClass} /></label>
           {fullForm ? <label className="md:col-span-3"><span className={labelClass}>Correo BBVA</span><input {...register('bbvaEmail')} type="email" disabled={readOnly || saving} className={fieldClass} /></label> : null}
           <label className="md:col-span-2"><span className={labelClass}>Nombre</span><input {...register('firstName')} disabled={readOnly || saving} className={fieldClass} /></label>

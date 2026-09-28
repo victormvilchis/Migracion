@@ -55,6 +55,7 @@ export interface CertificationCommunicationRecord {
   postcardTemplateVersion: number;
   pngBase64: string;
   recipientEmail: string | null;
+  ccEmails: string[];
   emailStatus: CertificationCommunicationEmailStatus;
   emailTemplateId: string | null;
   emailTemplateVersion: number | null;
@@ -77,9 +78,19 @@ export interface CommunicationVariables {
   attemptDate: string;
 }
 
+export const CRITICAL_EXIT_CERTIFICATION_TYPES = new Set(['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING']);
+
+export function isCriticalTwoAttemptFailure(source: Pick<CertificationCommunicationSource, 'certificationType' | 'result' | 'attemptNumber' | 'maxAttempts'>): boolean {
+  return source.result === 'FAILED'
+    && CRITICAL_EXIT_CERTIFICATION_TYPES.has(source.certificationType)
+    && source.maxAttempts === 2
+    && source.attemptNumber >= 2;
+}
+
 export function resolveCommunicationContext(source: CertificationCommunicationSource): CertificationCommunicationContext {
   if (source.result === 'APPROVED') return 'APPROVED';
   if (source.result === 'FAILED') {
+    if (isCriticalTwoAttemptFailure(source)) return 'LOW';
     if (source.attemptNumber === 1) return 'FIRST_FAILED';
     if (source.maxAttempts !== null && source.attemptNumber >= source.maxAttempts) return 'LAST_FAILED';
     return 'INTERMEDIATE_FAILED';

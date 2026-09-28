@@ -36,6 +36,7 @@ const COLLABORATOR_SELECT = `
     ISNULL(certStats.expiredCount,0) AS certificationExpired,
     ISNULL(certStats.pendingCount,0) AS certificationPending,
     ISNULL(certStats.recertificationPendingCount,0) AS certificationRecertificationPending,
+    ISNULL(certStats.criticalCount,0) AS certificationCritical,
     CONVERT(VARCHAR(33), c.CreatedAt, 127) AS createdAt,
     CONVERT(VARCHAR(33), c.UpdatedAt, 127) AS updatedAt
   FROM bbva.Collaborator c
@@ -48,9 +49,17 @@ const COLLABORATOR_SELECT = `
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND cc.ExpiringSoonDays IS NOT NULL AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate >= CONVERT(date,SYSUTCDATETIME()) AND pc.ExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,CONVERT(date,SYSUTCDATETIME())) THEN 1 END) AS expiringCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=0 THEN 1 END) AS expiredCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus IN (N'PENDING',N'SCHEDULED',N'APPLIED',N'FAILED') THEN 1 END) AS pendingCount,
-      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=1 THEN 1 END) AS recertificationPendingCount
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=1 THEN 1 END) AS recertificationPendingCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND ISNULL(attemptStats.failedAttemptCount,0) >= 2 THEN 1 END) AS criticalCount
     FROM bbva.PersonCertification pc
     INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+    OUTER APPLY (
+      SELECT COUNT(1) AS failedAttemptCount
+      FROM bbva.PersonCertificationAttempt ca
+      WHERE ca.PersonCertificationId=pc.Id
+        AND ca.CycleNumber=pc.CurrentCycle
+        AND ca.Result=N'FAILED'
+    ) attemptStats
     WHERE pc.PersonId=p.Id
   ) certStats
 `;

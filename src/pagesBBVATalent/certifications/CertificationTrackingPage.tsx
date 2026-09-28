@@ -1,5 +1,5 @@
 import React, { Fragment, useMemo, useState } from 'react';
-import { AlertCircle, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, Clock3, Eye, Mail, RefreshCw, Search, ShieldAlert } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CalendarClock, CalendarRange, CheckCircle2, ChevronDown, ChevronUp, Clock3, Eye, Mail, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
@@ -26,6 +26,7 @@ import {
   expirationContext,
   hasAttemptLimitReached,
   remainingAttempts,
+  requiresCriticalExitReview,
   scheduledContext,
   trackingPriority,
 } from '../lib/certificationTracking';
@@ -205,6 +206,7 @@ export const CertificationTrackingPage: React.FC = () => {
     <div className="space-y-2 animate-fade-in">
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
 
+
       <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 [.bbva-dark_&]:border-slate-800">
           <div className="min-w-0">
@@ -249,19 +251,21 @@ export const CertificationTrackingPage: React.FC = () => {
             </tr></thead>
             <tbody className="divide-y divide-slate-100 [.bbva-dark_&]:divide-slate-800">{filtered.map((item) => {
               const limitReached = hasAttemptLimitReached(item);
+              const criticalExit = requiresCriticalExitReview(item);
               const canApprove = item.requiresAttempts && !limitReached && ['PENDING', 'SCHEDULED', 'FAILED', 'APPLIED'].includes(item.status);
               const remaining = remainingAttempts(item);
               const isExpanded = expandedId === item.certificationRecordId;
               const scheduleText = scheduledContext(item.scheduledDate);
               return <Fragment key={item.certificationRecordId}>
-                <tr className="align-top transition hover:bg-slate-50 [.bbva-dark_&]:hover:bg-slate-800/50">
+                <tr className={`align-top transition ${criticalExit ? 'bg-rose-50/70 ring-1 ring-inset ring-rose-200 hover:bg-rose-50 [.bbva-dark_&]:bg-rose-950/20 [.bbva-dark_&]:ring-rose-900/70' : 'hover:bg-slate-50 [.bbva-dark_&]:hover:bg-slate-800/50'}`}>
                   <td className="px-3 py-2.5"><div className="font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{item.collaboratorName}</div><div className="mt-0.5 text-[9px] text-slate-400">{item.profile || 'Sin perfil'} · {item.technology || 'Sin tecnología'}</div></td>
                   <td className="px-3 py-2.5"><div className="font-semibold text-slate-800 [.bbva-dark_&]:text-slate-200">{item.certificationName}</div><div className="mt-0.5 text-[9px] text-slate-400">{item.technologyName || item.certificationType}</div></td>
-                  <td className="px-3 py-2.5"><BBVACertificationStatusBadge status={item.status} /><div className="mt-1 text-[9px] leading-3 text-slate-500 [.bbva-dark_&]:text-slate-400">{item.status === 'EXPIRED' ? 'Revisión de vigencia' : item.status === 'RECERTIFICATION_PENDING' ? 'Nuevo ciclo requerido' : item.status === 'EXPIRING' ? 'Seguimiento preventivo' : item.status === 'FAILED' ? 'Revisar siguiente intento' : item.status === 'SCHEDULED' ? 'Presentación programada' : 'Acción pendiente'}</div></td>
+                  <td className="px-3 py-2.5">{criticalExit ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-1 text-[8.5px] font-bold uppercase tracking-[.04em] text-white">Crítico</span> : <BBVACertificationStatusBadge status={item.status} />}<div className={`mt-1 text-[9px] leading-3 ${criticalExit ? 'font-semibold text-rose-700 [.bbva-dark_&]:text-rose-300' : 'text-slate-500 [.bbva-dark_&]:text-slate-400'}`}>{criticalExit ? '2/2 intentos agotados · solicitar baja o revisar becario' : item.status === 'EXPIRED' ? 'Revisión de vigencia' : item.status === 'RECERTIFICATION_PENDING' ? 'Nuevo ciclo requerido' : item.status === 'EXPIRING' ? 'Seguimiento preventivo' : item.status === 'FAILED' ? 'Revisar siguiente intento' : item.status === 'SCHEDULED' ? 'Presentación programada' : 'Acción pendiente'}</div></td>
                   <td className="px-3 py-2.5"><div className="font-medium text-slate-700 [.bbva-dark_&]:text-slate-200">{formatDate(item.expirationDate)}</div><div className={`mt-0.5 text-[9px] ${item.status === 'EXPIRED' ? 'font-semibold text-rose-600 [.bbva-dark_&]:text-rose-300' : item.status === 'EXPIRING' ? 'font-semibold text-amber-600 [.bbva-dark_&]:text-amber-300' : 'text-slate-400'}`}>{expirationContext(item)}</div></td>
                   <td className="px-3 py-2.5">{item.scheduledDate ? <><span className="inline-flex items-center gap-1 font-medium text-blue-700 [.bbva-dark_&]:text-cyan-300"><CalendarClock className="h-3 w-3" />{formatDate(item.scheduledDate)}</span>{scheduleText ? <div className="mt-0.5 text-[9px] text-slate-400">{scheduleText}</div> : null}</> : <span className="text-slate-400">Sin fecha programada</span>}</td>
                   <td className="px-3 py-2.5 text-center">{item.requiresAttempts ? <div><div className="font-semibold tabular-nums text-slate-800 [.bbva-dark_&]:text-slate-200">{item.maxAttempts !== null ? `${item.attemptCount} / ${item.maxAttempts}` : item.attemptCount}</div><div className={`mt-0.5 text-[9px] ${limitReached ? 'font-semibold text-rose-600 [.bbva-dark_&]:text-rose-300' : remaining === 1 ? 'font-semibold text-amber-600 [.bbva-dark_&]:text-amber-300' : 'text-slate-400'}`}>{attemptContext(item)}</div></div> : <span className="text-slate-400">No aplica</span>}</td>
                   <td className="px-3 py-2.5"><div className="flex flex-wrap justify-end gap-1.5">
+                    {criticalExit ? <BBVAButton variant="table" size="sm" className="border-rose-300 bg-rose-50 font-semibold text-rose-700 hover:bg-rose-100" onClick={() => navigate(`/bbva/collaborators/${item.collaboratorId}/move-to-talent`, { state: { criticalCertification: item.certificationName, criticalMessage: '2/2 intentos agotados. Revisar si corresponde solicitar baja o gestionar el caso como becario.' } })}><ArrowRightLeft className="h-3 w-3" />Baja / Becario</BBVAButton> : null}
                     {canApprove ? <BBVAButton variant="table" size="sm" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50" onClick={() => setApproval(item)}><CheckCircle2 className="h-3 w-3" />Aprobar</BBVAButton> : null}
                     {['EXPIRING', 'EXPIRED', 'RECERTIFICATION_PENDING'].includes(item.status) && item.recertificationEnabled ? <BBVAButton variant="table" size="sm" className="border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => void startRecertification(item)}><RefreshCw className="h-3 w-3" />Recertificar</BBVAButton> : null}
                     {item.latestAttemptId ? <BBVAButton variant="table" size="sm" onClick={() => void openCommunication(item)}><Mail className="h-3 w-3" />Postal</BBVAButton> : null}
@@ -285,6 +289,21 @@ export const CertificationTrackingPage: React.FC = () => {
         {!query.isLoading && filtered.length === 0 ? <BBVAEmptyState title="No hay certificaciones con este contexto" description={activeFilters.length ? 'No existen registros que coincidan con los filtros activos. Ajusta o limpia los filtros para ampliar el resultado.' : 'Actualmente no existen certificaciones que requieran seguimiento.'} action={activeFilters.length ? <BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar filtros</BBVAButton> : undefined} /> : null}
       </div>
 
+      {query.data?.vendorQuarter?.targetCode ? (
+        <section className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-3 py-2.5 shadow-sm [.bbva-dark_&]:border-blue-400/20 [.bbva-dark_&]:from-blue-950/30 [.bbva-dark_&]:via-slate-900 [.bbva-dark_&]:to-cyan-950/20" aria-label="Preparación para corte Vendors">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[.07em] text-blue-700 [.bbva-dark_&]:text-cyan-300"><CalendarRange className="h-3.5 w-3.5" />Preparación Vendors · {query.data.vendorQuarter.targetCode}</div>
+              <div className="mt-1 text-[10px] text-slate-600 [.bbva-dark_&]:text-slate-300">Inicio del Q: {formatDate(query.data.vendorQuarter.targetStartDate)}{query.data.vendorQuarter.daysToTargetStart !== null ? ` · ${query.data.vendorQuarter.daysToTargetStart === 0 ? 'corte actual' : `${query.data.vendorQuarter.daysToTargetStart} días para el corte`}` : ''}</div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[9.5px]">
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700 [.bbva-dark_&]:border-amber-400/20 [.bbva-dark_&]:bg-amber-400/10 [.bbva-dark_&]:text-amber-300">{query.data.vendorQuarter.pendingCertifications} pendientes</span>
+              <span className={`rounded-full border px-2.5 py-1 font-semibold ${query.data.vendorQuarter.exhaustedAttempts ? 'border-rose-200 bg-rose-50 text-rose-700 [.bbva-dark_&]:border-rose-400/20 [.bbva-dark_&]:bg-rose-400/10 [.bbva-dark_&]:text-rose-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700 [.bbva-dark_&]:border-emerald-400/20 [.bbva-dark_&]:bg-emerald-400/10 [.bbva-dark_&]:text-emerald-300'}`}>{query.data.vendorQuarter.exhaustedAttempts} con intentos agotados</span>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       {!query.isLoading ? (
         <section aria-label="Resumen operativo de seguimiento" className="pt-1">
           <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
@@ -295,6 +314,7 @@ export const CertificationTrackingPage: React.FC = () => {
           </div>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(145px,1fr))] items-stretch gap-1.5">
             <BBVAMetricCard density="compact" label="Atención requerida" value={summary.total} icon={<AlertCircle className="h-3.5 w-3.5" />} tone="blue" help={metricHelp.attention} supportingText={`${summary.scheduled} con fecha programada`} active={!filters.certificationStatus} onAction={() => filterStatus('')} actionLabel="Todas" />
+            <BBVAMetricCard density="compact" label="Críticos 2/2" value={summary.criticalExit} icon={<ShieldAlert className="h-3.5 w-3.5" />} tone={summary.criticalExit ? 'rose' : 'emerald'} supportingText={summary.criticalExit ? 'Solicitar baja / revisar becario' : 'Sin casos críticos'} />
             <BBVAMetricCard density="compact" label="Vencidas" value={summary.expired} icon={<ShieldAlert className="h-3.5 w-3.5" />} tone={summary.expired ? 'rose' : 'emerald'} help={metricHelp.expired} supportingText={summary.expired ? 'Fuera de vigencia' : 'Sin vencidas'} active={filters.certificationStatus === 'EXPIRED'} onAction={() => filterStatus('EXPIRED')} actionLabel="Filtrar" />
             <BBVAMetricCard density="compact" label="Recertificación" value={summary.recertificationPending} icon={<RefreshCw className="h-3.5 w-3.5" />} tone={summary.recertificationPending ? 'orange' : 'emerald'} help={metricHelp.recertification} supportingText={summary.recertificationPending ? 'Nuevo ciclo requerido' : 'Sin pendientes'} active={filters.certificationStatus === 'RECERTIFICATION_PENDING'} onAction={() => filterStatus('RECERTIFICATION_PENDING')} actionLabel="Filtrar" />
             <BBVAMetricCard density="compact" label="Próximas a vencer" value={summary.expiring} icon={<Clock3 className="h-3.5 w-3.5" />} tone={summary.expiring ? 'amber' : 'emerald'} help={metricHelp.expiring} supportingText={summary.expiring ? 'Periodo de alerta' : 'Sin próximas'} active={filters.certificationStatus === 'EXPIRING'} onAction={() => filterStatus('EXPIRING')} actionLabel="Filtrar" />

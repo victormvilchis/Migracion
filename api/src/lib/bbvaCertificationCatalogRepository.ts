@@ -142,13 +142,14 @@ export class BbvaCertificationCatalogRepository {
              c.CertificationType AS certificationType,
              CAST(c.TechnologyId AS NVARCHAR(36)) AS technologyId, t.Name AS technologyName,
              c.ValidityMonths AS validityMonths, c.InitialCompletionDays AS initialCompletionDays, c.ExpiringSoonDays AS expiringSoonDays,
-             c.RecertificationEnabled AS recertificationEnabled, c.DefaultMandatory AS defaultMandatory
+             c.RecertificationEnabled AS recertificationEnabled, c.DefaultMandatory AS defaultMandatory,
+             (SELECT STRING_AGG(l.LevelCode,N',') WITHIN GROUP (ORDER BY l.LevelCode) FROM bbva.CertificationAllowedLevel l WHERE l.CertificationId=c.Id) AS allowedLevelsCsv
       FROM bbva.CertificationCatalog c
       LEFT JOIN bbva.CatalogTechnology t ON t.Id=c.TechnologyId
       WHERE c.Status=N'ACTIVE'
       ORDER BY c.Name ASC;
     `);
-    return result.recordset as CertificationCatalogOption[];
+    return result.recordset.map((row:any) => ({ ...row, allowedLevels: row.allowedLevelsCsv ? String(row.allowedLevelsCsv).split(',') : [] })) as CertificationCatalogOption[];
   }
 
   async findById(id: string): Promise<CertificationCatalogRecord | null> {

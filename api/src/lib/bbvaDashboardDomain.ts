@@ -20,6 +20,9 @@ export interface DashboardMetricCards {
   pending: number;
   deliveryManagersRepresented: number;
   dataQualityPending: number;
+  vendorReadyPercent: number;
+  vendorPending: number;
+  vendorExitRequired: number;
 }
 
 export interface DashboardSlice { label: string; value: number; }
@@ -39,8 +42,22 @@ export interface DashboardAttentionRow {
   recertificationPending: number;
 }
 
+export interface VendorQuarterSummary {
+  calendarName: string;
+  currentCode: string | null;
+  targetCode: string | null;
+  targetStartDate: string | null;
+  targetEndDate: string | null;
+  daysToTargetStart: number | null;
+  readyCollaborators: number;
+  pendingCollaborators: number;
+  exhaustedAttemptCollaborators: number;
+  readinessPercent: number;
+}
+
 export interface BbvaDashboardResponse {
   cards: DashboardMetricCards;
+  vendorQuarter: VendorQuarterSummary;
   collaboratorFocus: DashboardSlice[];
   certificationCoverage: DashboardSlice[];
   expirationByMonth: DashboardMonthlyPoint[];

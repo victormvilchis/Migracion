@@ -1,0 +1,31 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
+
+const tracking = read('src/pagesBBVATalent/certifications/CertificationTrackingPage.tsx');
+const collaborators = read('src/pagesBBVATalent/collaborators/CollaboratorsPage.tsx');
+const certifications = read('src/pagesBBVATalent/collaboratorCertifications/CollaboratorCertificationsPage.tsx');
+const app = read('src/App.tsx');
+const communicationService = read('api/src/lib/bbvaCertificationCommunicationService.ts');
+const importService = read('api/src/lib/bbvaCollaboratorImportService.ts');
+const dashboard = read('src/pagesBBVATalent/dashboard/BBVADashboardPage.tsx');
+
+assert.ok(tracking.indexOf('<table') < tracking.indexOf('Preparación Vendors'), 'Seguimiento debe conservar la tabla antes del panel Vendors/Q.');
+assert.match(tracking, /Baja \/ Becario/);
+assert.match(tracking, /Críticos 2\/2/);
+assert.match(collaborators, /Mover a Banco de talento/);
+assert.doesNotMatch(collaborators, /\/manage`/);
+assert.equal(fs.existsSync(path.join(root, 'src/pagesBBVATalent/collaborators/CollaboratorManagePage.tsx')), false, 'Gestionar debe estar eliminado.');
+assert.match(app, /path="\/bbva\/collaborators\/:id\/manage" element={<Navigate to="\/bbva\/collaborators" replace \/>}/);
+assert.match(certifications, /ariaLabel="Nivel de certificación"/);
+assert.match(certifications, /criticalItems\.length/);
+assert.match(communicationService, /Resultados de \$\{source\.certificationName\}/);
+assert.match(communicationService, /correo Softtek registrado/);
+assert.match(importService, /'FECHA DE ALTA'/);
+assert.match(importService, /'FECHA ALTA -SAP'/);
+assert.match(importService, /'CORREO CORPORATIVO'/);
+assert.match(dashboard, /Preparación Vendors/);
+assert.match(dashboard, /exhaustedAttemptCollaborators/);
+console.log('OK: integración V10 Vendors/Q + Critical UX + nivel tecnológico.');

@@ -1,5 +1,6 @@
 import { CollaboratorCertificationRepository } from './bbvaCollaboratorCertificationRepository.js';
 import type { CertificationAttemptInput, CertificationUpdateInput } from './bbvaCollaboratorCertificationDomain.js';
+import { vendorQuarterContext } from './bbvaVendorCalendar.js';
 
 const repository = new CollaboratorCertificationRepository();
 
@@ -38,14 +39,30 @@ export class CollaboratorCertificationService {
     return repository.detail(collaboratorId, recordId);
   }
 
-  tracking() {
-    return repository.tracking();
+  async tracking() {
+    const items = await repository.tracking();
+    const quarter = vendorQuarterContext();
+    const exhaustedAttempts = items.filter((item) => item.latestAttemptResult === 'FAILED' && item.maxAttempts != null && item.attemptCount >= item.maxAttempts).length;
+    return {
+      items,
+      vendorQuarter: {
+        calendarName: quarter.calendarName,
+        currentCode: quarter.currentQuarter?.code ?? null,
+        targetCode: quarter.targetQuarter?.code ?? null,
+        targetStartDate: quarter.targetQuarter?.startDate ?? null,
+        targetEndDate: quarter.targetQuarter?.endDate ?? null,
+        daysToTargetStart: quarter.daysToTargetStart,
+        pendingCertifications: items.length,
+        exhaustedAttempts,
+      },
+    };
   }
 
   async addManual(collaboratorId: string, payload: unknown, actorEmail: string) {
     const certificationId = String(valueOf(payload, 'certificationId') ?? '').trim();
     if (!certificationId) throw Object.assign(new Error('La certificación es obligatoria.'), { statusCode: 400 });
-    return repository.addManual(collaboratorId, certificationId, actorEmail);
+    const certificationLevel = cleanText(valueOf(payload, 'certificationLevel'), 16)?.toUpperCase() ?? null;
+    return repository.addManual(collaboratorId, certificationId, certificationLevel, actorEmail);
   }
 
   async update(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string) {

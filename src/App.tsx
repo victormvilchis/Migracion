@@ -21,7 +21,6 @@ const CollaboratorsPage = React.lazy(() => import('./pagesBBVATalent/collaborato
 const CollaboratorDetailPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorDetailPage').then((m) => ({ default: m.CollaboratorDetailPage })));
 const CollaboratorEditorPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorEditorPage').then((m) => ({ default: m.CollaboratorEditorPage })));
 const CollaboratorImportPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorImportPage').then((m) => ({ default: m.CollaboratorImportPage })));
-const CollaboratorManagePage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorManagePage').then((m) => ({ default: m.CollaboratorManagePage })));
 const CollaboratorMoveToTalentPage = React.lazy(() => import('./pagesBBVATalent/collaborators/CollaboratorMoveToTalentPage').then((m) => ({ default: m.CollaboratorMoveToTalentPage })));
 const CatalogListPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogListPage').then((m) => ({ default: m.CatalogListPage })));
 const CatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/catalogs/CatalogEditorPage').then((m) => ({ default: m.CatalogEditorPage })));
@@ -90,7 +89,7 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/collaborators/new" element={modulePage(<CollaboratorEditorPage />)} />
               <Route path="/bbva/collaborators/import" element={modulePage(<CollaboratorImportPage />)} />
               <Route path="/bbva/collaborators/:id/edit" element={modulePage(<CollaboratorEditorPage />)} />
-              <Route path="/bbva/collaborators/:id/manage" element={modulePage(<CollaboratorManagePage />)} />
+              <Route path="/bbva/collaborators/:id/manage" element={<Navigate to="/bbva/collaborators" replace />} />
               <Route path="/bbva/collaborators/:id/move-to-talent" element={modulePage(<CollaboratorMoveToTalentPage />)} />
               <Route path="/bbva/collaborators/:id/certifications" element={modulePage(<CollaboratorCertificationsPage />)} />
               <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/edit" element={modulePage(<CollaboratorCertificationDetailPage mode="edit" />)} />

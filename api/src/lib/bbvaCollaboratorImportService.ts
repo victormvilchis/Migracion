@@ -43,6 +43,7 @@ import {
   prepareImportIdentityRows,
   resolveImportIdentity,
 } from './bbvaCollaboratorImportIdentity.js';
+import { splitMexicanFullName } from './bbvaMexicanName.js';
 
 const repository = new CollaboratorImportRepository();
 const certificationService = new CollaboratorCertificationService();
@@ -61,8 +62,8 @@ const HEADER_ALIASES = {
   technologyProfile: ['PERFIL TECNOLOGICO', 'PERFIL TECNOLÓGICO'],
   currentTechnology: ['TECNOLOGIA EN LA QUE SE CERTIFICA', 'TECNOLOGÍA EN LA QUE SE CERTIFICA', 'TECNOLOGIA ACTUAL', 'TECNOLOGÍA ACTUAL'],
   expertise: ['EXPERTISE', 'SENIORITY'],
-  startDate: ['FECHA ALTA BBVA', 'FECHA ALTA XM'],
-  hireDate: ['FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK', 'FECHA INGRESO SOFTTEK', 'FECHA ALTA -SAP', 'FECHA ALTA SAP', 'FECHA DE ALTA', 'FECHA DE CONTRATACION', 'FECHA DE CONTRATACIÓN'],
+  startDate: ['FECHA ALTA BBVA', 'FECHA ALTA XM', 'FECHA DE ALTA'],
+  hireDate: ['FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK', 'FECHA INGRESO SOFTTEK', 'FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP', 'FECHA DE CONTRATACION', 'FECHA DE CONTRATACIÓN'],
   resourceStatus: ['ESTATUS DEL RECURSO', 'ESTADO DEL RECURSO', 'STATUS SOFTTEK'],
 } as const;
 
@@ -176,18 +177,6 @@ function inferSeniority(profile: string | null, expertise: string | null): strin
   const source = `${profile ?? ''} ${expertise ?? ''}`.toUpperCase();
   const match = source.match(/\b(JR|STD|SR)\b/);
   return match?.[1] ?? null;
-}
-
-function splitName(fullName: string): { firstName: string; lastName: string | null } {
-  const cleanName = fullName.replace(/\s+/g, ' ').trim();
-  if (cleanName.includes(',')) {
-    const [last, ...firstParts] = cleanName.split(',');
-    const first = firstParts.join(',').trim();
-    if (first) return { firstName: first.slice(0, 120), lastName: clean(last, 180) };
-  }
-  const parts = cleanName.split(' ').filter(Boolean);
-  if (parts.length <= 1) return { firstName: cleanName.slice(0, 120), lastName: null };
-  return { firstName: parts[0].slice(0, 120), lastName: parts.slice(1).join(' ').slice(0, 180) };
 }
 
 function isEmail(value: string): boolean {
@@ -339,7 +328,7 @@ async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, 
   };
 
   const resolvedFullName = applyField('fullName', row.fullName, existing?.fullName ?? null) || row.fullName;
-  const names = splitName(resolvedFullName);
+  const names = splitMexicanFullName(resolvedFullName);
   const profile = canonicalCatalog(applyField('profile', row.profile, existing?.profile ?? null));
   const technologyProfile = canonicalCatalog(applyField('technologyProfile', row.technologyProfile, existing?.technologyProfile ?? null));
   const currentTechnology = canonicalCatalog(applyField('currentTechnology', row.currentTechnology, existing?.currentTechnology ?? null));

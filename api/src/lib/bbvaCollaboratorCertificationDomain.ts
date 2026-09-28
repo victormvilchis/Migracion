@@ -23,6 +23,7 @@ export interface CollaboratorCertificationRecord {
   certificationType: string;
   provider: string | null;
   technologyName: string | null;
+  certificationLevel: 'JR' | 'STD' | 'SR' | 'GENERIC' | null;
   mandatory: boolean;
   applicable: boolean;
   source: 'AUTO' | 'MANUAL';
@@ -126,6 +127,7 @@ export interface CertificationTrackingRecord {
   requiresAttempts: boolean;
   latestAttemptId: string | null;
   latestAttemptResult: CertificationAttemptResult | null;
+  criticalActionRequired: boolean;
 }
 
 export interface CertificationAttemptInput {

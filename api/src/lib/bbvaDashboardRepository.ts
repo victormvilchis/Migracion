@@ -38,6 +38,11 @@ export interface DashboardCertificationRow {
   expirationDate: string | null;
   recertificationEnabled: boolean;
   expiringSoonDays: number | null;
+  maxAttempts: number | null;
+  currentCycle: number;
+  attemptCount: number;
+  latestAttemptResult: string | null;
+  scheduledDate: string | null;
 }
 
 export class BbvaDashboardRepository {
@@ -86,9 +91,19 @@ export class BbvaDashboardRepository {
              CAST(pc.CertificationId AS NVARCHAR(36)) AS certificationId,cc.Name AS certificationName,
              pc.Applicable AS applicable,pc.Mandatory AS mandatory,pc.BaseStatus AS baseStatus,
              CONVERT(VARCHAR(10),pc.ExpirationDate,23) AS expirationDate,
-             cc.RecertificationEnabled AS recertificationEnabled,cc.ExpiringSoonDays AS expiringSoonDays
+             cc.RecertificationEnabled AS recertificationEnabled,cc.ExpiringSoonDays AS expiringSoonDays,
+             cc.MaxAttempts AS maxAttempts,pc.CurrentCycle AS currentCycle,
+             (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt a WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle) AS attemptCount,
+             latestAttempt.Result AS latestAttemptResult,
+             CONVERT(VARCHAR(10),pc.NextScheduledDate,23) AS scheduledDate
       FROM bbva.PersonCertification pc
-      INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId;
+      INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+      OUTER APPLY (
+        SELECT TOP 1 a.Result
+        FROM bbva.PersonCertificationAttempt a
+        WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=pc.CurrentCycle
+        ORDER BY a.AttemptNumber DESC,a.CreatedAt DESC,a.Id DESC
+      ) latestAttempt;
     `);
     return result.recordset.map((row: any) => ({
       ...row,
@@ -96,6 +111,9 @@ export class BbvaDashboardRepository {
       mandatory: Boolean(row.mandatory),
       recertificationEnabled: Boolean(row.recertificationEnabled),
       expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
+      maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
+      currentCycle: Number(row.currentCycle ?? 1),
+      attemptCount: Number(row.attemptCount ?? 0),
     })) as DashboardCertificationRow[];
   }
 

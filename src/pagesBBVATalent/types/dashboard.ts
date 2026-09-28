@@ -21,6 +21,21 @@ export interface DashboardResponse {
     pending: number;
     deliveryManagersRepresented: number;
     dataQualityPending: number;
+    vendorReadyPercent: number;
+    vendorPending: number;
+    vendorExitRequired: number;
+  };
+  vendorQuarter: {
+    calendarName: string;
+    currentCode: string | null;
+    targetCode: string | null;
+    targetStartDate: string | null;
+    targetEndDate: string | null;
+    daysToTargetStart: number | null;
+    readyCollaborators: number;
+    pendingCollaborators: number;
+    exhaustedAttemptCollaborators: number;
+    readinessPercent: number;
   };
   collaboratorFocus: Array<{ label: string; value: number }>;
   certificationCoverage: Array<{ label: string; value: number }>;

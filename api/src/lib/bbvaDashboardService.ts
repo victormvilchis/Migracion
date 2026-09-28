@@ -1,5 +1,6 @@
 import type { BbvaDashboardResponse, DashboardFilters, DashboardSlice } from './bbvaDashboardDomain.js';
 import { BbvaDashboardRepository, type DashboardCertificationRow, type DashboardCollaboratorRow } from './bbvaDashboardRepository.js';
+import { vendorQuarterContext } from './bbvaVendorCalendar.js';
 
 const repository = new BbvaDashboardRepository();
 
@@ -188,6 +189,22 @@ export class BbvaDashboardService {
       deliveryManagerMap.set(label, (deliveryManagerMap.get(label) ?? 0) + 1);
     }
 
+
+    const quarter = vendorQuarterContext(today);
+    const targetStart = quarter.targetQuarter?.startDate ?? null;
+    const unresolvedByPerson = new Map<string, number>();
+    const exhaustedByPerson = new Set<string>();
+    for (const cert of certifications) {
+      const status = certStatusById.get(cert.id);
+      const expiresBeforeTarget = Boolean(targetStart && cert.expirationDate && cert.expirationDate < targetStart);
+      const unresolved = !['VALID'].includes(status ?? '') || expiresBeforeTarget;
+      if (unresolved) unresolvedByPerson.set(cert.personId, (unresolvedByPerson.get(cert.personId) ?? 0) + 1);
+      if (cert.latestAttemptResult === 'FAILED' && cert.maxAttempts != null && cert.attemptCount >= cert.maxAttempts) exhaustedByPerson.add(cert.personId);
+    }
+    const pendingCollaborators = [...collaboratorPersonIds].filter((personId) => (unresolvedByPerson.get(personId) ?? 0) > 0).length;
+    const readyCollaborators = Math.max(0, collaborators.length - pendingCollaborators);
+    const vendorReadinessPercent = collaborators.length ? Math.round((readyCollaborators / collaborators.length) * 10000) / 100 : 100;
+
     const dataQualityPending = collaborators.filter((collaborator) =>
       !collaborator.softtekCode?.trim()
       || !collaborator.bbvaUser?.trim()
@@ -213,6 +230,21 @@ export class BbvaDashboardService {
         pending: counts.pending + counts.failed,
         deliveryManagersRepresented: [...deliveryManagerMap.keys()].filter((item) => item !== 'Sin DM').length,
         dataQualityPending,
+        vendorReadyPercent: vendorReadinessPercent,
+        vendorPending: pendingCollaborators,
+        vendorExitRequired: exhaustedByPerson.size,
+      },
+      vendorQuarter: {
+        calendarName: quarter.calendarName,
+        currentCode: quarter.currentQuarter?.code ?? null,
+        targetCode: quarter.targetQuarter?.code ?? null,
+        targetStartDate: quarter.targetQuarter?.startDate ?? null,
+        targetEndDate: quarter.targetQuarter?.endDate ?? null,
+        daysToTargetStart: quarter.daysToTargetStart,
+        readyCollaborators,
+        pendingCollaborators,
+        exhaustedAttemptCollaborators: exhaustedByPerson.size,
+        readinessPercent: vendorReadinessPercent,
       },
       collaboratorFocus: [...collaboratorFocusMap.entries()].map(([label, value]) => ({ label, value })),
       certificationCoverage,

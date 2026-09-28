@@ -198,7 +198,6 @@ export const getBbvaBreadcrumbAction = (pathname: string): string | undefined =>
   if (/\/delete$/.test(normalized)) return 'Eliminar';
   if (/\/convert$/.test(normalized)) return 'Convertir';
   if (/\/import$/.test(normalized)) return 'Importar Excel';
-  if (/\/manage$/.test(normalized)) return 'Gestionar';
   if (/\/move-to-talent$/.test(normalized)) return 'Mover a Banco de talento';
   if (/\/certifications$/.test(normalized) && normalized.includes('/collaborators/')) return 'Certificaciones';
   if (/\/attempt$/.test(normalized) && normalized.includes('/certifications/')) return 'Registrar intento';
@@ -207,4 +206,35 @@ export const getBbvaBreadcrumbAction = (pathname: string): string | undefined =>
   if (match && normalized !== normalizePath(match.module.path)) return 'Ver';
 
   return undefined;
+};
+
+
+export interface BBVABreadcrumbPart {
+  label: string;
+  path?: string;
+}
+
+const firstReadyModulePath = (group: BBVANavGroup): string | undefined => {
+  const direct = (group.modules ?? []).find((module) => module.status !== 'planned');
+  if (direct) return direct.path;
+  return (group.sections ?? []).flatMap((section) => section.modules).find((module) => module.status !== 'planned')?.path;
+};
+
+export const getBbvaBreadcrumbParts = (pathname: string): BBVABreadcrumbPart[] => {
+  const normalized = normalizePath(pathname);
+  const directGroup = findBbvaGroupByPath(normalized);
+  if (directGroup) return [{ label: directGroup.label }];
+
+  const match = findBbvaNavigationMatch(normalized);
+  if (!match) return [];
+  const action = getBbvaBreadcrumbAction(normalized);
+  const groupPath = match.group.path ?? firstReadyModulePath(match.group);
+  const sectionPath = match.section?.modules.find((module) => module.status !== 'planned')?.path;
+  const parts: BBVABreadcrumbPart[] = [
+    { label: match.group.label, path: groupPath },
+    ...(match.section ? [{ label: match.section.label, path: sectionPath }] : []),
+    { label: match.module.label, path: action ? match.module.path : undefined },
+  ];
+  if (action) parts.push({ label: action });
+  return parts;
 };

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
-import { findBbvaGroupByPath, findBbvaNavigationMatch, getBbvaBreadcrumbAction } from './bbvaNavigation';
+import { Link, useLocation } from 'react-router-dom';
+import { getBbvaBreadcrumbParts } from './bbvaNavigation';
 
 interface BBVAContextBarProps {
   collapsed: boolean;
@@ -10,20 +10,8 @@ interface BBVAContextBarProps {
 
 export const BBVAContextBar: React.FC<BBVAContextBarProps> = ({ collapsed, onToggleSidebar }) => {
   const location = useLocation();
-  const match = useMemo(() => findBbvaNavigationMatch(location.pathname), [location.pathname]);
-  const directGroup = useMemo(() => findBbvaGroupByPath(location.pathname), [location.pathname]);
-  const action = useMemo(() => getBbvaBreadcrumbAction(location.pathname), [location.pathname]);
+  const parts = useMemo(() => getBbvaBreadcrumbParts(location.pathname), [location.pathname]);
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
-
-  const parts = useMemo(() => {
-    if (directGroup) return [directGroup.label];
-    if (!match) return [];
-    const values = [match.group.label];
-    if (match.section) values.push(match.section.label);
-    values.push(match.module.label);
-    if (action) values.push(action);
-    return values;
-  }, [action, directGroup, match]);
 
   return (
     <div className="sticky top-16 z-20 flex h-10 w-full items-center border-b border-slate-200/90 bg-white/95 px-3 backdrop-blur-xl transition-colors duration-300 [.bbva-dark_&]:border-white/10 [.bbva-dark_&]:bg-slate-950/90 sm:px-4">
@@ -38,12 +26,21 @@ export const BBVAContextBar: React.FC<BBVAContextBarProps> = ({ collapsed, onTog
       </button>
 
       <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-slate-400 [.bbva-dark_&]:text-slate-500" aria-label="Ruta de navegación">
-        {parts.map((part, index) => (
-          <React.Fragment key={`${part}-${index}`}>
-            {index > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-300 [.bbva-dark_&]:text-slate-700" />}
-            <span className={index === parts.length - 1 ? 'truncate font-semibold text-slate-800 [.bbva-dark_&]:text-slate-100' : 'truncate'}>{part}</span>
-          </React.Fragment>
-        ))}
+        {parts.map((part, index) => {
+          const current = index === parts.length - 1;
+          return (
+            <React.Fragment key={`${part.label}-${index}`}>
+              {index > 0 && <ChevronRight className="h-3 w-3 shrink-0 text-slate-300 [.bbva-dark_&]:text-slate-700" />}
+              {part.path && !current ? (
+                <Link to={part.path} className="truncate rounded-sm transition hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 [.bbva-dark_&]:hover:text-cyan-300">
+                  {part.label}
+                </Link>
+              ) : (
+                <span className={current ? 'truncate font-semibold text-slate-800 [.bbva-dark_&]:text-slate-100' : 'truncate'} aria-current={current ? 'page' : undefined}>{part.label}</span>
+              )}
+            </React.Fragment>
+          );
+        })}
       </nav>
     </div>
   );
