@@ -87,6 +87,8 @@ export interface CollaboratorCertificationAttemptRecord {
   importFingerprint: string | null;
   createdAt: string;
   createdByEmail: string;
+  updatedAt: string | null;
+  updatedByEmail: string | null;
 }
 
 export interface CertificationHistoryRecord {
@@ -97,6 +99,8 @@ export interface CertificationHistoryRecord {
   source: 'MANUAL' | 'IMPORT' | 'AUTO';
   createdAt: string;
   createdByEmail: string;
+  updatedAt: string | null;
+  updatedByEmail: string | null;
 }
 
 export interface CollaboratorCertificationDetail {
@@ -153,6 +157,10 @@ export interface CertificationAttemptInput {
   applicationDate: string | null;
   result: CertificationAttemptResult;
   notes: string | null;
+}
+
+export interface CertificationAttemptUpdateInput extends CertificationAttemptInput {
+  attemptNumber: number;
 }
 
 export interface CertificationUpdateInput {

@@ -10,7 +10,7 @@ import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHea
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useCertificationCatalogList, useUpdateCertificationCatalogStatus } from '../hooks/useCertificationCatalog';
-import { displayCertificationName, sentenceCaseData } from '../lib/bbvaDisplayFormat';
+import { displayCertificationName, upperDisplay } from '../lib/bbvaDisplayFormat';
 import {
   CERTIFICATION_TYPE_LABELS,
   CERTIFICATION_TYPES,
@@ -87,7 +87,7 @@ export const CertificationCatalogListPage: React.FC = () => {
               {id:'active',label:'Activar',icon:RefreshCw,onClick:()=>setPending({kind:'status',item,nextStatus:'ACTIVE' as CertificationCatalogStatus})},
               {id:'delete',label:'Eliminar definitivamente',icon:Trash2,tone:'danger' as const,onClick:()=>navigate(`${route}/${item.id}/delete`)},
             ];
-            return <tr key={item.id} className="h-[44px] hover:bg-slate-50"><td className="px-3 py-2"><div className="truncate font-semibold text-slate-900">{displayCertificationName(item.name)}</div></td><td className="px-3 py-2 text-slate-700">{sentenceCaseData(CERTIFICATION_TYPE_LABELS[item.certificationType])}</td><td className="px-3 py-2"><div className="truncate text-slate-700">{sentenceCaseData(item.technologyName,'—')}</div><div className="truncate text-[9.5px] text-slate-500">{sentenceCaseData(item.provider,'Sin certificadora')}</div></td><td className="px-3 py-2"><span className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold ${active?'bg-emerald-50 text-emerald-700':'bg-slate-100 text-slate-600'}`}>{active?'Activa':'Inactiva'}</span></td><td className="px-3 py-2 text-right"><BBVAActionMenu items={actions}/></td></tr>;
+            return <tr key={item.id} className="h-[44px] hover:bg-slate-50"><td className="px-3 py-2"><div className="truncate font-semibold text-slate-900">{displayCertificationName(item.name)}</div></td><td className="px-3 py-2 text-slate-700">{upperDisplay(CERTIFICATION_TYPE_LABELS[item.certificationType])}</td><td className="px-3 py-2"><div className="truncate text-slate-700">{upperDisplay(item.technologyName,'—')}</div><div className="truncate text-[9.5px] text-slate-500">{upperDisplay(item.provider,'SIN CERTIFICADORA')}</div></td><td className="px-3 py-2"><span className={`inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold ${active?'bg-emerald-50 text-emerald-700':'bg-slate-100 text-slate-600'}`}>{active?'Activa':'Inactiva'}</span></td><td className="px-3 py-2 text-right"><BBVAActionMenu items={actions}/></td></tr>;
           })}</tbody>
         </table></div>
         {(data?.total??0)===0 ? <div className="border-t border-slate-200 px-3 py-8 text-center text-xs text-slate-500">No hay certificaciones que coincidan con los filtros.</div> : <BBVAPagination total={data?.total??0} page={state.page} size={state.size} onPageChange={(page)=>patch({page})} onSizeChange={(size)=>patch({size,page:0})}/>}

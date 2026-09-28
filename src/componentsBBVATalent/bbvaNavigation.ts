@@ -81,6 +81,13 @@ export const bbvaNavigation: BBVANavGroup[] = [
         description: 'Cumplimiento, estado y tendencias en una sola vista.',
         status: 'ready',
       },
+      {
+        id: 'certifications-second-plans',
+        label: 'Segundas certificaciones',
+        path: '/bbva/certifications/second-plans',
+        description: 'Plan de segunda certificación tecnológica por colaborador.',
+        status: 'ready',
+      },
     ],
   },
   {
@@ -135,6 +142,7 @@ export const bbvaNavigation: BBVANavGroup[] = [
           { id: 'technologies', label: 'Tecnologías', path: '/bbva/admin/catalogs/technologies', status: 'ready' },
           { id: 'profiles', label: 'Perfiles', path: '/bbva/admin/catalogs/profiles', status: 'ready' },
           { id: 'bbva-structures', label: 'Estructuras BBVA', path: '/bbva/admin/catalogs/structures', description: 'Configuración jerárquica de nivel 2 y nivel 3.', status: 'ready' },
+          { id: 'engineering-specialties', label: 'Gremios y Especialidades', path: '/bbva/admin/catalogs/engineering-specialties', description: 'Jerarquía N3, gremio, especialidad y staffer.', status: 'ready' },
           {
             id: 'technology-profiles',
             label: 'Perfiles tecnológicos',
@@ -202,6 +210,7 @@ export const getBbvaBreadcrumbAction = (pathname: string): string | undefined =>
   if (/\/move-to-talent$/.test(normalized)) return 'Mover a Banco de talento';
   if (/\/certifications$/.test(normalized) && normalized.includes('/collaborators/')) return 'Certificaciones';
   if (/\/attempt$/.test(normalized) && normalized.includes('/certifications/')) return 'Registrar intento';
+  if (/\/attempts\/[^/]+\/edit$/.test(normalized)) return 'Editar intento';
 
   const match = findBbvaNavigationMatch(normalized);
   if (match && normalized !== normalizePath(match.module.path)) return 'Ver';

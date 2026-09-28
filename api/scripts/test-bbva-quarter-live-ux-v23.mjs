@@ -38,7 +38,7 @@ const standards = read('AGENTS.md');
 // Panel y Métricas: Q visible/seleccionable, filtros primarios y vencimientos del Q siempre visibles.
 for (const source of [dashboard, metrics]) {
   assert.doesNotMatch(source, /BBVAQuarterSelector/);
-  assert.match(source, /ariaLabel="Q"/);
+  assert.match(source, /ariaLabel="Periodo"/);
   assert.match(source, /quarterCode/);
   assert.match(source, /Estructura nivel 2/);
   assert.match(source, /Estructura nivel 3/);
@@ -46,12 +46,12 @@ for (const source of [dashboard, metrics]) {
 }
 assert.match(dashboard, /cards=\{5\}/);
 assert.match(metrics, /cards=\{5\}/);
-assert.match(dashboard, /El Q seleccionado define vigencia, vencimientos y métricas/);
-assert.match(metrics, /Vigencia, cobertura y vencimientos responden al Q seleccionado/);
+assert.match(dashboard, /El periodo seleccionado define vigencia, vencimientos y métricas/);
+assert.match(metrics, /Vigencia, cobertura y vencimientos responden al periodo seleccionado/);
 
 // V24 simplifica Seguimiento: Q operativo en filtro/columna, sin duplicar Estructura ni Postal.
 assert.match(tracking, /quarterCode/);
-assert.match(tracking, />Q<\/th>/);
+assert.match(tracking, />Periodo<\/th>/);
 assert.doesNotMatch(tracking, /Estructura BBVA/);
 assert.doesNotMatch(tracking, />Postal<\/BBVAButton>/);
 
@@ -80,8 +80,8 @@ assert.match(standards, /nunca exponen códigos editables/);
 assert.match(standards, /Más de 60 días/);
 
 console.log('Quarter + Live UX V23: OK');
-console.log('- Q actual/selector anual y vencimientos por Q: OK');
-console.log('- Seguimiento simplificado con Q y sin estructura/postal: OK');
+console.log('- Periodo actual/selector anual y vencimientos por periodo: OK');
+console.log('- Seguimiento simplificado con periodo y sin estructura/postal: OK');
 console.log('- Banco de talento con urgencia >60 días: OK');
 console.log('- catálogos sin código editable/expuesto: OK');
 console.log('- casing corporativo y microinteracciones accesibles: OK');

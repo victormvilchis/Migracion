@@ -195,7 +195,9 @@ function parseCurrentTechnologyAndExpertise(value: string | null): { technology:
 }
 
 export function resolveAuthoritativeCurrentTechnology(values: Record<string, string>): string | null {
-  return canonicalCatalog(valueByAliases(values, CERTIFICATION_TECHNOLOGY_ALIASES));
+  return parseCurrentTechnologyAndExpertise(
+    valueByHeaderPrefix(values, CURRENT_TECHNOLOGY_EXPERTISE_PREFIXES),
+  ).technology;
 }
 
 export function resolveAuthoritativeImportDates(values: Record<string, string>): { startDate: string | null; hireDate: string | null } {
@@ -287,7 +289,7 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
     profile: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.profile)),
     technologyProfile: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.technologyProfile)),
     certificationTechnology,
-    currentTechnology: certificationTechnology,
+    currentTechnology: developmentTechnology.technology,
     expertise: explicitExpertise ?? developmentTechnology.expertise,
     startDate,
     hireDate,

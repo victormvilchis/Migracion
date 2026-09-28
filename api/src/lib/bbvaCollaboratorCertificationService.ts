@@ -1,5 +1,5 @@
 import { CollaboratorCertificationRepository } from './bbvaCollaboratorCertificationRepository.js';
-import type { CertificationAttemptInput, CertificationUpdateInput, CertificationCriticalResolutionInput } from './bbvaCollaboratorCertificationDomain.js';
+import type { CertificationAttemptInput, CertificationAttemptUpdateInput, CertificationUpdateInput, CertificationCriticalResolutionInput } from './bbvaCollaboratorCertificationDomain.js';
 import { CRITICAL_TWO_ATTEMPT_TYPES, isCriticalResolutionOpen, isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import { vendorQuarterContext, vendorQuarterForDate } from './bbvaVendorCalendar.js';
 import { bbvaBusinessDate } from './bbvaBusinessTime.js';
@@ -139,6 +139,25 @@ export class CollaboratorCertificationService {
       notes: cleanText(valueOf(payload, 'notes'), 1000),
     };
     return repository.addAttempt(collaboratorId, recordId, input, actorEmail);
+  }
+
+
+  async updateAttempt(collaboratorId: string, recordId: string, attemptId: string, payload: unknown, actorEmail: string) {
+    const current = await repository.detail(collaboratorId, recordId);
+    if (!current) return null;
+    const target = current.attempts.find((attempt) => attempt.id === attemptId);
+    if (!target) throw Object.assign(new Error('El intento no existe.'), { statusCode: 404 });
+    const result = String(valueOf(payload, 'result') ?? target.result).toUpperCase();
+    if (!['PENDING','APPROVED','FAILED'].includes(result)) throw Object.assign(new Error('El resultado del intento no es válido.'), { statusCode: 400 });
+    const attemptNumber = Number(valueOf(payload, 'attemptNumber') ?? target.attemptNumber);
+    if (!Number.isInteger(attemptNumber) || attemptNumber < 1) throw Object.assign(new Error('El número de intento debe ser un entero mayor a cero.'), { statusCode: 400 });
+    const input: CertificationAttemptUpdateInput = {
+      attemptNumber,
+      applicationDate: normalizeDate(valueOf(payload, 'applicationDate') ?? target.applicationDate, 'La fecha de aplicación'),
+      result: result as CertificationAttemptUpdateInput['result'],
+      notes: cleanText(valueOf(payload, 'notes') ?? target.notes, 1000),
+    };
+    return repository.updateAttempt(collaboratorId, recordId, attemptId, input, actorEmail);
   }
 
   async resolveCritical(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string) {

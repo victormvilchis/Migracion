@@ -5,6 +5,7 @@ import type { StructurePayload,StructureStatus } from '../types/structureCatalog
 const key=['bbva-structures'] as const;
 export const useStructureCatalog=(search='',status:StructureStatus|'ALL'='ACTIVE')=>useQuery({queryKey:[...key,'list',search,status],queryFn:()=>structureCatalogApi.list(search,status)});
 export const useStructureOptions=()=>useQuery({queryKey:[...key,'options'],queryFn:structureCatalogApi.options,staleTime:60_000});
+export const useStructureItem=(id?:string)=>useQuery({queryKey:[...key,'item',id],queryFn:()=>structureCatalogApi.get(id!),enabled:Boolean(id)});
 const invalidate=(client:ReturnType<typeof useQueryClient>)=>{void client.invalidateQueries({queryKey:key});publishBbvaDataChange(['catalogs','collaborators','dashboard']);};
 export const useCreateStructure=()=>{const c=useQueryClient();return useMutation({mutationFn:(payload:StructurePayload)=>structureCatalogApi.create(payload),onSuccess:()=>invalidate(c)});};
 export const useUpdateStructure=()=>{const c=useQueryClient();return useMutation({mutationFn:({id,payload}:{id:string;payload:StructurePayload})=>structureCatalogApi.update(id,payload),onSuccess:()=>invalidate(c)});};

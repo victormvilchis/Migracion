@@ -90,16 +90,15 @@ interface TalentRow extends Omit<TalentRecord, 'cv' | 'daysInTalentBank' | 'urge
 }
 
 function mapTalent(row: TalentRow): TalentRecord {
-  const { bankSinceDate, cvFileName, cvContentType, cvFileSizeBytes, cvUpdatedAt, ...base } = row;
+  const { bankSinceDate: _legacyBankSinceDate, cvFileName, cvContentType, cvFileSizeBytes, cvUpdatedAt, ...base } = row;
   const referenceDate = bbvaBusinessDate();
-  const effectiveEntryDate = bankSinceDate || base.entryDate;
-  const entry = effectiveEntryDate ? Date.parse(`${effectiveEntryDate}T00:00:00Z`) : Number.NaN;
+  const entry = base.entryDate ? Date.parse(`${base.entryDate}T00:00:00Z`) : Number.NaN;
   const reference = Date.parse(`${referenceDate}T00:00:00Z`);
   const daysInTalentBank = Number.isFinite(entry) && Number.isFinite(reference) ? Math.max(0, Math.floor((reference - entry) / 86400000)) : 0;
   const talentBankEntryCount = Number(base.talentBankEntryCount ?? 1);
   return {
     ...base,
-    entryDate: effectiveEntryDate || base.entryDate,
+    entryDate: base.entryDate,
     daysInTalentBank,
     talentBankEntryCount,
     urgentAssignment: daysInTalentBank > 60,

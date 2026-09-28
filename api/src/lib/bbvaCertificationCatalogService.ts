@@ -111,7 +111,7 @@ export class BbvaCertificationCatalogService {
 
   private async validate(payload: unknown): Promise<CertificationCatalogInput> {
     const value = (payload ?? {}) as Record<string, unknown>;
-    const name = requiredText(value.name, 'El nombre', 180);
+    const name = requiredText(value.name, 'El nombre', 180).toLocaleUpperCase('es-MX');
     const description = nullableText(value.description, 1000);
     const typeValue = String(value.certificationType ?? '').trim().toUpperCase() as CertificationType;
     if (!CERTIFICATION_TYPES.includes(typeValue)) throw new Error('El tipo de certificación es inválido.');

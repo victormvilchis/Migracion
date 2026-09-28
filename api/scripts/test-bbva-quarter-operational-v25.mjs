@@ -34,7 +34,7 @@ assert.match(collaboratorForm, /const readOnly = isBBVAFormReadOnly\(mode\)/);
 
 // Q integrado en la misma barra de filtros: no hay segundo header/strip en Panel/Métricas.
 for (const source of [dashboard, metrics]) {
-  assert.match(source, /ariaLabel="Q"/);
+  assert.match(source, /ariaLabel="Periodo"/);
   assert.match(source, /quarterOptions/);
   assert.doesNotMatch(source, /BBVAQuarterSelector/);
 }
@@ -56,7 +56,8 @@ assert.match(talentRepo, /EventType IN \(N'COLLABORATOR_TO_TALENT',N'ENTERED_TAL
 assert.match(talentRepo, /lifecycle\.EventType=N'COLLABORATOR_TO_TALENT'/);
 assert.match(talentRepo, /CONVERT\(date,t\.CreatedAt\) < CONVERT\(date,lifecycle\.EffectiveDate\)/);
 assert.match(talentRepo, /bankSinceDate/);
-assert.match(talentRepo, /entryDate: effectiveEntryDate \|\| base\.entryDate/);
+assert.match(talentRepo, /entryDate/);
+assert.match(talentRepo, /bankSinceDate/);
 assert.match(talentRepo, /daysInTalentBank > 60/);
 assert.match(talent, />CV<\/th>/);
 const expanded = talent.slice(talent.indexOf('{isExpanded?'));

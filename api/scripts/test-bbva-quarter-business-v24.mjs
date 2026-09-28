@@ -38,20 +38,20 @@ assert.doesNotMatch(talentRepo,/talentBankEntryCount > 2/);
 
 // Seguimiento simple y contextual: Q sí; Estructura/Postal no.
 assert.match(tracking,/quarterCode/);
-assert.match(tracking,/Q de vencimiento/);
-assert.match(tracking,/>Q<\/th>/);
+assert.match(tracking,/Periodo de vencimiento/);
+assert.match(tracking,/>Periodo<\/th>/);
 assert.doesNotMatch(tracking,/Estructura BBVA/);
 assert.doesNotMatch(tracking,/>Postal<\/BBVAButton>/);
 
 // Selector Q simplificado a un único control con calendario configurado.
-assert.match(quarter,/Buscar año o Q/);
+assert.match(quarter,/Buscar periodo/);
 assert.doesNotMatch(quarter,/yearQuarters\.map/);
 
 // Estructuras: un módulo jerárquico y formulario conectado al catálogo.
 assert.match(migration,/CREATE TABLE bbva\.StructureCatalog/);
 assert.match(migration,/LevelCode=2 AND ParentId IS NULL/);
 assert.match(migration,/LevelCode=3 AND ParentId IS NOT NULL/);
-assert.match(structures,/Catálogo jerárquico único/);
+assert.match(structures,/Jerarquía Nivel 2 → Nivel 3/);
 assert.match(form,/useStructureOptions/);
 assert.match(form,/Seleccionar nivel 2/);
 assert.match(form,/Seleccionar nivel 3/);

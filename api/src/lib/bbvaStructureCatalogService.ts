@@ -8,7 +8,7 @@ export class BbvaStructureCatalogService {
   get(id:string){return repository.get(id);}
   private async input(payload:any):Promise<BbvaStructureInput>{
     const level=Number(payload?.level) as BbvaStructureLevel; if(level!==2&&level!==3)throw Object.assign(new Error('El nivel debe ser 2 o 3.'),{statusCode:400});
-    const name=text(payload?.name,220); if(!name)throw Object.assign(new Error('El nombre es obligatorio.'),{statusCode:400});
+    const name=text(payload?.name,220)?.toLocaleUpperCase('es-MX') ?? null; if(!name)throw Object.assign(new Error('El nombre es obligatorio.'),{statusCode:400});
     const parentId=level===3?text(payload?.parentId,36):null;if(level===3&&!parentId)throw Object.assign(new Error('Selecciona la estructura nivel 2 de la que depende.'),{statusCode:400});
     if(parentId){const parent=await repository.get(parentId);if(!parent||parent.level!==2||parent.status!=='ACTIVE')throw Object.assign(new Error('La estructura nivel 2 seleccionada no está disponible.'),{statusCode:400});}
     return {level,parentId,name,description:text(payload?.description,500)};

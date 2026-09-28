@@ -38,6 +38,11 @@ export function useAddCertificationAttempt(collaboratorId: string) {
   return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { applicationDate: string; result: CertificationAttemptResult; notes: string } }) => collaboratorCertificationApi.addAttempt(collaboratorId, recordId, payload), onSuccess: invalidate });
 }
 
+export function useUpdateCertificationAttempt(collaboratorId:string){
+  const invalidate=useInvalidate(collaboratorId);
+  return useMutation({mutationFn:({recordId,attemptId,payload}:{recordId:string;attemptId:string;payload:{applicationDate:string;result:CertificationAttemptResult;attemptNumber:number;notes:string}})=>collaboratorCertificationApi.updateAttempt(collaboratorId,recordId,attemptId,payload),onSuccess:invalidate});
+}
+
 export function useResolveCriticalCertification(collaboratorId: string) {
   const invalidate = useInvalidate(collaboratorId);
   return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: CertificationCriticalResolutionPayload }) => collaboratorCertificationApi.resolveCritical(collaboratorId, recordId, payload), onSuccess: invalidate });

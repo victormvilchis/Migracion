@@ -69,6 +69,18 @@ export async function collaboratorCertificationAttemptHandler(request: HttpReque
   }
 }
 
+
+export async function collaboratorCertificationAttemptItemHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+  try {
+    const user=getCurrentUser(request);assertBbvaPermission(user,'COLLABORATOR_WRITE');
+    const collaboratorId=request.params.id,recordId=request.params.certificationRecordId,attemptId=request.params.attemptId;
+    if(!collaboratorId||!recordId||!attemptId)return{status:400,jsonBody:{error:'Identificadores requeridos.'}};
+    if(request.method!=='PUT')return{status:405,jsonBody:{error:'Método no permitido.'}};
+    const result=await service.updateAttempt(collaboratorId,recordId,attemptId,await readBbvaJson(request),user.email);
+    return result?{status:200,jsonBody:result}:{status:404,jsonBody:{error:'Intento no encontrado.'}};
+  } catch(error){return bbvaErrorResponse(error,context,'CollaboratorCertifications');}
+}
+
 export async function collaboratorCertificationCriticalResolutionHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
     const user = getCurrentUser(request);
@@ -167,6 +179,8 @@ app.http('bbvaCollaboratorCertificationAttempt', {
   route: 'bbva/collaborators/{id}/certifications/{certificationRecordId}/attempts',
   handler: collaboratorCertificationAttemptHandler,
 });
+
+app.http('bbvaCollaboratorCertificationAttemptItem',{methods:['PUT'],authLevel:'anonymous',route:'bbva/collaborators/{id}/certifications/{certificationRecordId}/attempts/{attemptId}',handler:collaboratorCertificationAttemptItemHandler});
 
 app.http('bbvaCollaboratorCertificationRecertify', {
   methods: ['POST'],

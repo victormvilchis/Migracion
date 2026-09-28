@@ -30,7 +30,7 @@ export const BBVAQuarterSelector: React.FC<Props> = ({ currentCode, selectedCode
   const selected = quarters.find((item) => item.code === selectedCode) ?? quarters.find((item) => item.code === currentCode) ?? quarters[0] ?? null;
   const options = quarters.map((item) => ({
     value: item.code,
-    label: `${item.year} · Q${item.quarter}${item.code === currentCode ? ' · Actual' : ''}`,
+    label: `${item.year} · Periodo ${item.quarter}${item.code === currentCode ? ' · Actual' : ''}`,
     description: `${shortDate(item.startDate)} → ${shortDate(item.endDate)}`,
   }));
 
@@ -43,8 +43,8 @@ export const BBVAQuarterSelector: React.FC<Props> = ({ currentCode, selectedCode
             <span className="bbva-live-dot absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500" aria-hidden="true" />
           </span>
           <div>
-            <div className="text-[8.5px] font-semibold uppercase tracking-[.08em] text-blue-600">Q actual · {currentCode ?? 'Sin configurar'}</div>
-            <div className="mt-0.5 text-[10.5px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Analizando {selected?.code ?? 'Sin Q'}</div>
+            <div className="text-[8.5px] font-semibold uppercase tracking-[.08em] text-blue-600">Periodo actual · {currentCode ? currentCode.replace('Q', ' · P') : 'Sin configurar'}</div>
+            <div className="mt-0.5 text-[10.5px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Analizando {selected ? `Periodo ${selected.quarter} · ${selected.year}` : 'Sin periodo'}</div>
           </div>
         </div>
 
@@ -52,9 +52,9 @@ export const BBVAQuarterSelector: React.FC<Props> = ({ currentCode, selectedCode
           value={selected?.code ?? ''}
           onChange={onChange}
           options={options}
-          ariaLabel="Periodo Q"
-          searchPlaceholder="Buscar año o Q"
-          emptyMessage="No hay periodos Q configurados."
+          ariaLabel="Periodo"
+          searchPlaceholder="Buscar periodo"
+          emptyMessage="No hay periodos configurados."
         />
 
         <div>

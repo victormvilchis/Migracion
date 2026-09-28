@@ -89,6 +89,8 @@ export interface CertificationAttempt {
   notes: string | null;
   createdAt: string;
   createdByEmail: string;
+  updatedAt?: string | null;
+  updatedByEmail?: string | null;
 }
 
 export interface CertificationHistoryItem {
@@ -98,6 +100,8 @@ export interface CertificationHistoryItem {
   description: string;
   createdAt: string;
   createdByEmail: string;
+  updatedAt?: string | null;
+  updatedByEmail?: string | null;
 }
 
 export interface CollaboratorCertificationDetail {

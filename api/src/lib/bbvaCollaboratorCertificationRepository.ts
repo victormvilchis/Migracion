@@ -4,6 +4,7 @@ import { BBVA_SQL_BUSINESS_DATE, bbvaBusinessDate } from './bbvaBusinessTime.js'
 import { isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import type {
   CertificationAttemptInput,
+  CertificationAttemptUpdateInput,
   CertificationHistoryRecord,
   CertificationUpdateInput,
   CollaboratorCertificationAttemptRecord,
@@ -313,7 +314,8 @@ export class CollaboratorCertificationRepository {
              CONVERT(VARCHAR(10),a.ApplicationDate,23) AS applicationDate,
              a.Result AS result,a.Notes AS notes,
              a.Score10 AS score10,a.Source AS source,a.ImportFingerprint AS importFingerprint,
-             CONVERT(VARCHAR(33),a.CreatedAt,127) AS createdAt,a.CreatedByEmail AS createdByEmail
+             CONVERT(VARCHAR(33),a.CreatedAt,127) AS createdAt,a.CreatedByEmail AS createdByEmail,
+             CONVERT(VARCHAR(33),a.UpdatedAt,127) AS updatedAt,a.UpdatedByEmail AS updatedByEmail
       FROM bbva.PersonCertificationAttempt a
       WHERE a.PersonCertificationId=@recordId
       ORDER BY a.CycleNumber DESC,a.AttemptNumber DESC;
@@ -596,6 +598,74 @@ export class CollaboratorCertificationRepository {
       await transaction.rollback();
       throw error;
     }
+  }
+
+
+  async updateAttempt(collaboratorId: string, recordId: string, attemptId: string, input: CertificationAttemptUpdateInput, actorEmail: string): Promise<CollaboratorCertificationDetail | null> {
+    const current = await this.detail(collaboratorId, recordId);
+    if (!current) return null;
+    const pool = await getDbConnection();
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const state = await new sql.Request(transaction)
+        .input('recordId',sql.UniqueIdentifier,recordId)
+        .input('attemptId',sql.UniqueIdentifier,attemptId)
+        .query(`
+          SELECT pc.CurrentCycle currentCycle,pc.Applicable applicable,cc.ValidityMonths validityMonths,cc.RequiresApplicationDate requiresApplicationDate,
+                 cc.RequiresAttempts requiresAttempts,cc.MaxAttempts maxAttempts,cc.CertificationType certificationType,
+                 a.CycleNumber cycleNumber,a.AttemptNumber currentAttemptNumber
+          FROM bbva.PersonCertification pc WITH (UPDLOCK,HOLDLOCK)
+          INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+          INNER JOIN bbva.PersonCertificationAttempt a WITH (UPDLOCK,HOLDLOCK) ON a.PersonCertificationId=pc.Id AND a.Id=@attemptId
+          WHERE pc.Id=@recordId;
+        `);
+      const row=state.recordset[0] as any;
+      if(!row){await transaction.rollback();return null;}
+      if(!Boolean(row.applicable)) throw Object.assign(new Error('La certificación no está marcada como aplicable.'),{statusCode:409});
+      if(Number(row.cycleNumber)!==Number(row.currentCycle)) throw Object.assign(new Error('Sólo se pueden modificar intentos del ciclo actual.'),{statusCode:409});
+      if(row.maxAttempts!==null && Number(input.attemptNumber)>Number(row.maxAttempts)) throw Object.assign(new Error(`El intento no puede ser mayor a ${row.maxAttempts}.`),{statusCode:400});
+      if(Boolean(row.requiresApplicationDate) && !input.applicationDate) throw Object.assign(new Error('La fecha de aplicación es obligatoria para este intento.'),{statusCode:400});
+      const duplicate=await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('attemptId',sql.UniqueIdentifier,attemptId).input('cycle',sql.Int,row.currentCycle).input('attemptNumber',sql.Int,input.attemptNumber).query(`SELECT TOP 1 1 found FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle AND AttemptNumber=@attemptNumber AND Id<>@attemptId;`);
+      if(duplicate.recordset[0]) throw Object.assign(new Error('Ya existe otro intento con ese número en el ciclo actual.'),{statusCode:409});
+      const resolution=await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('cycle',sql.Int,row.currentCycle).query(`SELECT TOP 1 ResolutionStatus status FROM bbva.CertificationCriticalResolution WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle ORDER BY UpdatedAt DESC,Id DESC;`);
+      if(resolution.recordset[0]?.status && String(resolution.recordset[0].status)!=='PENDING_REVIEW') throw Object.assign(new Error('El intento no puede modificarse después de resolver el caso crítico del ciclo.'),{statusCode:409});
+      await new sql.Request(transaction).input('attemptId',sql.UniqueIdentifier,attemptId).input('attemptNumber',sql.Int,input.attemptNumber).input('applicationDate',sql.Date,input.applicationDate).input('result',sql.NVarChar(24),input.result).input('notes',sql.NVarChar(1000),input.notes).input('actor',sql.NVarChar(320),actorEmail).query(`UPDATE bbva.PersonCertificationAttempt SET AttemptNumber=@attemptNumber,ApplicationDate=@applicationDate,Result=@result,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@attemptId;`);
+      const aggregate=await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('cycle',sql.Int,row.currentCycle).query(`
+        SELECT TOP 1 AttemptNumber,ApplicationDate,Result FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle ORDER BY AttemptNumber DESC,CreatedAt DESC,Id DESC;
+        SELECT MAX(ApplicationDate) approvedDate FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle AND Result=N'APPROVED';
+        SELECT COUNT(1) attemptCount FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle;
+      `);
+      const latest=aggregate.recordsets[0]?.[0] as any;
+      const approvedDate=aggregate.recordsets[1]?.[0]?.approvedDate??null;
+      const attemptCount=Number(aggregate.recordsets[2]?.[0]?.attemptCount??0);
+      const baseStatus=approvedDate?'APPROVED':latest?.Result==='FAILED'?'FAILED':latest?.ApplicationDate?'APPLIED':'PENDING';
+      await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('baseStatus',sql.NVarChar(24),baseStatus).input('applicationDate',sql.Date,latest?.ApplicationDate??null).input('approvedDate',sql.Date,approvedDate).input('validityMonths',sql.Int,row.validityMonths).input('actor',sql.NVarChar(320),actorEmail).query(`UPDATE bbva.PersonCertification SET BaseStatus=@baseStatus,ApplicationDate=@applicationDate,ApprovedDate=@approvedDate,ExpirationDate=CASE WHEN @approvedDate IS NOT NULL AND @validityMonths IS NOT NULL THEN DATEADD(month,@validityMonths,@approvedDate) ELSE NULL END,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@recordId;`);
+
+      const criticalAfterEdit=Boolean(row.requiresAttempts) && isCriticalTwoAttemptExhausted({
+        certificationType:String(row.certificationType??''),
+        maxAttempts:row.maxAttempts===null||row.maxAttempts===undefined?null:Number(row.maxAttempts),
+        attemptCount,
+        latestAttemptResult:String(latest?.Result??''),
+      }) && baseStatus==='FAILED';
+      if(criticalAfterEdit){
+        await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('cycle',sql.Int,row.currentCycle).input('actor',sql.NVarChar(320),actorEmail).query(`
+          MERGE bbva.CertificationCriticalResolution AS target
+          USING (SELECT @recordId AS PersonCertificationId,@cycle AS CycleNumber) source
+          ON target.PersonCertificationId=source.PersonCertificationId AND target.CycleNumber=source.CycleNumber
+          WHEN NOT MATCHED THEN INSERT(PersonCertificationId,CycleNumber,ResolutionStatus,CreatedByEmail,UpdatedByEmail) VALUES(@recordId,@cycle,N'PENDING_REVIEW',@actor,@actor);
+          IF NOT EXISTS(SELECT 1 FROM bbva.PersonCertificationHistory WHERE PersonCertificationId=@recordId AND EventType=N'CRITICAL_REVIEW_REQUIRED' AND Description=CONCAT(N'Ciclo ',@cycle,N': 2/2 intentos agotados; requiere resolver baja o becario.'))
+            INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail) VALUES(@recordId,N'CRITICAL_REVIEW_REQUIRED',CONCAT(N'Ciclo ',@cycle,N': 2/2 intentos agotados; requiere resolver baja o becario.'),@actor);
+        `);
+      }else{
+        await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('cycle',sql.Int,row.currentCycle).input('actor',sql.NVarChar(320),actorEmail).query(`
+          DELETE FROM bbva.CertificationCriticalResolution WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle AND ResolutionStatus=N'PENDING_REVIEW';
+          IF @@ROWCOUNT>0 INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail) VALUES(@recordId,N'CRITICAL_REVIEW_CLEARED',CONCAT(N'Ciclo ',@cycle,N': la edición del intento eliminó la condición crítica 2/2 pendiente.'),@actor);
+        `);
+      }
+      await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('attemptNumber',sql.Int,input.attemptNumber).input('actor',sql.NVarChar(320),actorEmail).query(`INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail) VALUES(@recordId,N'ATTEMPT_EDITED',CONCAT(N'Intento ',@attemptNumber,N' del ciclo actual modificado manualmente.'),@actor);`);
+      await transaction.commit();return this.detail(collaboratorId,recordId);
+    }catch(error){await transaction.rollback();throw error;}
   }
 
   async resolveCritical(

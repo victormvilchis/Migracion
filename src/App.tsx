@@ -31,6 +31,14 @@ const CertificationCatalogListPage = React.lazy(() => import('./pagesBBVATalent/
 const CertificationCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogEditorPage').then((m) => ({ default: m.CertificationCatalogEditorPage })));
 const CertificationCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogDetailPage').then((m) => ({ default: m.CertificationCatalogDetailPage })));
 const StructureCatalogPage = React.lazy(() => import('./pagesBBVATalent/catalogs/StructureCatalogPage').then((m) => ({ default: m.StructureCatalogPage })));
+const StructureCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/catalogs/StructureCatalogEditorPage').then((m) => ({ default: m.StructureCatalogEditorPage })));
+const StructureCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/catalogs/StructureCatalogDetailPage').then((m) => ({ default: m.StructureCatalogDetailPage })));
+const EngineeringSpecialtyListPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyListPage').then((m) => ({ default: m.EngineeringSpecialtyListPage })));
+const EngineeringSpecialtyEditorPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyEditorPage').then((m) => ({ default: m.EngineeringSpecialtyEditorPage })));
+const EngineeringSpecialtyDetailPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyDetailPage').then((m) => ({ default: m.EngineeringSpecialtyDetailPage })));
+const SecondCertificationPlanPage = React.lazy(() => import('./pagesBBVATalent/certifications/SecondCertificationPlanPage').then((m) => ({ default: m.SecondCertificationPlanPage })));
+const SecondCertificationPlanEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/SecondCertificationPlanEditorPage').then((m) => ({ default: m.SecondCertificationPlanEditorPage })));
+const SecondCertificationPlanDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/SecondCertificationPlanDetailPage').then((m) => ({ default: m.SecondCertificationPlanDetailPage })));
 const BBVAReportsPage = React.lazy(() => import('./pagesBBVATalent/reports/BBVAReportsPage').then((m) => ({ default: m.BBVAReportsPage })));
 const AdminUsersPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
 const AdminUserEditorPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUserEditorPage').then((m) => ({ default: m.AdminUserEditorPage })));
@@ -97,11 +105,16 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/edit" element={modulePage(<CollaboratorCertificationDetailPage mode="edit" />)} />
               <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/delete" element={modulePage(<CollaboratorCertificationDetailPage mode="delete" />)} />
               <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/attempt" element={modulePage(<CertificationAttemptPage />)} />
+              <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId/attempts/:attemptId/edit" element={modulePage(<CertificationAttemptPage />)} />
               <Route path="/bbva/collaborators/:id/certifications/:certificationRecordId" element={modulePage(<CollaboratorCertificationDetailPage mode="view" />)} />
               <Route path="/bbva/collaborators/:id" element={modulePage(<CollaboratorDetailPage />)} />
 
               <Route path="/bbva/certifications/tracking" element={modulePage(<CertificationTrackingPage />)} />
               <Route path="/bbva/certifications/metrics" element={modulePage(<CertificationMetricsPage />)} />
+              <Route path="/bbva/certifications/second-plans" element={modulePage(<SecondCertificationPlanPage />)} />
+              <Route path="/bbva/certifications/second-plans/new" element={modulePage(<SecondCertificationPlanEditorPage />)} />
+              <Route path="/bbva/certifications/second-plans/:id/edit" element={modulePage(<SecondCertificationPlanEditorPage />)} />
+              <Route path="/bbva/certifications/second-plans/:id" element={modulePage(<SecondCertificationPlanDetailPage />)} />
 
               <Route path="/bbva/reports/talent" element={modulePage(<BBVAReportsPage type="talent" />)} />
               <Route path="/bbva/reports/collaborators" element={modulePage(<BBVAReportsPage type="collaborators" />)} />
@@ -139,6 +152,13 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/admin/catalogs/technology-profiles/:id" element={modulePage(<CatalogDetailPage type="technology-profiles" mode="view" />)} />
 
               <Route path="/bbva/admin/catalogs/structures" element={modulePage(<StructureCatalogPage />)} />
+              <Route path="/bbva/admin/catalogs/structures/new" element={modulePage(<StructureCatalogEditorPage />)} />
+              <Route path="/bbva/admin/catalogs/structures/:id/edit" element={modulePage(<StructureCatalogEditorPage />)} />
+              <Route path="/bbva/admin/catalogs/structures/:id" element={modulePage(<StructureCatalogDetailPage />)} />
+              <Route path="/bbva/admin/catalogs/engineering-specialties" element={modulePage(<EngineeringSpecialtyListPage />)} />
+              <Route path="/bbva/admin/catalogs/engineering-specialties/new" element={modulePage(<EngineeringSpecialtyEditorPage />)} />
+              <Route path="/bbva/admin/catalogs/engineering-specialties/:id/edit" element={modulePage(<EngineeringSpecialtyEditorPage />)} />
+              <Route path="/bbva/admin/catalogs/engineering-specialties/:id" element={modulePage(<EngineeringSpecialtyDetailPage />)} />
 
               <Route path="/bbva/admin/catalogs/certifications" element={modulePage(<CertificationCatalogListPage />)} />
               <Route path="/bbva/admin/catalogs/certifications/new" element={modulePage(<CertificationCatalogEditorPage />)} />
