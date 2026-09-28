@@ -4,9 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVACertificationStatusBadge } from '../../componentsBBVATalent/BBVACertificationStatusBadge';
+import { BBVAChartCard } from '../../componentsBBVATalent/BBVAChartCard';
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
 import { BBVAFilterSummary, type BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
+import { BBVAInsightCard } from '../../componentsBBVATalent/BBVAInsightCard';
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
+import { BBVAMetricsSkeleton } from '../../componentsBBVATalent/BBVAMetricsSkeleton';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHeader';
 import { CertificationCommunicationDialog } from '../../componentsBBVATalent/CertificationCommunicationDialog';
@@ -22,6 +25,7 @@ import { useBBVAListQueryState } from '../hooks/useBBVAListQueryState';
 import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 import {
   attemptContext,
+  buildTrackingInsights,
   buildTrackingSummary,
   expirationContext,
   hasAttemptLimitReached,
@@ -145,6 +149,7 @@ export const CertificationTrackingPage: React.FC = () => {
     .sort((a, b) => (direction === 'asc' ? 1 : -1) * compare(a, b, sort)), [contextItems, direction, filters.certificationStatus, sort]);
 
   const summary = useMemo(() => buildTrackingSummary(contextItems), [contextItems]);
+  const insights = useMemo(() => buildTrackingInsights(contextItems), [contextItems]);
 
   const activeFilters = useMemo<BBVAFilterSummaryItem[]>(() => {
     const active: BBVAFilterSummaryItem[] = [];
@@ -202,40 +207,75 @@ export const CertificationTrackingPage: React.FC = () => {
   if (query.error) return <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert>;
 
   return (
-    <div className="space-y-2 animate-fade-in">
+    <div className="space-y-3 animate-fade-in">
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
 
-      <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 [.bbva-dark_&]:border-slate-800">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-950 [.bbva-dark_&]:text-slate-100">Certificaciones por atender</h2>
-              {summary.limitReached ? <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[8.5px] font-semibold text-rose-700 [.bbva-dark_&]:border-rose-400/20 [.bbva-dark_&]:bg-rose-400/10 [.bbva-dark_&]:text-rose-300">{summary.limitReached} con límite de intentos</span> : null}
-            </div>
-            <p className="mt-0.5 text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">{filtered.length} de {contextItems.length} registros en el contexto actual.</p>
+      <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/50">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-[9px] font-semibold uppercase tracking-[.06em] text-blue-600 [.bbva-dark_&]:text-cyan-300">Seguimiento operativo</div>
+            <p className="mt-0.5 text-[10px] text-slate-500 [.bbva-dark_&]:text-slate-400">Prioriza certificaciones que requieren acción. Los KPIs respetan búsqueda, perfil, tecnología y certificación; el estado selecciona el segmento visible.</p>
           </div>
           <BBVAButton variant="secondary" size="sm" icon={<RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />} onClick={() => void query.refetch()}>Actualizar</BBVAButton>
         </div>
+      </section>
 
-        <div className="border-b border-slate-200 p-2.5 [.bbva-dark_&]:border-slate-800">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
-            <div className="relative md:col-span-2 xl:col-span-1">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-              <input value={filters.search} onChange={(e) => update({ search: e.target.value })} placeholder="Persona o certificación" className="h-9 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-[11px] outline-none focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/40 [.bbva-dark_&]:text-slate-100" aria-label="Buscar persona o certificación" />
-            </div>
-            <BBVASearchableSelect value={filters.certificationStatus} onChange={(value) => update({ certificationStatus: value })} options={[{ value: '', label: 'Todos los estados' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([key]) => !['VALID', 'NOT_APPLICABLE'].includes(key)).map(([value, label]) => ({ value, label }))]} ariaLabel="Estado" />
-            <BBVASearchableSelect value={filters.technology} onChange={(value) => update({ technology: value })} options={[{ value: '', label: 'Todas las tecnologías' }, ...options.technologies]} ariaLabel="Tecnología" />
-            <BBVASearchableSelect value={filters.profile} onChange={(value) => update({ profile: value })} options={[{ value: '', label: 'Todos los perfiles' }, ...options.profiles]} ariaLabel="Perfil" />
-            <BBVASearchableSelect value={filters.certification} onChange={(value) => update({ certification: value })} options={[{ value: '', label: 'Todas las certificaciones' }, ...options.certifications]} ariaLabel="Certificación" />
+      {query.isLoading ? <BBVAMetricsSkeleton cards={6} /> : (
+        <>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,1fr))] items-stretch gap-2">
+            <BBVAMetricCard label="Atención requerida" value={summary.total} icon={<AlertCircle className="h-4 w-4" />} tone="blue" help={metricHelp.attention} supportingText={`${summary.scheduled} con fecha programada`} active={!filters.certificationStatus} onAction={() => filterStatus('')} actionLabel="Ver todas" />
+            <BBVAMetricCard label="Vencidas" value={summary.expired} icon={<ShieldAlert className="h-4 w-4" />} tone={summary.expired ? 'rose' : 'emerald'} help={metricHelp.expired} supportingText={summary.expired ? 'Fuera de vigencia actual' : 'Sin vencidas en este contexto'} active={filters.certificationStatus === 'EXPIRED'} onAction={() => filterStatus('EXPIRED')} actionLabel="Filtrar" />
+            <BBVAMetricCard label="Recertificación" value={summary.recertificationPending} icon={<RefreshCw className="h-4 w-4" />} tone={summary.recertificationPending ? 'orange' : 'emerald'} help={metricHelp.recertification} supportingText={summary.recertificationPending ? 'Nuevo ciclo requerido' : 'Sin recertificaciones pendientes'} active={filters.certificationStatus === 'RECERTIFICATION_PENDING'} onAction={() => filterStatus('RECERTIFICATION_PENDING')} actionLabel="Filtrar" />
+            <BBVAMetricCard label="Próximas a vencer" value={summary.expiring} icon={<Clock3 className="h-4 w-4" />} tone={summary.expiring ? 'amber' : 'emerald'} help={metricHelp.expiring} supportingText={summary.expiring ? 'Dentro del periodo de alerta' : 'Sin vencimientos próximos'} active={filters.certificationStatus === 'EXPIRING'} onAction={() => filterStatus('EXPIRING')} actionLabel="Filtrar" />
+            <BBVAMetricCard label="Reprobadas" value={summary.failed} icon={<AlertCircle className="h-4 w-4" />} tone={summary.failed ? 'rose' : 'emerald'} help={metricHelp.failed} supportingText={summary.limitReached ? `${summary.limitReached} con límite alcanzado` : 'Resultado del ciclo actual'} active={filters.certificationStatus === 'FAILED'} onAction={() => filterStatus('FAILED')} actionLabel="Filtrar" />
+            <BBVAMetricCard label="Pendientes" value={summary.pending} icon={<CalendarClock className="h-4 w-4" />} tone={summary.pending ? 'slate' : 'emerald'} help={metricHelp.pending} supportingText={`${summary.applied} aplicadas · ${summary.scheduled} programadas`} active={filters.certificationStatus === 'PENDING'} onAction={() => filterStatus('PENDING')} actionLabel="Filtrar" />
           </div>
-          {activeFilters.length ? (
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <BBVAFilterSummary items={activeFilters} />
-              <BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar filtros</BBVAButton>
-            </div>
-          ) : null}
-        </div>
 
+          <BBVAChartCard title="Insights de seguimiento" description="Lecturas determinísticas del contexto actual. No utilizan scoring ni tendencias históricas inventadas.">
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+              {insights.map((insight) => (
+                <BBVAInsightCard
+                  key={insight.id}
+                  eyebrow={insight.eyebrow}
+                  title={insight.title}
+                  description={insight.description}
+                  tone={insight.tone}
+                  actionLabel={insight.actionLabel}
+                  onAction={insight.status ? () => filterStatus(insight.status as CollaboratorCertificationStatus) : undefined}
+                />
+              ))}
+            </div>
+          </BBVAChartCard>
+        </>
+      )}
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+          <div className="relative md:col-span-2 xl:col-span-1">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <input value={filters.search} onChange={(e) => update({ search: e.target.value })} placeholder="Persona o certificación" className="h-9 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-[11px] outline-none focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/40 [.bbva-dark_&]:text-slate-100" aria-label="Buscar persona o certificación" />
+          </div>
+          <BBVASearchableSelect value={filters.certificationStatus} onChange={(value) => update({ certificationStatus: value })} options={[{ value: '', label: 'Todos los estados' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([key]) => !['VALID', 'NOT_APPLICABLE'].includes(key)).map(([value, label]) => ({ value, label }))]} ariaLabel="Estado" />
+          <BBVASearchableSelect value={filters.technology} onChange={(value) => update({ technology: value })} options={[{ value: '', label: 'Todas las tecnologías' }, ...options.technologies]} ariaLabel="Tecnología" />
+          <BBVASearchableSelect value={filters.profile} onChange={(value) => update({ profile: value })} options={[{ value: '', label: 'Todos los perfiles' }, ...options.profiles]} ariaLabel="Perfil" />
+          <BBVASearchableSelect value={filters.certification} onChange={(value) => update({ certification: value })} options={[{ value: '', label: 'Todas las certificaciones' }, ...options.certifications]} ariaLabel="Certificación" />
+        </div>
+        {activeFilters.length ? (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <BBVAFilterSummary items={activeFilters} />
+            <BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar filtros</BBVAButton>
+          </div>
+        ) : null}
+      </section>
+
+      <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 [.bbva-dark_&]:border-slate-800">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-950 [.bbva-dark_&]:text-slate-100">Certificaciones por atender</h2>
+            <p className="mt-0.5 text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">{filtered.length} de {contextItems.length} registros en el contexto actual.</p>
+          </div>
+          {summary.limitReached ? <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-1 text-[9px] font-semibold text-rose-700 [.bbva-dark_&]:border-rose-400/20 [.bbva-dark_&]:bg-rose-400/10 [.bbva-dark_&]:text-rose-300">{summary.limitReached} con límite de intentos alcanzado</span> : null}
+        </div>
         <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full min-w-[1200px] text-left text-[10.5px]">
             <thead className="bg-slate-50 text-[9px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:bg-slate-950/40"><tr>
@@ -284,25 +324,6 @@ export const CertificationTrackingPage: React.FC = () => {
         {query.isLoading ? <div className="px-4 py-8 text-center text-xs text-slate-500">Cargando seguimiento...</div> : null}
         {!query.isLoading && filtered.length === 0 ? <BBVAEmptyState title="No hay certificaciones con este contexto" description={activeFilters.length ? 'No existen registros que coincidan con los filtros activos. Ajusta o limpia los filtros para ampliar el resultado.' : 'Actualmente no existen certificaciones que requieran seguimiento.'} action={activeFilters.length ? <BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar filtros</BBVAButton> : undefined} /> : null}
       </div>
-
-      {!query.isLoading ? (
-        <section aria-label="Resumen operativo de seguimiento" className="pt-1">
-          <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-            <div>
-              <div className="text-[9px] font-semibold uppercase tracking-[.05em] text-slate-400">Resumen operativo</div>
-              <div className="text-[9px] text-slate-500 [.bbva-dark_&]:text-slate-400">Indicadores del mismo contexto de búsqueda, perfil, tecnología y certificación.</div>
-            </div>
-          </div>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(145px,1fr))] items-stretch gap-1.5">
-            <BBVAMetricCard density="compact" label="Atención requerida" value={summary.total} icon={<AlertCircle className="h-3.5 w-3.5" />} tone="blue" help={metricHelp.attention} supportingText={`${summary.scheduled} con fecha programada`} active={!filters.certificationStatus} onAction={() => filterStatus('')} actionLabel="Todas" />
-            <BBVAMetricCard density="compact" label="Vencidas" value={summary.expired} icon={<ShieldAlert className="h-3.5 w-3.5" />} tone={summary.expired ? 'rose' : 'emerald'} help={metricHelp.expired} supportingText={summary.expired ? 'Fuera de vigencia' : 'Sin vencidas'} active={filters.certificationStatus === 'EXPIRED'} onAction={() => filterStatus('EXPIRED')} actionLabel="Filtrar" />
-            <BBVAMetricCard density="compact" label="Recertificación" value={summary.recertificationPending} icon={<RefreshCw className="h-3.5 w-3.5" />} tone={summary.recertificationPending ? 'orange' : 'emerald'} help={metricHelp.recertification} supportingText={summary.recertificationPending ? 'Nuevo ciclo requerido' : 'Sin pendientes'} active={filters.certificationStatus === 'RECERTIFICATION_PENDING'} onAction={() => filterStatus('RECERTIFICATION_PENDING')} actionLabel="Filtrar" />
-            <BBVAMetricCard density="compact" label="Próximas a vencer" value={summary.expiring} icon={<Clock3 className="h-3.5 w-3.5" />} tone={summary.expiring ? 'amber' : 'emerald'} help={metricHelp.expiring} supportingText={summary.expiring ? 'Periodo de alerta' : 'Sin próximas'} active={filters.certificationStatus === 'EXPIRING'} onAction={() => filterStatus('EXPIRING')} actionLabel="Filtrar" />
-            <BBVAMetricCard density="compact" label="Reprobadas" value={summary.failed} icon={<AlertCircle className="h-3.5 w-3.5" />} tone={summary.failed ? 'rose' : 'emerald'} help={metricHelp.failed} supportingText={summary.limitReached ? `${summary.limitReached} sin intentos` : 'Ciclo actual'} active={filters.certificationStatus === 'FAILED'} onAction={() => filterStatus('FAILED')} actionLabel="Filtrar" />
-            <BBVAMetricCard density="compact" label="Pendientes" value={summary.pending} icon={<CalendarClock className="h-3.5 w-3.5" />} tone={summary.pending ? 'slate' : 'emerald'} help={metricHelp.pending} supportingText={`${summary.applied} aplicadas · ${summary.scheduled} programadas`} active={filters.certificationStatus === 'PENDING'} onAction={() => filterStatus('PENDING')} actionLabel="Filtrar" />
-          </div>
-        </section>
-      ) : null}
 
       <CertificationQuickApprovalDialog open={Boolean(approval)} collaboratorName={approval?.collaboratorName ?? ''} certificationName={approval?.certificationName ?? ''} attemptNumber={approval?.nextAttemptNumber ?? 1} busy={approveMutation.isPending} onCancel={() => setApproval(null)} onConfirm={(date) => void approve(date)} />
       <CertificationCommunicationDialog
