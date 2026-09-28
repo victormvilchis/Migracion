@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+﻿import { createHash } from 'node:crypto';
 import type {
   ImportApplyRequest,
   ImportApplyResult,
@@ -60,7 +60,7 @@ const HEADER_ALIASES = {
   deliveryManager: ['DM', 'DELIVERY MANAGER', 'DELIVERY MANAGER SOFTTEK'],
   profile: ['PERFIL'],
   technologyProfile: ['PERFIL TECNOLOGICO', 'PERFIL TECNOLÓGICO'],
-  currentTechnology: ['TECNOLOGIA ACTUAL', 'TECNOLOGÍA ACTUAL'],
+  currentTechnology: ['TECNOLOGIA EN LA QUE SE CERTIFICA', 'TECNOLOGÍA EN LA QUE SE CERTIFICA'],
   expertise: ['EXPERTISE', 'SENIORITY'],
   startDate: ['FECHA DE ALTA', 'FECHA ALTA BBVA'],
   hireDate: ['FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP', 'FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK'],
@@ -194,6 +194,10 @@ function parseCurrentTechnologyAndExpertise(value: string | null): { technology:
   return { technology: canonicalCatalog(match[1]), expertise: match[2].toUpperCase() };
 }
 
+export function resolveAuthoritativeCurrentTechnology(values: Record<string, string>): string | null {
+  return canonicalCatalog(valueByAliases(values, CERTIFICATION_TECHNOLOGY_ALIASES));
+}
+
 export function resolveAuthoritativeImportDates(values: Record<string, string>): { startDate: string | null; hireDate: string | null } {
   return {
     startDate: normalizeDate(valueByAliases(values, HEADER_ALIASES.startDate)),
@@ -257,8 +261,8 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
 
   const softtekCode = upper(valueByAliases(source.values, HEADER_ALIASES.softtekCode), 80);
   const corporateUser = upper(valueByAliases(source.values, HEADER_ALIASES.corporateUser), 100);
-  const actualTechnology = parseCurrentTechnologyAndExpertise(valueByHeaderPrefix(source.values, CURRENT_TECHNOLOGY_EXPERTISE_PREFIXES));
-  const explicitCurrentTechnology = canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.currentTechnology));
+  const developmentTechnology = parseCurrentTechnologyAndExpertise(valueByHeaderPrefix(source.values, CURRENT_TECHNOLOGY_EXPERTISE_PREFIXES));
+  const certificationTechnology = resolveAuthoritativeCurrentTechnology(source.values);
   const explicitExpertise = upper(valueByAliases(source.values, HEADER_ALIASES.expertise), 40);
   const identitySeed = softtekCode
     ? `IS:${normalizeKey(softtekCode)}`
@@ -282,9 +286,9 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
     deliveryManager,
     profile: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.profile)),
     technologyProfile: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.technologyProfile)),
-    certificationTechnology: canonicalCatalog(valueByAliases(source.values, CERTIFICATION_TECHNOLOGY_ALIASES)),
-    currentTechnology: explicitCurrentTechnology ?? actualTechnology.technology,
-    expertise: explicitExpertise ?? actualTechnology.expertise,
+    certificationTechnology,
+    currentTechnology: certificationTechnology,
+    expertise: explicitExpertise ?? developmentTechnology.expertise,
     startDate,
     hireDate,
     resourceStatus: upper(valueByAliases(source.values, HEADER_ALIASES.resourceStatus), 80),
@@ -1220,3 +1224,4 @@ export class CollaboratorImportService {
     return result;
   }
 }
+
