@@ -118,6 +118,17 @@ export interface TalentPayload {
   expectedUpdatedAt?: string;
 }
 
+
+export interface TalentConversionPayload {
+  deliveryManager: string;
+  profileCatalogId: string;
+  technologyProfileCatalogId: string;
+  currentTechnologyCatalogId: string;
+  expertise: string;
+  bbvaUser: string;
+  expectedUpdatedAt: string;
+}
+
 export interface TalentHistoryItem {
   id: string;
   eventType: string;

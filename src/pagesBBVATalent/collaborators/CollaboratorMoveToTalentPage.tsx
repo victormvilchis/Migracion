@@ -7,6 +7,7 @@ import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
 import { BBVADatePicker } from '../../componentsBBVATalent/BBVADatePicker';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
+import { bbvaBusinessDate } from '../../lib/bbvaBusinessDate';
 import { useCollaborator } from '../hooks/useCollaborators';
 import { useLifecycleReasons, useMoveCollaboratorToTalent } from '../hooks/useLifecycle';
 import type { LifecycleReasonOption, MoveCollaboratorToTalentPayload } from '../types/lifecycle';
@@ -22,10 +23,6 @@ const GROUP_LABELS: Record<ReasonGroup, string> = {
   OTHER: 'Otro',
 };
 
-function today(): string {
-  const date = new Date();
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
 
 export const CollaboratorMoveToTalentPage: React.FC = () => {
   const { id } = useParams();
@@ -36,7 +33,7 @@ export const CollaboratorMoveToTalentPage: React.FC = () => {
   const reasonsQuery = useLifecycleReasons();
   const moveMutation = useMoveCollaboratorToTalent();
   const [reasonGroup, setReasonGroup] = useState<ReasonGroup | ''>('');
-  const [values, setValues] = useState<MoveCollaboratorToTalentPayload>({ reasonCode: '', effectiveDate: today(), talentStage: 'UNASSIGNED', affiliationType: 'INTERNAL', notes: '' });
+  const [values, setValues] = useState<MoveCollaboratorToTalentPayload>({ reasonCode: '', effectiveDate: bbvaBusinessDate(), talentStage: 'UNASSIGNED', affiliationType: 'INTERNAL', notes: '', expectedUpdatedAt: '' });
   const [error, setError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const item = collaboratorQuery.data?.item;
@@ -83,10 +80,10 @@ export const CollaboratorMoveToTalentPage: React.FC = () => {
   };
 
   const confirm = async () => {
-    if (!id) return;
+    if (!id || !item) return;
     try {
       setError(null);
-      const result = await moveMutation.mutateAsync({ id, payload: values });
+      const result = await moveMutation.mutateAsync({ id, payload: { ...values, expectedUpdatedAt: item.updatedAt } });
       navigate('/bbva/talent-bank', { state: { message: result.message } });
     } catch (moveError) {
       setConfirmOpen(false);

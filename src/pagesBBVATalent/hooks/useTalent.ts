@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { talentApi } from '../api/talentApi';
-import type { TalentCvPayload, TalentPayload, TalentStage } from '../types/talent';
+import type { TalentConversionPayload, TalentCvPayload, TalentPayload, TalentStage } from '../types/talent';
 import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 
 export function useTalentList() {
@@ -59,7 +59,7 @@ export function useUpdateTalentStage() {
 export function useConvertTalent() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, deliveryManager }: { id: string; deliveryManager: string }) => talentApi.convert(id, deliveryManager),
+    mutationFn: ({ id, payload }: { id: string; payload: TalentConversionPayload }) => talentApi.convert(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['talent'] });
       queryClient.invalidateQueries({ queryKey: ['collaborators'] });

@@ -66,6 +66,7 @@ export async function collaboratorMoveToTalentHandler(request: HttpRequest, cont
   try {
     const user = getCurrentUser(request);
     assertBbvaPermission(user, 'COLLABORATOR_WRITE');
+    assertBbvaPermission(user, 'TALENT_WRITE');
     const id = request.params.id;
     if (!id) return { status: 400, jsonBody: { error: 'ID es requerido.' } };
     const result = await lifecycleService.moveCollaboratorToTalent(id, await readBbvaJson(request), user.email);

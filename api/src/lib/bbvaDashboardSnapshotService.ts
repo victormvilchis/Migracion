@@ -5,8 +5,8 @@ const dashboardService = new BbvaDashboardService();
 
 export class BbvaDashboardSnapshotService {
   async capture(actorEmail = 'system.dashboard@basebfs.local') {
-    // get() captura el snapshot global del día. El histórico se desactiva para
-    // evitar una lectura innecesaria durante la tarea programada.
+    // La captura es explícita: los GET normales del Dashboard permanecen de solo lectura.
+    // El histórico se desactiva para evitar una lectura innecesaria durante la tarea programada.
     const result = await dashboardService.get({}, actorEmail, { includeHistory: false, captureSnapshot: true });
     return {
       snapshotDate: bbvaBusinessDate(),

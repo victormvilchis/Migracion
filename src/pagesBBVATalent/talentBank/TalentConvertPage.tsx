@@ -7,9 +7,9 @@ import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableS
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { useCatalogOptions } from '../hooks/useCatalog';
 import { useDeliveryManagers } from '../hooks/useAdminUsers';
-import { useConvertTalent, useTalent, useUpdateTalent } from '../hooks/useTalent';
+import { useConvertTalent, useTalent } from '../hooks/useTalent';
 import type { CatalogOption } from '../types/catalog';
-import type { Talent, TalentPayload } from '../types/talent';
+import type { Talent } from '../types/talent';
 
 const fieldClass = 'h-9 w-full rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15';
 const labelClass = 'mb-1.5 block text-[9.5px] font-semibold uppercase tracking-[0.04em] text-slate-500';
@@ -18,10 +18,6 @@ function optionId(options: CatalogOption[], currentId: string | null | undefined
   if (currentId && options.some((option) => option.id === currentId)) return currentId;
   const name = (currentName ?? '').trim().toLocaleUpperCase('es-MX');
   return options.find((option) => option.name.trim().toLocaleUpperCase('es-MX') === name)?.id ?? '';
-}
-
-function optionName(options: CatalogOption[], id: string): string {
-  return options.find((option) => option.id === id)?.name ?? '';
 }
 
 function toOptions(options: CatalogOption[]) {
@@ -38,38 +34,10 @@ function initialValues(talent: Talent | null | undefined, profiles: CatalogOptio
   };
 }
 
-function toPayload(talent: Talent, values: ReturnType<typeof initialValues>, profiles: CatalogOption[], technologyProfiles: CatalogOption[], technologies: CatalogOption[]): TalentPayload {
-  return {
-    talentType: talent.talentType,
-    affiliationType: talent.affiliationType,
-    softtekCode: talent.softtekCode ?? '',
-    bbvaUser: values.bbvaUser,
-    softtekEmail: talent.softtekEmail ?? talent.email,
-    bbvaEmail: talent.bbvaEmail ?? '',
-    firstName: talent.firstName,
-    lastName: talent.lastName ?? '',
-    profile: optionName(profiles, values.profileCatalogId),
-    profileCatalogId: values.profileCatalogId,
-    technologyProfile: optionName(technologyProfiles, values.technologyProfileCatalogId),
-    technologyProfileCatalogId: values.technologyProfileCatalogId,
-    currentTechnology: optionName(technologies, values.currentTechnologyCatalogId),
-    currentTechnologyCatalogId: values.currentTechnologyCatalogId,
-    expertise: values.expertise,
-    stage: talent.stage,
-    active: talent.active,
-    bbvaStartDate: talent.bbvaStartDate ?? talent.platformStartDate ?? '',
-    softtekHireDate: talent.softtekHireDate ?? talent.hireDate ?? '',
-    entryDate: talent.entryDate,
-    notes: talent.notes ?? '',
-    expectedUpdatedAt: talent.updatedAt,
-  };
-}
-
 export const TalentConvertPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const talentQuery = useTalent(id);
-  const updateMutation = useUpdateTalent();
   const convertMutation = useConvertTalent();
   const profilesQuery = useCatalogOptions('profiles');
   const technologyProfilesQuery = useCatalogOptions('technology-profiles');
@@ -106,9 +74,19 @@ export const TalentConvertPage: React.FC = () => {
     if (!talent || !id) return;
     try {
       setError(null);
-      await updateMutation.mutateAsync({ id, payload: toPayload(talent, values, profiles, technologyProfiles, technologies) });
-      const result = await convertMutation.mutateAsync({ id, deliveryManager: deliveryManager.trim() });
-      navigate('/bbva/collaborators', { state: { message: result.message } });
+      const result = await convertMutation.mutateAsync({
+        id,
+        payload: {
+          deliveryManager: deliveryManager.trim(),
+          profileCatalogId: values.profileCatalogId,
+          technologyProfileCatalogId: values.technologyProfileCatalogId,
+          currentTechnologyCatalogId: values.currentTechnologyCatalogId,
+          expertise: values.expertise,
+          bbvaUser: values.bbvaUser,
+          expectedUpdatedAt: talent.updatedAt,
+        },
+      });
+      navigate('/bbva/collaborators', { state: { message: result.warning ? `${result.message} ${result.warning}` : result.message } });
     } catch (conversionError) {
       setConfirmOpen(false);
       setError((conversionError as Error).message);
@@ -117,7 +95,7 @@ export const TalentConvertPage: React.FC = () => {
 
   if (talentQuery.isLoading) return <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando talento...</div>;
   if (talentQuery.error || !talent) return <BBVAAlert tone="error">{(talentQuery.error as Error)?.message || 'No se encontró el talento.'}</BBVAAlert>;
-  const busy = updateMutation.isPending || convertMutation.isPending;
+  const busy = convertMutation.isPending;
   const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading || deliveryManagersQuery.isLoading;
 
   return (

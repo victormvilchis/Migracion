@@ -54,7 +54,7 @@ export const CertificationAttemptPage: React.FC = () => {
     setCommunication(response.item);
     return response.item;
   };
-  const prepare = async (payload: { recipientEmail?: string; subject?: string; body?: string }) => {
+  const prepare = async (payload: { subject?: string; body?: string }) => {
     if (!certificationRecordId || !communication) throw new Error('Primero genera la postal.');
     const response = await prepareEmailMutation.mutateAsync({ recordId: certificationRecordId, communicationId: communication.id, payload });
     setCommunication(response.item);

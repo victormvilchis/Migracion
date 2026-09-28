@@ -34,16 +34,13 @@ function formatDate(value?: string | null) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
-const CRITICAL_EXIT_TYPES = new Set(['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING']);
-function isCriticalTwoAttemptFailure(item: CollaboratorCertification) {
-  return item.baseStatus === 'FAILED' && item.requiresAttempts && item.maxAttempts === 2 && item.attemptCount >= 2 && CRITICAL_EXIT_TYPES.has(item.certificationType);
-}
 function isCriticalDecisionPending(item: CollaboratorCertification) {
-  return isCriticalTwoAttemptFailure(item) && (!item.criticalResolutionStatus || item.criticalResolutionStatus === 'PENDING_REVIEW');
+  return item.criticalActionRequired === true;
 }
 function isCriticalExitOpen(item: CollaboratorCertification) {
-  return isCriticalTwoAttemptFailure(item) && (!item.criticalResolutionStatus || item.criticalResolutionStatus === 'PENDING_REVIEW' || item.criticalResolutionStatus === 'LOW_REQUESTED');
+  return item.criticalActionRequired === true || item.criticalResolutionStatus === 'LOW_REQUESTED';
 }
+
 
 function followUp(item: CollaboratorCertification) {
   if (item.criticalResolutionStatus === 'INTERN') return 'Resuelto como becario';

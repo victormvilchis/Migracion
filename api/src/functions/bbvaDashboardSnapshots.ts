@@ -8,7 +8,7 @@ const service = new BbvaDashboardSnapshotService();
 
 app.timer('bbvaDashboardDailySnapshot', {
   // 05:55 UTC = 23:55 de México centro. Captura el cierre operativo del día
-  // sin depender del cambio de fecha UTC. El GET global también hace upsert.
+  // sin depender del cambio de fecha UTC. Los GET del Dashboard son de solo lectura.
   schedule: '0 55 5 * * *',
   useMonitor: true,
   handler: async (_timer: Timer, context: InvocationContext) => {

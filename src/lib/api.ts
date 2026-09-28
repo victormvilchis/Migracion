@@ -16,6 +16,7 @@ function operationLabel(endpoint: string, method?: string) {
   if (endpoint.includes('/attempts')) return 'Registrando resultado';
   if (endpoint.includes('/recertify')) return 'Iniciando recertificación';
   if (endpoint.includes('/move-to-talent')) return 'Moviendo a Banco de talento';
+  if (endpoint.includes('/talent-bank/') && endpoint.endsWith('/convert')) return 'Convirtiendo a colaborador';
   if (endpoint.includes('/snapshots/capture')) return 'Actualizando histórico KPI';
   if (normalized === 'DELETE') return 'Aplicando cambio';
   return 'Guardando cambios';

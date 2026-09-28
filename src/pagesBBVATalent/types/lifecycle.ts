@@ -30,6 +30,7 @@ export interface MoveCollaboratorToTalentPayload {
   talentStage: 'AVAILABLE' | 'UNASSIGNED';
   affiliationType: 'INTERNAL' | 'EXTERNAL';
   notes: string;
+  expectedUpdatedAt: string;
 }
 
 export interface MoveCollaboratorToTalentResponse {

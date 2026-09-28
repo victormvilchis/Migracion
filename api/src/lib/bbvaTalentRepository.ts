@@ -265,19 +265,27 @@ export class TalentRepository {
   }
 
   async updateStage(id: string, stage: TalentStage, actorEmail: string): Promise<TalentRecord | null> {
-    const current = await this.findById(id);
-    if (!current) return null;
-    if (current.recordStatus === 'DELETED') throw new Error('El talento está eliminado y sólo puede consultarse.');
-
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
+      const lock = await new sql.Request(transaction)
+        .input('id', sql.UniqueIdentifier, id)
+        .query(`SELECT Stage,Active,DeletedAt FROM bbva.TalentBankEntry WITH (UPDLOCK,HOLDLOCK) WHERE Id=@id;`);
+      const current = lock.recordset[0] as { Stage?: string; Active?: boolean; DeletedAt?: Date | null } | undefined;
+      if (!current) {
+        await transaction.rollback();
+        return null;
+      }
+      if (current.DeletedAt || String(current.Stage).toUpperCase() === 'CONVERTED' || !current.Active) {
+        throw Object.assign(new Error('El talento ya no está activo y su etapa no puede modificarse.'), { statusCode: 409 });
+      }
+
       await new sql.Request(transaction)
         .input('id', sql.UniqueIdentifier, id)
         .input('stage', sql.NVarChar(30), stage)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`UPDATE bbva.TalentBankEntry SET Stage=@stage, UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail WHERE Id=@id;`);
+        .query(`UPDATE bbva.TalentBankEntry SET Stage=@stage, UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail WHERE Id=@id AND Active=1 AND DeletedAt IS NULL AND Stage<>N'CONVERTED';`);
 
       await new sql.Request(transaction)
         .input('entryId', sql.UniqueIdentifier, id)
@@ -295,14 +303,26 @@ export class TalentRepository {
 
 
   async delete(id: string, actorEmail: string): Promise<boolean> {
-    const current = await this.findById(id);
-    if (!current) return false;
-    if (current.recordStatus === 'DELETED') return true;
-
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
+      const lock = await new sql.Request(transaction)
+        .input('entryId', sql.UniqueIdentifier, id)
+        .query(`SELECT CAST(PersonId AS NVARCHAR(36)) AS personId,Stage,DeletedAt FROM bbva.TalentBankEntry WITH (UPDLOCK,HOLDLOCK) WHERE Id=@entryId;`);
+      const current = lock.recordset[0] as { personId?: string; Stage?: string; DeletedAt?: Date | null } | undefined;
+      if (!current) {
+        await transaction.commit();
+        return false;
+      }
+      if (current.DeletedAt) {
+        await transaction.commit();
+        return true;
+      }
+      if (String(current.Stage).toUpperCase() === 'CONVERTED') {
+        throw Object.assign(new Error('El talento ya fue convertido a colaborador y no puede eliminarse desde Banco de talento.'), { statusCode: 409 });
+      }
+
       await new sql.Request(transaction)
         .input('entryId', sql.UniqueIdentifier, id)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
@@ -310,7 +330,7 @@ export class TalentRepository {
           UPDATE bbva.TalentBankEntry
           SET Active=0, DeletedAt=SYSUTCDATETIME(), DeletedByEmail=@actorEmail,
               UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
-          WHERE Id=@entryId AND DeletedAt IS NULL;
+          WHERE Id=@entryId AND DeletedAt IS NULL AND Stage<>N'CONVERTED';
 
           INSERT INTO bbva.TalentHistory (TalentBankEntryId, EventType, Description, CreatedByEmail)
           VALUES (@entryId, N'LOGICALLY_DELETED', N'El registro fue eliminado de Banco de talento.', @actorEmail);

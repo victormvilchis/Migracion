@@ -100,6 +100,21 @@ export class PersonLifecycleRepository {
     const transaction = new sql.Transaction(pool);
     await transaction.begin();
     try {
+      const lockedCollaborator = await new sql.Request(transaction)
+        .input('collaboratorId', sql.UniqueIdentifier, collaborator.id)
+        .query(`
+          SELECT Status AS status,CONVERT(VARCHAR(33),UpdatedAt,127) AS updatedAt,CAST(PersonId AS NVARCHAR(36)) AS personId
+          FROM bbva.Collaborator WITH (UPDLOCK,HOLDLOCK)
+          WHERE Id=@collaboratorId;
+        `);
+      const locked = lockedCollaborator.recordset[0] as { status?: string; updatedAt?: string; personId?: string } | undefined;
+      if (!locked || String(locked.status).toUpperCase() !== 'ACTIVE' || String(locked.personId) !== collaborator.personId) {
+        conflict('El colaborador cambió de estado en otra vista. Actualiza la pantalla antes de continuar.');
+      }
+      if (locked.updatedAt !== input.expectedUpdatedAt) {
+        conflict('La información del colaborador cambió en otra vista. Actualiza la pantalla antes de moverlo a Banco de talento.');
+      }
+
       const reasonResult = await new sql.Request(transaction)
         .input('reasonCode', sql.NVarChar(40), input.reasonCode)
         .query(`
@@ -135,7 +150,7 @@ export class PersonLifecycleRepository {
         .input('personId', sql.UniqueIdentifier, collaborator.personId)
         .query(`
           SELECT TOP 1 CAST(Id AS NVARCHAR(36)) AS id, Active AS active, Stage AS stage, DeletedAt AS deletedAt
-          FROM bbva.TalentBankEntry
+          FROM bbva.TalentBankEntry WITH (UPDLOCK,HOLDLOCK)
           WHERE PersonId=@personId;
         `);
 
@@ -186,7 +201,7 @@ export class PersonLifecycleRepository {
           UPDATE bbva.Collaborator
           SET Status=N'INACTIVE',
               UpdatedAt=SYSUTCDATETIME(), UpdatedByEmail=@actorEmail
-          WHERE Id=@collaboratorId;
+          WHERE Id=@collaboratorId AND Status=N'ACTIVE';
         `);
 
       const stageLabel = input.talentStage === 'AVAILABLE' ? 'Disponible' : 'Desasignado';

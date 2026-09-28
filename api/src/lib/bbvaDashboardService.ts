@@ -285,7 +285,7 @@ export function buildRecommendations(
 export class BbvaDashboardService {
   async get(filters: DashboardFilters, actorEmail: string, options: DashboardGetOptions = {}): Promise<BbvaDashboardResponse> {
     const includeHistory = options.includeHistory ?? true;
-    const captureSnapshot = options.captureSnapshot ?? true;
+    const captureSnapshot = options.captureSnapshot ?? false;
     const comparisonDays = boundedInteger(options.comparisonDays, 1, 1, 365);
     const historyDays = Math.max(comparisonDays + 7, boundedInteger(options.historyDays, 90, 7, 365));
     const activityDays = boundedInteger(options.activityDays, 30, 1, 365);

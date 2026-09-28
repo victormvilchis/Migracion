@@ -38,6 +38,7 @@ function normalizeMovePayload(payload: Record<string, unknown> | null): MoveColl
     talentStage,
     affiliationType: affiliationType as 'INTERNAL' | 'EXTERNAL',
     notes: notesValue ? notesValue.slice(0, 1000) : null,
+    expectedUpdatedAt: text(payload?.expectedUpdatedAt, 'La versión del colaborador', 64),
   };
 }
 

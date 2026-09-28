@@ -41,17 +41,7 @@ export const calendarDaysFromToday = (value?: string | null, now = new Date()) =
   return Math.round((target - today) / 86_400_000);
 };
 
-export const CRITICAL_EXIT_CERTIFICATION_TYPES = new Set(['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING']);
-
-export const requiresCriticalExitReview = (item: CertificationTrackingItem) => item.criticalActionRequired === true
-  || (item.criticalActionRequired === undefined
-    && !item.criticalResolutionStatus
-    && item.requiresAttempts
-    && item.maxAttempts === 2
-    && item.attemptCount >= 2
-    && item.latestAttemptResult === 'FAILED'
-    && item.status === 'FAILED'
-    && CRITICAL_EXIT_CERTIFICATION_TYPES.has(item.certificationType));
+export const requiresCriticalExitReview = (item: CertificationTrackingItem) => item.criticalActionRequired === true;
 
 export const hasOpenCriticalResolution = (item: CertificationTrackingItem) =>
   requiresCriticalExitReview(item) || item.criticalResolutionStatus === 'LOW_REQUESTED';

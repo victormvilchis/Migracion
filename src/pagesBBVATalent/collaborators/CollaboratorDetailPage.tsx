@@ -23,13 +23,9 @@ function formatDateTime(value?: string | null) {
 }
 
 function isOpenCritical(item: CollaboratorCertification) {
-  return item.baseStatus === 'FAILED'
-    && item.requiresAttempts
-    && item.maxAttempts === 2
-    && item.attemptCount >= 2
-    && ['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING'].includes(item.certificationType)
-    && (!item.criticalResolutionStatus || item.criticalResolutionStatus === 'PENDING_REVIEW' || item.criticalResolutionStatus === 'LOW_REQUESTED');
+  return item.criticalActionRequired === true || item.criticalResolutionStatus === 'LOW_REQUESTED';
 }
+
 
 function certificationPriority(item: CollaboratorCertification) {
   if (isOpenCritical(item)) return 0;

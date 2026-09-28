@@ -5,6 +5,7 @@ import type {
   TalentCvPayload,
   TalentHistoryItem,
   TalentPayload,
+  TalentConversionPayload,
   TalentStage,
 } from '../types/talent';
 
@@ -31,8 +32,8 @@ export const talentApi = {
       method: 'PATCH',
       body: JSON.stringify({ stage }),
     }),
-  convert: (id: string, deliveryManager: string) =>
-    fetchApi<{ collaboratorId: string; message: string }>(`/bbva/talent-bank/${id}/convert`, { method: 'POST', body: JSON.stringify({ deliveryManager }) }),
+  convert: (id: string, payload: TalentConversionPayload) =>
+    fetchApi<{ collaboratorId: string; message: string; warning?: string | null }>(`/bbva/talent-bank/${id}/convert`, { method: 'POST', body: JSON.stringify(payload) }),
   remove: (id: string) =>
     fetchApi<{ deleted: boolean }>(`/bbva/talent-bank/${id}`, { method: 'DELETE' }),
   history: (id: string) =>

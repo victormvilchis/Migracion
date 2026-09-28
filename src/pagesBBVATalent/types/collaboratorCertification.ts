@@ -58,6 +58,7 @@ export interface CollaboratorCertification {
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;
+  criticalActionRequired: boolean;
   criticalResolutionStatus: CertificationCriticalResolutionStatus | null;
   criticalResolutionNotes: string | null;
   criticalResolutionAt: string | null;
