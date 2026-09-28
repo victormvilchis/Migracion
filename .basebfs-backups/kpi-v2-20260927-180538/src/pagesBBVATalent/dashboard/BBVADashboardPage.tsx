@@ -8,8 +8,6 @@ import { BBVADonutChart, type BBVADonutItem } from '../../componentsBBVATalent/B
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
 import { BBVAFilterSummary, type BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
 import { BBVAHorizontalBars } from '../../componentsBBVATalent/BBVAHorizontalBars';
-import { BBVAInsightCard } from '../../componentsBBVATalent/BBVAInsightCard';
-import { BBVAOperationalPriorities } from '../../componentsBBVATalent/BBVAOperationalPriorities';
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
 import { BBVAMetricsSkeleton } from '../../componentsBBVATalent/BBVAMetricsSkeleton';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
@@ -17,7 +15,6 @@ import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHea
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useBbvaDashboard } from '../hooks/useDashboard';
 import { dashboardMetricDefinitions } from '../lib/dashboardMetricDefinitions';
-import { buildDashboardInsights, buildDashboardOperationalPriorities } from '../lib/dashboardInsights';
 import type { DashboardFilters, DashboardResponse } from '../types/dashboard';
 
 const initialFilters: DashboardFilters = { technologyId:'', profileId:'', certificationStatus:'', deliveryManager:'', talentType:'', fromDate:'', toDate:'', search:'' };
@@ -46,25 +43,10 @@ export const BBVADashboardPage: React.FC = () => {
     return [...rows].sort((a,b)=>(direction==='asc'?1:-1)*compare(a,b));
   },[data?.attention,direction,sort]);
   const attentionCount=attentionRows.length;
-  const operationalPriorities=useMemo(()=>data?buildDashboardOperationalPriorities(data).filter((item)=>item.value>0):[],[data]);
-  const insights=useMemo(()=>data?buildDashboardInsights(data):[],[data]);
-  const attentionByDeliveryManager=useMemo(()=>{const counts=new Map<string,number>();for(const row of attentionRows){const label=row.deliveryManager?.trim()||'Sin DM';counts.set(label,(counts.get(label)??0)+1);}return [...counts.entries()].map(([label,value])=>({key:label,label,value})).sort((a,b)=>b.value-a.value||a.label.localeCompare(b.label,'es-MX'));},[attentionRows]);
-  const maxTech=Math.max(1,...technologyDistribution.map((i)=>i.value)); const maxProfile=Math.max(1,...profileDistribution.map((i)=>i.value)); const maxAttentionDm=Math.max(1,...attentionByDeliveryManager.map((i)=>i.value));
+  const maxTech=Math.max(1,...technologyDistribution.map((i)=>i.value)); const maxProfile=Math.max(1,...profileDistribution.map((i)=>i.value));
   const update=(key:keyof DashboardFilters,value:string)=>patch({[key]:value} as Partial<DashboardFilters>);
   const changeSort=(field:AttentionSort)=>{if(sort===field)setDirection((d)=>d==='asc'?'desc':'asc');else{setSort(field);setDirection(field==='alerts'?'desc':'asc');}};
-  const metricsUrl=(status?:string)=>{
-    const params=new URLSearchParams();
-    const effectiveStatus=status??filters.certificationStatus;
-    if(filters.profileId)params.set('profileId',filters.profileId);
-    if(filters.technologyId)params.set('technologyId',filters.technologyId);
-    if(effectiveStatus)params.set('certificationStatus',effectiveStatus);
-    if(filters.talentType)params.set('talentType',filters.talentType);
-    if(filters.fromDate)params.set('fromDate',filters.fromDate);
-    if(filters.toDate)params.set('toDate',filters.toDate);
-    if(filters.search)params.set('search',filters.search);
-    const queryString=params.toString();
-    return `/bbva/certifications/metrics${queryString?`?${queryString}`:''}`;
-  };
+  const metricsUrl=(status?:string)=>`/bbva/certifications/metrics${status?`?certificationStatus=${encodeURIComponent(status)}`:''}`;
 
   const activeFilters = useMemo<BBVAFilterSummaryItem[]>(() => {
     const items: BBVAFilterSummaryItem[] = [];
@@ -100,19 +82,9 @@ export const BBVADashboardPage: React.FC = () => {
         <BBVAMetricCard label="Datos por completar" value={cards.dataQualityPending} icon={<Briefcase className="h-4 w-4"/>} tone={cards.dataQualityPending?'amber':'emerald'} help={dashboardMetricDefinitions.dataQualityPending} supportingText={cards.dataQualityPending?'Requieren completar información':'Información completa en el universo actual'}/>
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.4fr)]">
-        <BBVAChartCard title="Prioridades operativas" description="Estados que requieren revisión según las reglas actuales de certificación. El orden no es un score de riesgo." action={<BBVAButton variant="table" size="sm" onClick={()=>navigate('/bbva/certifications/tracking')}>Abrir seguimiento</BBVAButton>}>
-          {operationalPriorities.length?<BBVAOperationalPriorities items={operationalPriorities} onSelect={(status)=>navigate(metricsUrl(status))}/>:<BBVAEmptyState compact title="Sin prioridades activas" description="No existen certificaciones vencidas, próximas, pendientes o en recertificación para los filtros actuales."/>}
-        </BBVAChartCard>
-        <BBVAChartCard title="Insights del contexto actual" description="Lecturas determinísticas construidas únicamente con la información ya disponible en el panel.">
-          <div className="grid gap-2 md:grid-cols-2">{insights.slice(0,4).map((insight)=><BBVAInsightCard key={insight.id} eyebrow={insight.eyebrow} title={insight.title} description={insight.description} tone={insight.tone} actionLabel={insight.actionLabel} onAction={insight.actionStatus?()=>navigate(metricsUrl(insight.actionStatus)):undefined}/>)}</div>
-        </BBVAChartCard>
-      </div>
-
-      <div className="grid gap-3 xl:grid-cols-3">
+      <div className="grid gap-3 xl:grid-cols-2">
         <BBVAChartCard title="Distribución por tecnología" description="Colaboradores del universo actual. Selecciona una tecnología para filtrar el panel."><BBVAHorizontalBars items={technologyDistribution} max={maxTech} selectedKey={filters.technologyId??''} onSelect={(id)=>update('technologyId',filters.technologyId===id?'':id)}/></BBVAChartCard>
         <BBVAChartCard title="Distribución por perfil" description="Distribución de todos los colaboradores incluidos por los filtros actuales."><BBVAHorizontalBars items={profileDistribution} max={maxProfile}/></BBVAChartCard>
-        <BBVAChartCard title="Atención por Delivery Manager" description="Personas con al menos una certificación que requiere revisión, agrupadas por DM."><BBVAHorizontalBars items={attentionByDeliveryManager} max={maxAttentionDm} emptyTitle="Sin atención por Delivery Manager" emptyDescription="No existen personas con elementos de certificación por revisar en este contexto."/></BBVAChartCard>
       </div>
       <div className="grid gap-3 xl:grid-cols-2">
         <BBVAChartCard title="Banco de talento" description="Composición actual por tipo de entrada activa."><BBVADonutChart items={data.talentComposition} center={cards.talentBankActive} caption="personas" size="sm" emptyTitle="Banco de talento sin registros" emptyDescription="No existen entradas activas para los filtros actuales."/></BBVAChartCard>
