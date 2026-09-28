@@ -113,6 +113,8 @@ export interface CertificationTrackingItem {
   collaboratorName: string;
   profile: string | null;
   technology: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
   certificationRecordId: string;
   certificationId: string;
   certificationName: string;

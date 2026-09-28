@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import sql from 'mssql';
 import { getDbConnection } from './db.js';
 import type {
@@ -20,7 +21,7 @@ function paging(params: BbvaAdminListParams) {
 
 function roleSelect() {
   return `
-    SELECT CAST(r.Id AS NVARCHAR(36)) AS id,r.Code AS code,r.Name AS name,r.Description AS description,
+    SELECT CAST(r.Id AS NVARCHAR(36)) AS id,r.Name AS name,r.Description AS description,
            r.IsDeliveryManager AS isDeliveryManager,r.IsSystem AS isSystem,r.Status AS status,
            (SELECT COUNT(1) FROM bbva.SystemUserRole ur WHERE ur.RoleId=r.Id) AS userCount,
            CONVERT(VARCHAR(33),r.CreatedAt,127) AS createdAt,CONVERT(VARCHAR(33),r.UpdatedAt,127) AS updatedAt
@@ -42,7 +43,7 @@ async function rolesForUsers(userIds: string[]): Promise<Map<string, BbvaSystemU
   if (!userIds.length) return new Map();
   const pool = await getDbConnection();
   const result = await pool.request().input('ids', sql.NVarChar(sql.MAX), JSON.stringify(userIds)).query(`
-    SELECT CAST(ur.UserId AS NVARCHAR(36)) AS userId,CAST(r.Id AS NVARCHAR(36)) AS id,r.Code AS code,r.Name AS name,r.IsDeliveryManager AS isDeliveryManager
+    SELECT CAST(ur.UserId AS NVARCHAR(36)) AS userId,CAST(r.Id AS NVARCHAR(36)) AS id,r.Name AS name,r.IsDeliveryManager AS isDeliveryManager
     FROM bbva.SystemUserRole ur
     INNER JOIN bbva.SystemRole r ON r.Id=ur.RoleId
     WHERE ur.UserId IN (SELECT TRY_CONVERT(uniqueidentifier,[value]) FROM OPENJSON(@ids))
@@ -50,7 +51,7 @@ async function rolesForUsers(userIds: string[]): Promise<Map<string, BbvaSystemU
   `);
   const map = new Map<string, BbvaSystemUserRoleRef[]>();
   for (const row of result.recordset as Array<BbvaSystemUserRoleRef & { userId: string }>) {
-    map.set(row.userId, [...(map.get(row.userId) ?? []), { id: row.id, code: row.code, name: row.name, isDeliveryManager: Boolean(row.isDeliveryManager) }]);
+    map.set(row.userId, [...(map.get(row.userId) ?? []), { id: row.id, name: row.name, isDeliveryManager: Boolean(row.isDeliveryManager) }]);
   }
   return map;
 }
@@ -253,12 +254,12 @@ export class BbvaUserAdminRepository {
     const { page, size, offset } = paging(params);
     const search = String(params.search ?? '').trim();
     const status = params.status ?? 'ACTIVE';
-    const where = [`(@search=N'' OR r.Name LIKE @term OR r.Code LIKE @term OR ISNULL(r.Description,N'') LIKE @term)`];
+    const where = [`(@search=N'' OR r.Name LIKE @term OR ISNULL(r.Description,N'') LIKE @term)`];
     if (status !== 'ALL') where.push('r.Status=@status');
     const whereSql = `WHERE ${where.join(' AND ')}`;
     const req = () => pool.request().input('search',sql.NVarChar(220),search).input('term',sql.NVarChar(230),`%${search}%`).input('status',sql.NVarChar(16),status==='ALL'?null:status).input('offset',sql.Int,offset).input('size',sql.Int,size);
     const count = await req().query(`SELECT COUNT(1) AS total FROM bbva.SystemRole r ${whereSql};`);
-    const roleSort: Record<string,string> = { name:'r.Name', code:'r.Code', userCount:'userCount', status:'r.Status', updatedAt:'r.UpdatedAt' };
+    const roleSort: Record<string,string> = { name:'r.Name', userCount:'userCount', status:'r.Status', updatedAt:'r.UpdatedAt' };
     const orderBy = roleSort[String(params.sort ?? '')] ?? 'r.Name';
     const direction = params.direction === 'desc' ? 'DESC' : 'ASC';
     const result = await req().query(`${roleSelect()} ${whereSql} ORDER BY ${orderBy} ${direction},r.IsSystem DESC,r.Id ASC OFFSET @offset ROWS FETCH NEXT @size ROWS ONLY;`);
@@ -281,7 +282,8 @@ export class BbvaUserAdminRepository {
 
   async createRole(input: BbvaSystemRolePayload, actorEmail: string): Promise<BbvaSystemRoleRecord> {
     const pool=await getDbConnection();
-    const created=await pool.request().input('code',sql.NVarChar(50),input.code).input('name',sql.NVarChar(120),input.name).input('description',sql.NVarChar(500),input.description).input('isDm',sql.Bit,input.isDeliveryManager).input('actor',sql.NVarChar(255),actorEmail)
+    const internalCode=`CUSTOM_${randomUUID().replace(/-/g,'').slice(0,16).toUpperCase()}`;
+    const created=await pool.request().input('code',sql.NVarChar(50),internalCode).input('name',sql.NVarChar(120),input.name).input('description',sql.NVarChar(500),input.description).input('isDm',sql.Bit,input.isDeliveryManager).input('actor',sql.NVarChar(255),actorEmail)
       .query(`INSERT INTO bbva.SystemRole(Code,Name,Description,IsDeliveryManager,IsSystem,Status,CreatedByEmail,UpdatedByEmail) OUTPUT CAST(INSERTED.Id AS NVARCHAR(36)) AS id VALUES(@code,@name,@description,@isDm,0,N'ACTIVE',@actor,@actor);`);
     return (await this.roleById(String(created.recordset[0].id))) as BbvaSystemRoleRecord;
   }
@@ -290,8 +292,8 @@ export class BbvaUserAdminRepository {
     const current=await this.roleById(id); if(!current)return null;
     if(current.status==='INACTIVE') throw Object.assign(new Error('Activa el rol antes de modificarlo.'),{statusCode:409});
     const pool=await getDbConnection();
-    const result=await pool.request().input('id',sql.UniqueIdentifier,id).input('code',sql.NVarChar(50),current.isSystem?current.code:input.code).input('name',sql.NVarChar(120),input.name).input('description',sql.NVarChar(500),input.description).input('isDm',sql.Bit,input.isDeliveryManager).input('actor',sql.NVarChar(255),actorEmail)
-      .query(`UPDATE bbva.SystemRole SET Code=@code,Name=@name,Description=@description,IsDeliveryManager=@isDm,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@id; SELECT @@ROWCOUNT AS affected;`);
+    const result=await pool.request().input('id',sql.UniqueIdentifier,id).input('name',sql.NVarChar(120),input.name).input('description',sql.NVarChar(500),input.description).input('isDm',sql.Bit,input.isDeliveryManager).input('actor',sql.NVarChar(255),actorEmail)
+      .query(`UPDATE bbva.SystemRole SET Name=@name,Description=@description,IsDeliveryManager=@isDm,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@id; SELECT @@ROWCOUNT AS affected;`);
     return Number(result.recordset[0]?.affected??0)?this.roleById(id):null;
   }
 

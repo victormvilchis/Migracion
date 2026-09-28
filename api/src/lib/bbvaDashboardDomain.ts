@@ -4,6 +4,8 @@ export interface DashboardFilters {
   technologyProfile?: string | null;
   certificationId?: string | null;
   bbvaStructureLevel2?: string | null;
+  bbvaStructureLevel3?: string | null;
+  quarterCode?: string | null;
   certificationStatus?: string | null;
   deliveryManager?: string | null;
   talentType?: string | null;
@@ -133,24 +135,46 @@ export interface DashboardAttentionRow {
   pending: number;
   recertificationPending: number;
   critical: number;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
+}
+
+export interface DashboardQuarterExpiration {
+  collaboratorId: string;
+  personId: string;
+  fullName: string;
+  certificationId: string;
+  certificationName: string;
+  expirationDate: string;
+  status: string;
 }
 
 export interface VendorQuarterSummary {
   calendarName: string;
   currentCode: string | null;
+  selectedCode: string | null;
   targetCode: string | null;
   targetStartDate: string | null;
   targetEndDate: string | null;
   daysToTargetStart: number | null;
+  daysToTargetEnd: number | null;
+  daysToSelectedStart: number | null;
+  daysToSelectedEnd: number | null;
+  progressPercent: number | null;
+  referenceDate: string;
   readyCollaborators: number;
   pendingCollaborators: number;
   exhaustedAttemptCollaborators: number;
   readinessPercent: number;
+  years: number[];
+  quarters: Array<{ code: string; year: number; quarter: 1 | 2 | 3 | 4; startDate: string; endDate: string }>;
 }
+
 
 export interface BbvaDashboardResponse {
   cards: DashboardMetricCards;
   vendorQuarter: VendorQuarterSummary;
+  quarterExpirations: DashboardQuarterExpiration[];
   history: DashboardHistory;
   activity: DashboardActivityItem[];
   recommendations: DashboardRecommendation[];
@@ -169,6 +193,8 @@ export interface BbvaDashboardResponse {
     certifications: Array<{ id: string; name: string }>;
     technologyProfiles: string[];
     bbvaStructures: string[];
+    bbvaStructuresLevel2: string[];
+    bbvaStructuresLevel3: string[];
     deliveryManagers: string[];
   };
 }

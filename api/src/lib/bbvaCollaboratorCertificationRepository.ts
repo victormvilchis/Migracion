@@ -784,6 +784,8 @@ export class CollaboratorCertificationRepository {
         LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS collaboratorName,
         p.Profile AS profile,
         p.CurrentTechnology AS technology,
+        p.BbvaStructureLevel2 AS bbvaStructureLevel2,
+        p.BbvaStructureLevel3 AS bbvaStructureLevel3,
         CAST(pc.Id AS NVARCHAR(36)) AS certificationRecordId,
         CAST(cc.Id AS NVARCHAR(36)) AS certificationId,
         cc.Name AS certificationName,

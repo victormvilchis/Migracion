@@ -1,5 +1,6 @@
 import sql from 'mssql';
 import { getDbConnection } from './db.js';
+import { bbvaBusinessDate } from './bbvaBusinessTime.js';
 import type { TalentCvInput, TalentCvRecord, TalentHistoryRecord, TalentInput, TalentRecord, TalentStage } from './bbvaTalentDomain.js';
 
 const TALENT_SELECT = `
@@ -27,6 +28,8 @@ const TALENT_SELECT = `
     p.CurrentTechnology AS currentTechnology,
     CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS currentTechnologyCatalogId,
     p.Expertise AS expertise,
+    p.BbvaStructureLevel2 AS bbvaStructureLevel2,
+    p.BbvaStructureLevel3 AS bbvaStructureLevel3,
     t.Stage AS stage,
     t.Active AS active,
     CONVERT(VARCHAR(10), t.PlatformStartDate, 23) AS bbvaStartDate,
@@ -34,6 +37,7 @@ const TALENT_SELECT = `
     CONVERT(VARCHAR(10), t.PlatformStartDate, 23) AS platformStartDate,
     CONVERT(VARCHAR(10), p.HireDate, 23) AS hireDate,
     CONVERT(VARCHAR(10), t.EntryDate, 23) AS entryDate,
+    entryStats.EntryCount AS talentBankEntryCount,
     p.Notes AS notes,
     lifecycle.ReasonCode AS lifecycleReasonCode,
     lifecycle.ReasonName AS lifecycleReasonName,
@@ -52,6 +56,11 @@ const TALENT_SELECT = `
   INNER JOIN bbva.Person p ON p.Id = t.PersonId
   LEFT JOIN bbva.PersonDocument d ON d.PersonId = p.Id AND d.DocumentType = N'CV'
   OUTER APPLY (
+    SELECT COUNT(1) AS EntryCount
+    FROM bbva.TalentBankEntry allEntries
+    WHERE allEntries.PersonId=p.Id
+  ) entryStats
+  OUTER APPLY (
     SELECT TOP 1
       h.ReasonCode,
       r.Name AS ReasonName,
@@ -64,7 +73,7 @@ const TALENT_SELECT = `
   ) lifecycle
 `;
 
-interface TalentRow extends Omit<TalentRecord, 'cv'> {
+interface TalentRow extends Omit<TalentRecord, 'cv' | 'daysInTalentBank' | 'urgentAssignment'> {
   cvFileName: string | null;
   cvContentType: string | null;
   cvFileSizeBytes: number | null;
@@ -73,8 +82,16 @@ interface TalentRow extends Omit<TalentRecord, 'cv'> {
 
 function mapTalent(row: TalentRow): TalentRecord {
   const { cvFileName, cvContentType, cvFileSizeBytes, cvUpdatedAt, ...base } = row;
+  const referenceDate = bbvaBusinessDate();
+  const entry = Date.parse(`${base.entryDate}T00:00:00Z`);
+  const reference = Date.parse(`${referenceDate}T00:00:00Z`);
+  const daysInTalentBank = Number.isFinite(entry) && Number.isFinite(reference) ? Math.max(0, Math.floor((reference - entry) / 86400000)) : 0;
+  const talentBankEntryCount = Number(base.talentBankEntryCount ?? 1);
   return {
     ...base,
+    daysInTalentBank,
+    talentBankEntryCount,
+    urgentAssignment: talentBankEntryCount > 2,
     cv: cvFileName
       ? {
           fileName: cvFileName,

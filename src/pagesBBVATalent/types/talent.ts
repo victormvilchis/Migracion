@@ -69,6 +69,8 @@ export interface Talent {
   currentTechnology: string | null;
   currentTechnologyCatalogId: string | null;
   expertise: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
   stage: TalentStage;
   active: boolean;
   bbvaStartDate: string | null;
@@ -76,6 +78,9 @@ export interface Talent {
   platformStartDate: string | null;
   hireDate: string | null;
   entryDate: string;
+  daysInTalentBank: number;
+  talentBankEntryCount: number;
+  urgentAssignment: boolean;
   notes: string | null;
   lifecycleReasonCode: string | null;
   lifecycleReasonName: string | null;

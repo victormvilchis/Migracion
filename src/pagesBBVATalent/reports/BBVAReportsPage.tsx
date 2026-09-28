@@ -75,7 +75,7 @@ export const BBVAReportsPage: React.FC<Props> = ({ type }) => {
   React.useEffect(() => setMetric(config.defaultMetric), [config.defaultMetric]);
 
   const filters = useMemo<DashboardFilters>(() => ({
-    technologyId:'',profileId:'',technologyProfile:'',certificationId:'',bbvaStructureLevel2:'',certificationStatus:'',deliveryManager:'',talentType:'',fromDate:'',toDate:'',search:'',
+    technologyId:'',profileId:'',technologyProfile:'',certificationId:'',bbvaStructureLevel2:'',bbvaStructureLevel3:'',quarterCode:'',certificationStatus:'',deliveryManager:'',talentType:'',fromDate:'',toDate:'',search:'',
     historyDays,comparisonDays,activityDays,activityLimit:'50',
   }), [activityDays,comparisonDays,historyDays]);
   const query=useBbvaDashboard(filters);

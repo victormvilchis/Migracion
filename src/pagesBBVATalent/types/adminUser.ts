@@ -2,7 +2,6 @@ export type AdminStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface AdminRole {
   id: string;
-  code: string;
   name: string;
   description: string | null;
   isDeliveryManager: boolean;
@@ -15,7 +14,6 @@ export interface AdminRole {
 
 export interface AdminUserRoleRef {
   id: string;
-  code: string;
   name: string;
   isDeliveryManager: boolean;
 }
@@ -58,7 +56,6 @@ export interface AdminUserPayload {
 }
 
 export interface AdminRolePayload {
-  code: string;
   name: string;
   description: string;
   isDeliveryManager: boolean;

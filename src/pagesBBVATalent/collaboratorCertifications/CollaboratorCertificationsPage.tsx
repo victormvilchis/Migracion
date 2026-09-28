@@ -11,6 +11,7 @@ import { CertificationCriticalResolutionDialog } from '../../componentsBBVATalen
 import { CertificationScheduleDialog } from '../../componentsBBVATalent/CertificationScheduleDialog';
 import { useCertificationCatalogOptions } from '../hooks/useCertificationCatalog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
+import { sentenceCaseData } from '../lib/bbvaDisplayFormat';
 import { useCollaborator } from '../hooks/useCollaborators';
 import {
   useAddCollaboratorCertification,
@@ -179,7 +180,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
                   const criticalDecision = isCriticalDecisionPending(item);
                   const criticalOpen = isCriticalExitOpen(item);
                   return <tr key={item.id} className={`transition ${criticalOpen ? 'bg-rose-50/70 ring-1 ring-inset ring-rose-200 hover:bg-rose-50' : 'hover:bg-slate-50/70'}`}>
-                    <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{item.certificationName}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider].filter(Boolean).join(' · ') || 'General'}</div></td>
+                    <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{sentenceCaseData(item.certificationName)}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName ? sentenceCaseData(item.technologyName) : null, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider ? sentenceCaseData(item.provider) : null].filter(Boolean).join(' · ') || 'General'}</div></td>
                     <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[8.5px] font-bold uppercase text-white">Crítico</span> : <span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>}</td>
                     <td className="px-3 py-2.5"><div>{formatDate(item.approvedDate)}</div>{item.attemptCount > 0 ? <div className="mt-0.5 text-[9px] text-slate-400">{item.attemptCount} intento{item.attemptCount === 1 ? '' : 's'} en ciclo {item.currentCycle}</div> : null}</td>
                     <td className="px-3 py-2.5"><span className="text-[9.5px] font-medium text-slate-600">{followUp(item)}</span></td>

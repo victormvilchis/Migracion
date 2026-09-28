@@ -51,7 +51,7 @@ export const BBVAMetricCard: React.FC<BBVAMetricCardProps> = ({
   return (
     <BBVACard
       className={cn(
-        'flex flex-col',
+        'bbva-live-card flex flex-col',
         compact ? 'min-h-[92px] rounded-xl p-2.5' : 'min-h-[132px] rounded-2xl p-3',
         active && 'border-blue-400 ring-2 ring-blue-500/10 [.bbva-dark_&]:border-cyan-400/50 [.bbva-dark_&]:ring-cyan-300/10',
         className,

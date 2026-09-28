@@ -11,7 +11,7 @@ import type {
 } from './bbvaDashboardDomain.js';
 import { BbvaDashboardRepository, type DashboardCertificationRow } from './bbvaDashboardRepository.js';
 import { isCertificationReadyForTarget, isCriticalResolutionOpen, isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
-import { vendorQuarterContext } from './bbvaVendorCalendar.js';
+import { vendorQuarterContext, type VendorQuarterDefinition } from './bbvaVendorCalendar.js';
 import { addBusinessDays, bbvaBusinessDate } from './bbvaBusinessTime.js';
 
 const repository = new BbvaDashboardRepository();
@@ -51,10 +51,15 @@ function normalizeDate(value: string | null | undefined): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : null;
 }
 
-function certificationStatus(row: DashboardCertificationRow, todayIso: string): string {
+function certificationStatus(row: DashboardCertificationRow, todayIso: string, quarter?: VendorQuarterDefinition | null): string {
   if (!row.applicable || row.baseStatus === 'NOT_APPLICABLE') return 'NOT_APPLICABLE';
   if (row.baseStatus !== 'APPROVED') return row.baseStatus === 'FAILED' ? 'FAILED' : row.baseStatus;
   if (!row.expirationDate) return 'VALID';
+  if (quarter) {
+    if (row.expirationDate < quarter.startDate) return row.recertificationEnabled ? 'RECERTIFICATION_PENDING' : 'EXPIRED';
+    if (row.expirationDate <= quarter.endDate) return 'EXPIRING';
+    return 'VALID';
+  }
   if (row.expirationDate < todayIso) return row.recertificationEnabled ? 'RECERTIFICATION_PENDING' : 'EXPIRED';
   if (row.expiringSoonDays != null && row.expirationDate <= addBusinessDays(todayIso, row.expiringSoonDays)) return 'EXPIRING';
   return 'VALID';
@@ -73,8 +78,9 @@ function sortSlices(values: Map<string, number>): DashboardSlice[] {
 }
 
 function isGlobalContext(filters: DashboardFilters): boolean {
-  return !Object.values(filters).some((value) => String(value ?? '').trim());
+  return !Object.entries(filters).some(([key, value]) => key !== 'quarterCode' && String(value ?? '').trim());
 }
+
 
 function subtractDays(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T12:00:00Z`);
@@ -303,15 +309,19 @@ export class BbvaDashboardService {
     const fromDate = normalizeDate(filters.fromDate);
     const toDate = normalizeDate(filters.toDate);
     const search = String(filters.search ?? '').trim().toLocaleLowerCase('es-MX');
+    const quarter = vendorQuarterContext(now, filters.quarterCode);
+    const selectedQuarter = quarter.selectedQuarter;
+    const selectedQuarterCode = selectedQuarter?.code ?? 'UNCONFIGURED';
 
     const certStatusById = new Map<string, string>();
-    for (const cert of allCertifications) certStatusById.set(cert.id, certificationStatus(cert, todayIso));
+    for (const cert of allCertifications) certStatusById.set(cert.id, certificationStatus(cert, todayIso, selectedQuarter));
 
     let collaborators = allCollaborators.filter((row) => {
       if (filters.technologyId && row.technologyId !== filters.technologyId) return false;
       if (filters.profileId && row.profileId !== filters.profileId) return false;
       if (filters.technologyProfile && row.technologyProfile !== filters.technologyProfile) return false;
       if (filters.bbvaStructureLevel2 && row.bbvaStructureLevel2 !== filters.bbvaStructureLevel2) return false;
+      if (filters.bbvaStructureLevel3 && row.bbvaStructureLevel3 !== filters.bbvaStructureLevel3) return false;
       if (filters.deliveryManager && row.deliveryManager !== filters.deliveryManager) return false;
       if (!matchesDate(row.startDate, fromDate, toDate)) return false;
       if (search && !`${row.fullName} ${row.email} ${row.softtekCode ?? ''} ${row.bbvaUser ?? ''} ${row.bbvaEmail ?? ''} ${row.deliveryManager ?? ''} ${row.profile ?? ''} ${row.technology ?? ''}`.toLocaleLowerCase('es-MX').includes(search)) return false;
@@ -374,6 +384,8 @@ export class BbvaDashboardService {
       if (filters.talentType && row.talentType !== filters.talentType) return false;
       if (filters.technologyId && row.technologyId !== filters.technologyId) return false;
       if (filters.profileId && row.profileId !== filters.profileId) return false;
+      if (filters.bbvaStructureLevel2 && row.bbvaStructureLevel2 !== filters.bbvaStructureLevel2) return false;
+      if (filters.bbvaStructureLevel3 && row.bbvaStructureLevel3 !== filters.bbvaStructureLevel3) return false;
       if (!matchesDate(row.entryDate, fromDate, toDate)) return false;
       if (search && !row.fullName.toLocaleLowerCase('es-MX').includes(search)) return false;
       return true;
@@ -423,6 +435,8 @@ export class BbvaDashboardService {
         technology: collaborator.technology ?? 'Sin tecnología',
         profile: collaborator.profile ?? 'Sin perfil',
         deliveryManager: collaborator.deliveryManager ?? 'Sin DM',
+        bbvaStructureLevel2: collaborator.bbvaStructureLevel2,
+        bbvaStructureLevel3: collaborator.bbvaStructureLevel3,
         ...result,
       };
     }).sort((a, b) => {
@@ -440,17 +454,27 @@ export class BbvaDashboardService {
     ];
 
     const monthFormatter = new Intl.DateTimeFormat('es-MX', { month: 'short', year: '2-digit', timeZone: 'UTC' });
-    const [businessYear, businessMonth] = todayIso.split('-').map(Number);
-    const expirationByMonth = Array.from({ length: 12 }, (_, index) => {
-      const start = new Date(Date.UTC(businessYear, businessMonth - 1 + index, 1));
-      const next = new Date(Date.UTC(businessYear, businessMonth + index, 1));
-      const value = certifications.filter((cert) => {
-        if (!cert.expirationDate) return false;
-        const expiration = new Date(`${cert.expirationDate}T00:00:00Z`);
-        return expiration >= start && expiration < next;
-      }).length;
-      return { month: start.toISOString().slice(0, 7), label: monthFormatter.format(start).replace('.', ''), value };
-    });
+    const expirationByMonth = (() => {
+      if (!selectedQuarter) return [];
+      const startDate = new Date(`${selectedQuarter.startDate}T00:00:00Z`);
+      const endDate = new Date(`${selectedQuarter.endDate}T00:00:00Z`);
+      const result: Array<{ month: string; label: string; value: number }> = [];
+      let cursor = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+      const last = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1));
+      while (cursor <= last) {
+        const month = cursor.toISOString().slice(0, 7);
+        const next = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1));
+        const value = certifications.filter((cert) => {
+          if (!cert.expirationDate) return false;
+          const expiration = new Date(`${cert.expirationDate}T00:00:00Z`);
+          return expiration >= cursor && expiration < next && cert.expirationDate >= selectedQuarter.startDate && cert.expirationDate <= selectedQuarter.endDate;
+        }).length;
+        result.push({ month, label: monthFormatter.format(cursor).replace('.', ''), value });
+        cursor = next;
+      }
+      return result;
+    })();
+
 
     const techMap = new Map<string, { technologyId: string | null; value: number }>();
     for (const collaborator of collaborators) {
@@ -469,8 +493,7 @@ export class BbvaDashboardService {
       deliveryManagerMap.set(label, (deliveryManagerMap.get(label) ?? 0) + 1);
     }
 
-    const quarter = vendorQuarterContext(now);
-    const targetStart = quarter.targetQuarter?.startDate ?? null;
+    const targetStart = selectedQuarter?.startDate ?? null;
     const unresolvedByPerson = new Map<string, number>();
     const exhaustedByPerson = new Set<string>();
     for (const cert of certifications) {
@@ -521,14 +544,22 @@ export class BbvaDashboardService {
     const vendorQuarter = {
       calendarName: quarter.calendarName,
       currentCode: quarter.currentQuarter?.code ?? null,
-      targetCode: quarter.targetQuarter?.code ?? null,
-      targetStartDate: quarter.targetQuarter?.startDate ?? null,
-      targetEndDate: quarter.targetQuarter?.endDate ?? null,
+      selectedCode: selectedQuarter?.code ?? null,
+      targetCode: selectedQuarter?.code ?? null,
+      targetStartDate: selectedQuarter?.startDate ?? null,
+      targetEndDate: selectedQuarter?.endDate ?? null,
       daysToTargetStart: quarter.daysToTargetStart,
+      daysToTargetEnd: quarter.daysToTargetEnd,
+      daysToSelectedStart: quarter.daysToSelectedStart,
+      daysToSelectedEnd: quarter.daysToSelectedEnd,
+      progressPercent: quarter.progressPercent,
+      referenceDate: quarter.referenceDate,
       readyCollaborators,
       pendingCollaborators,
       exhaustedAttemptCollaborators: exhaustedByPerson.size,
       readinessPercent: vendorReadinessPercent,
+      years: quarter.years,
+      quarters: quarter.quarters,
     };
 
     const globalContext = isGlobalContext(filters);
@@ -541,16 +572,40 @@ export class BbvaDashboardService {
       points: [],
       comparisons: {},
     };
-    if (globalContext && captureSnapshot) await repository.upsertMetricSnapshot(cards, actorEmail, todayIso);
+    if (globalContext && captureSnapshot) {
+      if (selectedQuarter) await repository.upsertMetricSnapshot(cards, actorEmail, todayIso, selectedQuarterCode);
+      else await repository.upsertMetricSnapshot(cards, actorEmail, todayIso);
+    }
     if (globalContext && includeHistory) {
-      const points = await repository.metricHistory(historyDays, todayIso);
+      const points = selectedQuarter
+        ? await repository.metricHistory(historyDays, todayIso, selectedQuarterCode)
+        : await repository.metricHistory(historyDays, todayIso);
       history = buildHistory(cards, points, todayIso, comparisonDays, historyDays);
     }
     const activity = globalContext ? await repository.recentActivity(activityDays, activityLimit, todayIso) : [];
+    const collaboratorByPerson = new Map(collaborators.map((item) => [item.personId, item]));
+    const quarterExpirations = selectedQuarter
+      ? certifications
+          .filter((cert) => Boolean(cert.expirationDate && cert.expirationDate >= selectedQuarter.startDate && cert.expirationDate <= selectedQuarter.endDate))
+          .map((cert) => {
+            const collaborator = collaboratorByPerson.get(cert.personId);
+            return {
+              collaboratorId: collaborator?.collaboratorId ?? '',
+              personId: cert.personId,
+              fullName: collaborator?.fullName ?? 'Sin colaborador activo',
+              certificationId: cert.certificationId,
+              certificationName: cert.certificationName,
+              expirationDate: cert.expirationDate as string,
+              status: certStatusById.get(cert.id) ?? 'EXPIRING',
+            };
+          })
+          .sort((a, b) => a.expirationDate.localeCompare(b.expirationDate) || a.fullName.localeCompare(b.fullName, 'es-MX'))
+      : [];
 
     return {
       cards,
       vendorQuarter,
+      quarterExpirations,
       history,
       activity,
       recommendations: buildRecommendations(cards, attention, vendorQuarter, history),

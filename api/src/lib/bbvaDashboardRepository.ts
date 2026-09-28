@@ -15,6 +15,7 @@ export interface DashboardCollaboratorRow {
   profile: string | null;
   technologyProfile: string | null;
   bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
   technologyId: string | null;
   technology: string | null;
   startDate: string | null;
@@ -29,6 +30,8 @@ export interface DashboardTalentRow {
   fullName: string;
   technologyId: string | null;
   profileId: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
 }
 
 export interface DashboardCertificationRow {
@@ -82,6 +85,7 @@ export class BbvaDashboardRepository {
              p.Profile AS profile,
              p.TechnologyProfile AS technologyProfile,
              p.BbvaStructureLevel2 AS bbvaStructureLevel2,
+             p.BbvaStructureLevel3 AS bbvaStructureLevel3,
              CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS technologyId,
              p.CurrentTechnology AS technology,
              CONVERT(VARCHAR(10),c.StartDate,23) AS startDate
@@ -99,7 +103,9 @@ export class BbvaDashboardRepository {
              t.TalentType AS talentType,t.Stage AS stage,CONVERT(VARCHAR(10),t.EntryDate,23) AS entryDate,
              LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS fullName,
              CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS technologyId,
-             CAST(p.ProfileCatalogId AS NVARCHAR(36)) AS profileId
+             CAST(p.ProfileCatalogId AS NVARCHAR(36)) AS profileId,
+             p.BbvaStructureLevel2 AS bbvaStructureLevel2,
+             p.BbvaStructureLevel3 AS bbvaStructureLevel3
       FROM bbva.TalentBankEntry t
       INNER JOIN bbva.Person p ON p.Id=t.PersonId
       WHERE t.Active=1;
@@ -262,11 +268,12 @@ export class BbvaDashboardRepository {
     return result.recordset as DashboardActivityItem[];
   }
 
-  async metricHistory(days = 90, referenceDate: string): Promise<DashboardMetricSnapshotPoint[]> {
+  async metricHistory(days = 90, referenceDate: string, quarterCode = 'GLOBAL'): Promise<DashboardMetricSnapshotPoint[]> {
     const pool = await getDbConnection();
     const result = await pool.request()
       .input('days', sql.Int, Math.max(1, Math.min(365, days)))
       .input('referenceDate', sql.Date, referenceDate)
+      .input('quarterCode', sql.NVarChar(16), quarterCode)
       .query(`
       SELECT CONVERT(VARCHAR(10),SnapshotDate,23) AS snapshotDate,
              CollaboratorsActive AS collaboratorsActive,
@@ -281,6 +288,7 @@ export class BbvaDashboardRepository {
              CONVERT(VARCHAR(33),CapturedAt,127) AS capturedAt
       FROM bbva.DashboardMetricSnapshot
       WHERE SnapshotDate >= DATEADD(day,-@days,@referenceDate)
+        AND QuarterCode=@quarterCode
       ORDER BY SnapshotDate ASC;
     `);
     return result.recordset.map((row: any) => ({
@@ -300,7 +308,7 @@ export class BbvaDashboardRepository {
     })) as DashboardMetricSnapshotPoint[];
   }
 
-  async upsertMetricSnapshot(cards: DashboardMetricCards, actorEmail: string, snapshotDate: string): Promise<void> {
+  async upsertMetricSnapshot(cards: DashboardMetricCards, actorEmail: string, snapshotDate: string, quarterCode = 'GLOBAL'): Promise<void> {
     const pool = await getDbConnection();
     const request = pool.request()
       .input('collaboratorsActive', sql.Int, cards.collaboratorsActive)
@@ -316,11 +324,12 @@ export class BbvaDashboardRepository {
       .input('vendorPending', sql.Int, cards.vendorPending)
       .input('vendorExitRequired', sql.Int, cards.vendorExitRequired)
       .input('actorEmail', sql.NVarChar(255), actorEmail || 'system@basebfs.local')
-      .input('snapshotDate', sql.Date, snapshotDate);
+      .input('snapshotDate', sql.Date, snapshotDate)
+      .input('quarterCode', sql.NVarChar(16), quarterCode);
     await request.query(`
       MERGE bbva.DashboardMetricSnapshot AS target
-      USING (SELECT @snapshotDate AS SnapshotDate) AS source
-      ON target.SnapshotDate=source.SnapshotDate
+      USING (SELECT @snapshotDate AS SnapshotDate,@quarterCode AS QuarterCode) AS source
+      ON target.SnapshotDate=source.SnapshotDate AND target.QuarterCode=source.QuarterCode
       WHEN MATCHED THEN UPDATE SET
         CollaboratorsActive=@collaboratorsActive,TalentBankActive=@talentBankActive,
         CertificationsApplicable=@certificationsApplicable,CoveragePercent=@coveragePercent,
@@ -329,11 +338,11 @@ export class BbvaDashboardRepository {
         VendorReadyPercent=@vendorReadyPercent,VendorPending=@vendorPending,
         VendorExitRequired=@vendorExitRequired,CapturedAt=SYSUTCDATETIME(),CapturedByEmail=@actorEmail
       WHEN NOT MATCHED THEN INSERT (
-        SnapshotDate,CollaboratorsActive,TalentBankActive,CertificationsApplicable,CoveragePercent,
+        SnapshotDate,QuarterCode,CollaboratorsActive,TalentBankActive,CertificationsApplicable,CoveragePercent,
         Expiring,Expired,RecertificationPending,Pending,DataQualityPending,
         VendorReadyPercent,VendorPending,VendorExitRequired,CapturedAt,CapturedByEmail
       ) VALUES (
-        source.SnapshotDate,@collaboratorsActive,@talentBankActive,@certificationsApplicable,@coveragePercent,
+        source.SnapshotDate,source.QuarterCode,@collaboratorsActive,@talentBankActive,@certificationsApplicable,@coveragePercent,
         @expiring,@expired,@recertificationPending,@pending,@dataQualityPending,
         @vendorReadyPercent,@vendorPending,@vendorExitRequired,SYSUTCDATETIME(),@actorEmail
       );
@@ -342,12 +351,13 @@ export class BbvaDashboardRepository {
 
   async filterOptions() {
     const pool = await getDbConnection();
-    const [technologies, profiles, certifications, technologyProfiles, bbvaStructures, deliveryManagers] = await Promise.all([
+    const [technologies, profiles, certifications, technologyProfiles, bbvaStructuresLevel2, bbvaStructuresLevel3, deliveryManagers] = await Promise.all([
       pool.request().query(`SELECT CAST(Id AS NVARCHAR(36)) AS id,Name AS name FROM bbva.CatalogTechnology WHERE Status=N'ACTIVE' ORDER BY Name;`),
       pool.request().query(`SELECT CAST(Id AS NVARCHAR(36)) AS id,Name AS name FROM bbva.CatalogProfile WHERE Status=N'ACTIVE' ORDER BY Name;`),
       pool.request().query(`SELECT CAST(Id AS NVARCHAR(36)) AS id,Name AS name FROM bbva.CertificationCatalog WHERE Status=N'ACTIVE' ORDER BY Name;`),
       pool.request().query(`SELECT DISTINCT LTRIM(RTRIM(TechnologyProfile)) AS name FROM bbva.Person WHERE NULLIF(LTRIM(RTRIM(TechnologyProfile)),N'') IS NOT NULL ORDER BY name;`),
       pool.request().query(`SELECT DISTINCT LTRIM(RTRIM(BbvaStructureLevel2)) AS name FROM bbva.Person WHERE NULLIF(LTRIM(RTRIM(BbvaStructureLevel2)),N'') IS NOT NULL ORDER BY name;`),
+      pool.request().query(`SELECT DISTINCT LTRIM(RTRIM(BbvaStructureLevel3)) AS name FROM bbva.Person WHERE NULLIF(LTRIM(RTRIM(BbvaStructureLevel3)),N'') IS NOT NULL ORDER BY name;`),
       pool.request().query(`SELECT DISTINCT LTRIM(RTRIM(DeliveryManager)) AS name FROM bbva.Collaborator WHERE Status=N'ACTIVE' AND NULLIF(LTRIM(RTRIM(DeliveryManager)),N'') IS NOT NULL ORDER BY name;`),
     ]);
     return {
@@ -355,7 +365,9 @@ export class BbvaDashboardRepository {
       profiles: profiles.recordset as Array<{ id: string; name: string }>,
       certifications: certifications.recordset as Array<{ id: string; name: string }>,
       technologyProfiles: (technologyProfiles.recordset as Array<{ name: string }>).map((item)=>item.name),
-      bbvaStructures: (bbvaStructures.recordset as Array<{ name: string }>).map((item)=>item.name),
+      bbvaStructures: (bbvaStructuresLevel2.recordset as Array<{ name: string }>).map((item)=>item.name),
+      bbvaStructuresLevel2: (bbvaStructuresLevel2.recordset as Array<{ name: string }>).map((item)=>item.name),
+      bbvaStructuresLevel3: (bbvaStructuresLevel3.recordset as Array<{ name: string }>).map((item)=>item.name),
       deliveryManagers: (deliveryManagers.recordset as Array<{ name: string }>).map((item) => item.name),
     };
   }

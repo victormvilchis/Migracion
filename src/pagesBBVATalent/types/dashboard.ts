@@ -4,6 +4,8 @@ export interface DashboardFilters {
   technologyProfile: string;
   certificationId: string;
   bbvaStructureLevel2: string;
+  bbvaStructureLevel3: string;
+  quarterCode: string;
   certificationStatus: string;
   deliveryManager: string;
   talentType: string;
@@ -88,15 +90,24 @@ export interface DashboardResponse {
   vendorQuarter: {
     calendarName: string;
     currentCode: string | null;
+    selectedCode: string | null;
     targetCode: string | null;
     targetStartDate: string | null;
     targetEndDate: string | null;
     daysToTargetStart: number | null;
+    daysToTargetEnd: number | null;
+    daysToSelectedStart: number | null;
+    daysToSelectedEnd: number | null;
+    progressPercent: number | null;
+    referenceDate: string;
     readyCollaborators: number;
     pendingCollaborators: number;
     exhaustedAttemptCollaborators: number;
     readinessPercent: number;
+    years: number[];
+    quarters: Array<{ code:string; year:number; quarter:1|2|3|4; startDate:string; endDate:string }>;
   };
+  quarterExpirations: Array<{ collaboratorId:string; personId:string; fullName:string; certificationId:string; certificationName:string; expirationDate:string; status:string }>;
   history: {
     available: boolean;
     previousSnapshotDate: string | null;
@@ -140,6 +151,8 @@ export interface DashboardResponse {
     pending: number;
     recertificationPending: number;
     critical: number;
+    bbvaStructureLevel2: string | null;
+    bbvaStructureLevel3: string | null;
   }>;
   filters: {
     technologies: Array<{ id: string; name: string }>;
@@ -147,6 +160,8 @@ export interface DashboardResponse {
     certifications: Array<{ id: string; name: string }>;
     technologyProfiles: string[];
     bbvaStructures: string[];
+    bbvaStructuresLevel2: string[];
+    bbvaStructuresLevel3: string[];
     deliveryManagers: string[];
   };
 }

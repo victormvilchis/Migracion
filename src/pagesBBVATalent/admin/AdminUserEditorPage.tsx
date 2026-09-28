@@ -5,6 +5,7 @@ import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { ISLookupField } from '../../componentsBBVATalent/ISLookupField';
 import type { IdentityDirectoryRecord } from '../types/identityDirectory';
 import { useAdminRoleOptions, useAdminUser, useCreateAdminUser, useUpdateAdminUser } from '../hooks/useAdminUsers';
+import { sentenceCaseData } from '../lib/bbvaDisplayFormat';
 import type { AdminUserPayload } from '../types/adminUser';
 
 const empty:AdminUserPayload={fullName:'',email:'',corporateUser:'',softtekCode:'',roleIds:[]};
@@ -26,7 +27,7 @@ export const AdminUserEditorPage:React.FC=()=>{
         <Field className="md:col-span-3" label="Usuario BBVA / XM" value={form.corporateUser} placeholder="Ej. XMK4244, XL..., T... o EC..." onChange={(v)=>setForm({...form,corporateUser:v.toUpperCase()})}/>
         <Field className="md:col-span-3" label="Nombre completo *" value={form.fullName} onChange={(v)=>setForm({...form,fullName:v})}/>
         <Field className="md:col-span-3" label="Correo" value={form.email} onChange={(v)=>setForm({...form,email:v})}/>
-        <div className="md:col-span-12"><div className="mb-2 text-[9px] font-semibold uppercase tracking-[.04em] text-slate-500">Roles *</div><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{(roles.data?.items??[]).map((role)=>{const checked=form.roleIds.includes(role.id);return <label key={role.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${checked?'border-blue-300 bg-blue-50/50':'border-slate-200 bg-white'}`}><input type="checkbox" checked={checked} onChange={()=>setForm((current)=>({...current,roleIds:checked?current.roleIds.filter((x)=>x!==role.id):[...current.roleIds,role.id]}))} className="mt-0.5"/><span><span className="block text-[10.5px] font-semibold text-slate-900">{role.name}</span><span className="mt-0.5 block text-[9px] text-slate-500">{role.description||role.code}</span></span></label>;})}</div></div>
+        <div className="md:col-span-12"><div className="mb-2 text-[9px] font-semibold uppercase tracking-[.04em] text-slate-500">Roles *</div><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">{(roles.data?.items??[]).map((role)=>{const checked=form.roleIds.includes(role.id);return <label key={role.id} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${checked?'border-blue-300 bg-blue-50/50':'border-slate-200 bg-white'}`}><input type="checkbox" checked={checked} onChange={()=>setForm((current)=>({...current,roleIds:checked?current.roleIds.filter((x)=>x!==role.id):[...current.roleIds,role.id]}))} className="mt-0.5"/><span><span className="block text-[10.5px] font-semibold text-slate-900">{sentenceCaseData(role.name)}</span><span className="mt-0.5 block text-[9px] text-slate-500">{sentenceCaseData(role.description,'Rol operativo')}</span></span></label>;})}</div></div>
       </div><div className="flex justify-end border-t border-slate-100 px-5 py-4"><button type="button" disabled={busy} onClick={()=>void save()} className="inline-flex h-9 items-center gap-2 rounded-xl bg-blue-600 px-4 text-[11px] font-semibold text-white disabled:opacity-50"><Save className="h-4 w-4"/>{busy?'Guardando...':'Guardar'}</button></div>
     </section>
   </div>;

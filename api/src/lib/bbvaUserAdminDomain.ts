@@ -2,7 +2,6 @@ export type BbvaAdminStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface BbvaSystemRoleRecord {
   id: string;
-  code: string;
   name: string;
   description: string | null;
   isDeliveryManager: boolean;
@@ -15,7 +14,6 @@ export interface BbvaSystemRoleRecord {
 
 export interface BbvaSystemUserRoleRef {
   id: string;
-  code: string;
   name: string;
   isDeliveryManager: boolean;
 }
@@ -50,7 +48,6 @@ export interface BbvaSystemUserPayload {
 }
 
 export interface BbvaSystemRolePayload {
-  code: string;
   name: string;
   description: string | null;
   isDeliveryManager: boolean;

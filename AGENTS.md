@@ -631,3 +631,14 @@ BFS remains its own product, architecture and source of truth.
 - A client-side choice that is not yet persisted must visibly show its selected state and explain that it will be applied only when the user confirms the server action.
 - Breadcrumbs are metadata-driven navigation. Every non-current breadcrumb level must be keyboard-accessible and navigate to its real module/section destination; the current level is not a link.
 - Operational list/table views keep the table as the primary content. Analytical insights belong in Panel/Métricas unless the user explicitly opens them.
+
+
+## Estándares BBVA de presentación y catálogos (V23)
+- Los datos visibles de negocio en tablas se presentan en tipo oración. Las excepciones son identificadores de usuario/IS/XM, que se muestran en mayúsculas, y correos, que conservan su forma de email.
+- Los catálogos de negocio BBVA nunca exponen códigos editables. La UI y los contratos de alta/edición usan nombre y descripción más la configuración específica del dominio. Si persistencia o seguridad requieren una clave técnica, debe ser interna, inmutable y no presentarse como dato de catálogo.
+- Todo Panel/Métricas de certificaciones tiene un Q seleccionado. Por defecto se usa el Q actual del calendario BBVA configurado; nunca se inventan Q de años no configurados.
+- Los estados de cobertura/vigencia de Panel y Métricas se interpretan respecto al Q seleccionado. Los vencimientos comprendidos en el Q deben permanecer visibles como detalle operativo.
+- Estructura BBVA nivel 2 y nivel 3 forman parte del contexto operativo: deben ser filtrables y visibles en tablas/detalles de personas donde estén disponibles.
+- Banco de talento muestra permanencia y número histórico de entradas. Más de dos entradas activan la señal determinística «Urgente de asignar»; no se inventa un umbral adicional de días.
+- El movimiento visual es discreto, informativo y respeta prefers-reduced-motion. No se usan carruseles automáticos ni animaciones que oculten o retrasen información.
+- En dashboards se conservan únicamente KPIs esenciales; el resto vive en paneles de detalle, histórico o drill-down.

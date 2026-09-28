@@ -9,6 +9,7 @@ import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHea
 import { useCatalogOptions } from '../hooks/useCatalog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useCollaborators } from '../hooks/useCollaborators';
+import { sentenceCaseData, upperIdentity } from '../lib/bbvaDisplayFormat';
 import type { Collaborator } from '../types/collaborator';
 
 function roleDisplay(profile?: string | null, technologyProfile?: string | null) {
@@ -28,7 +29,8 @@ function certificationStatus(item: Pick<Collaborator, 'certificationExpiring'|'c
 const certificationLabels: Record<string, string> = { CRITICAL: 'Crítico · resolver 2/2', VALID: 'En regla', EXPIRING: 'Cubierta · próxima a vencer', EXPIRED: 'Atención requerida', PENDING: 'Pendientes', NA: 'Sin aplicables' };
 const certificationTone: Record<string, string> = { CRITICAL: 'bg-rose-100 text-rose-800 ring-1 ring-rose-200', VALID: 'bg-emerald-50 text-emerald-700', EXPIRING: 'bg-amber-50 text-amber-700', EXPIRED: 'bg-rose-50 text-rose-700', PENDING: 'bg-blue-50 text-blue-700', NA: 'bg-slate-100 text-slate-500' };
 type SortField = 'name'|'role'|'technology'|'dm'|'startDate'|'certifications'|'status';
-const defaults = { search:'', roleFilter:'ALL', technologyFilter:'ALL', statusFilter:'ALL', page:0, size:10, sort:'name' as SortField, direction:'asc' as 'asc'|'desc' };
+const defaults = { search:'', roleFilter:'ALL', technologyFilter:'ALL', structure2Filter:'ALL', structure3Filter:'ALL', statusFilter:'ALL', page:0, size:10, sort:'name' as SortField, direction:'asc' as 'asc'|'desc' };
+const unique=(values:Array<string|null|undefined>)=>[...new Set(values.map((value)=>String(value??'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es-MX',{sensitivity:'base'}));
 
 export const CollaboratorsPage: React.FC = () => {
   const query = useCollaborators();
@@ -37,18 +39,20 @@ export const CollaboratorsPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const memory = useBBVAListMemory('collaborators', defaults);
-  const { search, roleFilter, technologyFilter, statusFilter, page, size, sort, direction } = memory.state;
+  const { search, roleFilter, technologyFilter, structure2Filter, structure3Filter, statusFilter, page, size, sort, direction } = memory.state;
   const message = (location.state as { message?: string } | null)?.message ?? null;
   const items = query.data?.items ?? [];
   const [expanded, setExpanded] = useState<string | null>(null);
+  const structure2Options=useMemo(()=>unique(items.map((item)=>item.bbvaStructureLevel2)),[items]);
+  const structure3Options=useMemo(()=>unique(items.map((item)=>item.bbvaStructureLevel3)),[items]);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('es-MX');
     const rows = items.filter((item) => {
       const role = roleDisplay(item.profile, item.technologyProfile);
       const cert = certificationStatus(item);
-      const matchesSearch = !term || [item.fullName,item.softtekEmail,item.bbvaEmail,item.email,item.softtekCode,item.bbvaUser,item.corporateUser,item.deliveryManager,role,item.currentTechnology,item.expertise].filter(Boolean).some((value) => String(value).toLocaleLowerCase('es-MX').includes(term));
-      return matchesSearch && (roleFilter === 'ALL' || item.profileCatalogId === roleFilter) && (technologyFilter === 'ALL' || item.currentTechnologyCatalogId === technologyFilter) && (statusFilter === 'ALL' || cert === statusFilter);
+      const matchesSearch = !term || [item.fullName,item.softtekEmail,item.bbvaEmail,item.email,item.softtekCode,item.bbvaUser,item.corporateUser,item.deliveryManager,role,item.currentTechnology,item.expertise,item.bbvaStructureLevel2,item.bbvaStructureLevel3].filter(Boolean).some((value) => String(value).toLocaleLowerCase('es-MX').includes(term));
+      return matchesSearch && (roleFilter === 'ALL' || item.profileCatalogId === roleFilter) && (technologyFilter === 'ALL' || item.currentTechnologyCatalogId === technologyFilter) && (structure2Filter==='ALL'||item.bbvaStructureLevel2===structure2Filter) && (structure3Filter==='ALL'||item.bbvaStructureLevel3===structure3Filter) && (statusFilter === 'ALL' || cert === statusFilter);
     });
     const value = (item: Collaborator) => sort === 'name' ? item.fullName : sort === 'role' ? roleDisplay(item.profile,item.technologyProfile) : sort === 'technology' ? technologyDisplay(item.currentTechnology,item.expertise) : sort === 'dm' ? item.deliveryManager : sort === 'startDate' ? item.bbvaStartDate ?? '' : sort === 'certifications' ? item.certificationValid + item.certificationExpiring : certificationStatus(item);
     return rows.sort((a,b) => {
@@ -56,7 +60,7 @@ export const CollaboratorsPage: React.FC = () => {
       const cmp=typeof av==='number'&&typeof bv==='number' ? av-bv : String(av).localeCompare(String(bv),'es-MX',{sensitivity:'base',numeric:true});
       return direction==='asc'?cmp:-cmp;
     });
-  }, [direction, items, roleFilter, search, sort, statusFilter, technologyFilter]);
+  }, [direction, items, roleFilter, search, sort, statusFilter, structure2Filter, structure3Filter, technologyFilter]);
 
   const safePage = Math.min(page, Math.max(0, Math.ceil(filtered.length / size) - 1));
   const paged = useMemo(() => filtered.slice(safePage * size, safePage * size + size), [filtered, safePage, size]);
@@ -69,19 +73,22 @@ export const CollaboratorsPage: React.FC = () => {
       <button type="button" onClick={() => navigate('/bbva/collaborators/new')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[11px] font-semibold text-white shadow-sm transition hover:bg-blue-500"><Plus className="h-3.5 w-3.5" />Agregar colaborador</button>
     </div>
     {message ? <BBVAAlert tone="success" onClose={clearMessage}>{message}</BBVAAlert> : null}
-    <div className="grid gap-2 lg:grid-cols-[minmax(260px,1fr)_minmax(230px,.58fr)_minmax(220px,.52fr)_minmax(220px,.48fr)]">
-      <div className="relative"><Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" /><input value={search} onChange={(e)=>memory.patch({search:e.target.value,page:0})} placeholder="Buscar por nombre, correo, IS o usuario" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none focus:border-blue-500" /></div>
-      <BBVASearchableSelect value={roleFilter} onChange={(v)=>memory.patch({roleFilter:v,page:0})} options={[{value:'ALL',label:'Todos los roles'},...(profilesQuery.data?.items??[]).map((o)=>({value:o.id,label:o.name}))]} ariaLabel="Filtrar por rol" />
-      <BBVASearchableSelect value={technologyFilter} onChange={(v)=>memory.patch({technologyFilter:v,page:0})} options={[{value:'ALL',label:'Todas las tecnologías'},...(technologiesQuery.data?.items??[]).map((o)=>({value:o.id,label:o.name}))]} ariaLabel="Filtrar por tecnología" />
+    <div className="grid gap-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="relative lg:col-span-2"><Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" /><input value={search} onChange={(e)=>memory.patch({search:e.target.value,page:0})} placeholder="Buscar por nombre, correo, IS o usuario" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none focus:border-blue-500" /></div>
+      <BBVASearchableSelect value={technologyFilter} onChange={(v)=>memory.patch({technologyFilter:v,page:0})} options={[{value:'ALL',label:'Todas las tecnologías'},...(technologiesQuery.data?.items??[]).map((o)=>({value:o.id,label:sentenceCaseData(o.name)}))]} ariaLabel="Filtrar por tecnología" />
       <BBVASearchableSelect value={statusFilter} onChange={(v)=>memory.patch({statusFilter:v,page:0})} options={[{value:'ALL',label:'Todos los estados'},{value:'CRITICAL',label:'Crítico · resolver 2/2'},{value:'VALID',label:'En regla'},{value:'EXPIRING',label:'Cubierta · próxima a vencer'},{value:'EXPIRED',label:'Atención requerida'},{value:'PENDING',label:'Pendientes'},{value:'NA',label:'Sin aplicables'}]} ariaLabel="Filtrar por estado de certificación" />
+      <BBVASearchableSelect value={structure2Filter} onChange={(v)=>memory.patch({structure2Filter:v,page:0})} options={[{value:'ALL',label:'Estructura nivel 2'},...structure2Options.map((value)=>({value,label:sentenceCaseData(value)}))]} ariaLabel="Estructura nivel 2" />
+      <BBVASearchableSelect value={structure3Filter} onChange={(v)=>memory.patch({structure3Filter:v,page:0})} options={[{value:'ALL',label:'Estructura nivel 3'},...structure3Options.map((value)=>({value,label:sentenceCaseData(value)}))]} ariaLabel="Estructura nivel 3" />
+      <div className="hidden"><BBVASearchableSelect value={roleFilter} onChange={(v)=>memory.patch({roleFilter:v,page:0})} options={[{value:'ALL',label:'Todos los roles'},...(profilesQuery.data?.items??[]).map((o)=>({value:o.id,label:sentenceCaseData(o.name)}))]} ariaLabel="Filtrar por rol" /></div>
     </div>
     {query.isLoading ? <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando colaboradores...</div> : query.error ? <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert> : <div className="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto overflow-y-visible"><table className="w-full min-w-[1120px] table-fixed text-left text-[10.5px]">
+      <div className="overflow-x-auto overflow-y-visible"><table className="w-full min-w-[1320px] table-fixed text-left text-[10.5px]">
         <thead className="border-b border-slate-200 bg-slate-50/90 text-[9px] font-semibold uppercase tracking-[.035em] text-slate-600"><tr>
           <th className="w-[27%] px-2 py-1.5"><BBVATableSortHeader label="Colaborador" active={sort==='name'} direction={direction} onClick={()=>changeSort('name')} /></th>
           <th className="w-[23%] px-2 py-1.5"><BBVATableSortHeader label="Rol" active={sort==='role'} direction={direction} onClick={()=>changeSort('role')} /></th>
           <th className="w-[13%] px-2 py-1.5"><BBVATableSortHeader label="Tecnología actual" active={sort==='technology'} direction={direction} onClick={()=>changeSort('technology')} /></th>
-          <th className="w-[13%] px-2 py-1.5"><BBVATableSortHeader label="DM" active={sort==='dm'} direction={direction} onClick={()=>changeSort('dm')} /></th>
+          <th className="w-[13%] px-2 py-1.5">Estructura BBVA</th>
+          <th className="w-[12%] px-2 py-1.5"><BBVATableSortHeader label="DM" active={sort==='dm'} direction={direction} onClick={()=>changeSort('dm')} /></th>
           <th className="w-[9%] px-2 py-1.5"><BBVATableSortHeader label="Alta BBVA" active={sort==='startDate'} direction={direction} onClick={()=>changeSort('startDate')} /></th>
           <th className="w-[10%] px-2 py-1.5"><BBVATableSortHeader label="Certificaciones" active={sort==='certifications'} direction={direction} onClick={()=>changeSort('certifications')} /></th>
           <th className="w-[10%] px-2 py-1.5"><BBVATableSortHeader label="Estado" active={sort==='status'} direction={direction} onClick={()=>changeSort('status')} /></th>
@@ -94,24 +101,26 @@ export const CollaboratorsPage: React.FC = () => {
             aria-expanded={isExpanded}
             title="Clic para ver contexto del colaborador"
           >
-            <td className="px-2 py-1.5"><div className="min-w-0"><div className="truncate font-semibold text-slate-900">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></td>
-            <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] text-slate-700">{roleDisplay(item.profile,item.technologyProfile)}</div></td>
-            <td className="px-2 py-1.5 text-slate-700">{technologyDisplay(item.currentTechnology,item.expertise)}</td>
-            <td className="truncate px-2 py-1.5 text-slate-600" title={item.deliveryManager}>{item.deliveryManager||'No disponible'}</td>
+            <td className="px-2 py-1.5"><div className="min-w-0"><div className="truncate font-semibold text-slate-900">{sentenceCaseData(item.fullName)}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></td>
+            <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] text-slate-700">{sentenceCaseData(roleDisplay(item.profile,item.technologyProfile))}</div></td>
+            <td className="px-2 py-1.5 text-slate-700">{sentenceCaseData(technologyDisplay(item.currentTechnology,item.expertise))}</td>
+            <td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{sentenceCaseData(item.bbvaStructureLevel2)}</div><div className="truncate text-[9px] text-slate-400">{sentenceCaseData(item.bbvaStructureLevel3)}</div></td><td className="truncate px-2 py-1.5 text-slate-600" title={item.deliveryManager??''}>{sentenceCaseData(item.deliveryManager)}</td>
             <td className="px-2 py-1.5 text-slate-600">{formatDate(item.bbvaStartDate)}</td>
             <td className="px-2 py-1.5"><div className="font-semibold text-slate-900">{item.certificationValid + item.certificationExpiring}/{item.certificationApplicable}</div><div className="text-[8.5px] text-slate-400">cubiertas / aplicables</div></td>
             <td className="px-2 py-1.5"><span className={`rounded-full px-2 py-1 text-[8.5px] font-semibold ${certificationTone[cert]}`}>{certificationLabels[cert]}</span></td>
             <td className="px-2 py-1.5 text-right" onClick={(event)=>event.stopPropagation()}><BBVAActionMenu items={[{id:'view',label:'Ver',icon:Eye,onClick:()=>navigate(`/bbva/collaborators/${item.id}`)},{id:'edit',label:'Editar',icon:Pencil,onClick:()=>navigate(`/bbva/collaborators/${item.id}/edit`)},{id:'certifications',label:'Certificaciones',icon:Award,onClick:()=>navigate(`/bbva/collaborators/${item.id}/certifications`)},{id:'move-to-talent',label:'Mover a Banco de talento',icon:ArrowRightLeft,onClick:()=>navigate(`/bbva/collaborators/${item.id}/move-to-talent`)}]} /></td>
           </tr>
-          {isExpanded ? <tr className="bg-slate-50/75"><td colSpan={8} className="px-3 py-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">IS Softtek</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.softtekCode||'No disponible'}</div></div>
-            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Usuario BBVA / XM</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.bbvaUser||item.corporateUser||'No disponible'}</div></div>
+          {isExpanded ? <tr className="bg-slate-50/75"><td colSpan={9} className="px-3 py-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-10">
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">IS Softtek</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{upperIdentity(item.softtekCode)}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Usuario BBVA / XM</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{upperIdentity(item.bbvaUser||item.corporateUser)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Correo BBVA</div><div className="mt-1 truncate text-[10px] font-semibold text-slate-700" title={item.bbvaEmail??''}>{item.bbvaEmail||'No disponible'}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Contratación Softtek</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{formatDate(item.softtekHireDate)}</div></div>
-            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Perfil tecnológico</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.technologyProfile||'No disponible'}</div></div>
-            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Nivel colaborador</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.expertise||'No disponible'}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Perfil tecnológico</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.technologyProfile)}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Nivel colaborador</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.expertise)}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Estructura nivel 2</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.bbvaStructureLevel2)}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Estructura nivel 3</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.bbvaStructureLevel3)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Por atender</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.certificationPending + item.certificationExpired + item.certificationRecertificationPending + item.certificationCritical}</div></div>
-            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Notas</div><div className="mt-1 line-clamp-2 text-[10px] font-medium text-slate-600" title={item.notes??''}>{item.notes||'Sin notas'}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Notas</div><div className="mt-1 line-clamp-2 text-[10px] font-medium text-slate-600" title={item.notes??''}>{sentenceCaseData(item.notes,'Sin notas')}</div></div>
           </div></td></tr> : null}
         </Fragment>;})}</tbody>
       </table></div>

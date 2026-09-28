@@ -34,7 +34,6 @@ export class BbvaUserAdminService {
     return { fullName:required(payload?.fullName,'El nombre',220),email,corporateUser:clean(payload?.corporateUser,100)?.toUpperCase()??null,softtekCode:clean(payload?.softtekCode,80)?.toUpperCase()??null,roleIds:roles };
   }
   private rolePayload(payload:any):BbvaSystemRolePayload{
-    const code=required(payload?.code,'El código',50).toUpperCase().replace(/[^A-Z0-9]+/g,'_').replace(/^_+|_+$/g,'');
-    return {code,name:required(payload?.name,'El nombre',120),description:clean(payload?.description,500),isDeliveryManager:Boolean(payload?.isDeliveryManager)};
+    return {name:required(payload?.name,'El nombre',120),description:clean(payload?.description,500),isDeliveryManager:Boolean(payload?.isDeliveryManager)};
   }
 }
