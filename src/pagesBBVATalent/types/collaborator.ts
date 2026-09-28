@@ -17,6 +17,12 @@ export interface CollaboratorPayload {
   expertise: string;
   bbvaStartDate: string;
   softtekHireDate: string;
+  originalFullName: string;
+  bbvaStructureLevel2: string;
+  bbvaStructureLevel3: string;
+  bbvaAccessEndDate: string;
+  bbvaAccessAuthorizer: string;
+  bbvaAccessStatus: string;
   notes: string;
   expectedUpdatedAt?: string;
   /** Compatibilidad temporal con contratos anteriores. */
@@ -47,6 +53,12 @@ export interface Collaborator {
   status: CollaboratorStatus;
   bbvaStartDate: string | null;
   softtekHireDate: string | null;
+  originalFullName: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
+  bbvaAccessEndDate: string | null;
+  bbvaAccessAuthorizer: string | null;
+  bbvaAccessStatus: string | null;
   notes: string | null;
   hasCv: boolean;
   certificationApplicable: number;

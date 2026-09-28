@@ -42,6 +42,8 @@ export interface CollaboratorCertification {
   mandatory: boolean;
   applicable: boolean;
   source: 'AUTO' | 'MANUAL';
+  lastScore10: number | null;
+  softtekManagement: string | null;
   currentCycle: number;
   baseStatus: 'PENDING' | 'SCHEDULED' | 'APPLIED' | 'FAILED' | 'APPROVED' | 'NOT_APPLICABLE';
   status: CollaboratorCertificationStatus;

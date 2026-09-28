@@ -51,6 +51,12 @@ function values(item: Collaborator | null | undefined, profiles: CatalogOption[]
     expertise: item?.expertise ?? '',
     bbvaStartDate: item?.bbvaStartDate ?? item?.startDate ?? '',
     softtekHireDate: item?.softtekHireDate ?? item?.hireDate ?? '',
+    originalFullName: item?.originalFullName ?? item?.fullName ?? '',
+    bbvaStructureLevel2: item?.bbvaStructureLevel2 ?? '',
+    bbvaStructureLevel3: item?.bbvaStructureLevel3 ?? '',
+    bbvaAccessEndDate: item?.bbvaAccessEndDate ?? '',
+    bbvaAccessAuthorizer: item?.bbvaAccessAuthorizer ?? '',
+    bbvaAccessStatus: item?.bbvaAccessStatus ?? '',
     notes: item?.notes ?? '',
     expectedUpdatedAt: item?.updatedAt,
   };
@@ -97,6 +103,7 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
   const deliveryManager = watch('deliveryManager');
   const bbvaStartDate = watch('bbvaStartDate');
   const softtekHireDate = watch('softtekHireDate');
+  const bbvaAccessEndDate = watch('bbvaAccessEndDate');
 
   const hydrateFromDirectory = (record: IdentityDirectoryRecord) => {
     if (record.bbvaUser || record.corporateUser) setValue('bbvaUser', record.bbvaUser || record.corporateUser || '', { shouldDirty: true, shouldValidate: true });
@@ -179,6 +186,17 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
           </label>
         </div>
       </section>
+      <details open={Boolean(selected?.bbvaStructureLevel2 || selected?.bbvaStructureLevel3 || selected?.bbvaAccessStatus || selected?.bbvaAccessEndDate || selected?.bbvaAccessAuthorizer)} className="group rounded-2xl border border-slate-200 bg-white shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[11px] font-semibold text-slate-900 [&::-webkit-details-marker]:hidden [.bbva-dark_&]:text-slate-100"><span>Información BBVA y accesos</span><span className="text-[9px] font-medium text-slate-400 group-open:hidden">Mostrar</span><span className="hidden text-[9px] font-medium text-slate-400 group-open:inline">Ocultar</span></summary>
+        <div className="grid gap-3 border-t border-slate-100 px-4 pb-4 pt-3 md:grid-cols-12 [.bbva-dark_&]:border-slate-800">
+          <label className="md:col-span-4"><span className={labelClass}>Estructura nivel 2</span><input {...register('bbvaStructureLevel2')} disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-4"><span className={labelClass}>Estructura nivel 3</span><input {...register('bbvaStructureLevel3')} disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-4"><span className={labelClass}>Status accesos</span><input {...register('bbvaAccessStatus')} disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-4"><span className={labelClass}>Fecha fin de accesos</span><BBVADatePicker value={bbvaAccessEndDate} onChange={(value) => setValue('bbvaAccessEndDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha fin de accesos BBVA" /></label>
+          <label className="md:col-span-8"><span className={labelClass}>Nombre autorizador</span><input {...register('bbvaAccessAuthorizer')} disabled={readOnly || saving} className={fieldClass} /></label>
+          <input type="hidden" {...register('originalFullName')} />
+        </div>
+      </details>
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75"><label><span className={labelClass}>Observaciones</span><textarea {...register('notes')} rows={4} disabled={readOnly || saving} className={areaClass} /></label></section>
       <BBVAFormActions
         mode={mode}

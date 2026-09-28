@@ -22,6 +22,7 @@ export interface CertificationCatalogInput {
   expiringSoonDays: number | null;
   maxAttempts: number | null;
   includesTraining: boolean;
+  tracksScore: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;
@@ -44,6 +45,7 @@ export interface CertificationCatalogRecord {
   expiringSoonDays: number | null;
   maxAttempts: number | null;
   includesTraining: boolean;
+  tracksScore: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;

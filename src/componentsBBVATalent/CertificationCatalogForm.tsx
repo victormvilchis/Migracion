@@ -39,6 +39,7 @@ const initialPayload = (selected?: CertificationCatalogRecord | null): Certifica
   expiringSoonDays: selected ? (selected.expiringSoonDays ?? null) : 90,
   maxAttempts: selected?.maxAttempts ?? null,
   includesTraining: selected?.includesTraining ?? false,
+  tracksScore: selected?.tracksScore ?? ['TECHNOLOGICAL','DEVELOPMENT_SECURITY','NORMATIVE_TESTING'].includes(selected?.certificationType ?? 'TECHNOLOGICAL'),
   recertificationEnabled: selected?.recertificationEnabled ?? true,
   requiresAttempts: selected?.requiresAttempts ?? true,
   requiresApplicationDate: selected?.requiresApplicationDate ?? true,
@@ -72,18 +73,18 @@ export const CertificationCatalogForm: React.FC<Props> = ({ selected, saving, mo
     if (readOnly) return;
     setValues((current) => {
       if (type === 'TECHNOLOGICAL') {
-        return { ...current, certificationType: type, validityMonths: 24, initialCompletionDays: 30, expiringSoonDays: 90, maxAttempts: null, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true, defaultMandatory: true, requirementGroup: '', requirementGroupMinimum: null, allowedLevels: ['JR', 'STD', 'SR'] };
+        return { ...current, certificationType: type, validityMonths: 24, initialCompletionDays: 30, expiringSoonDays: 90, maxAttempts: null, tracksScore: true, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true, defaultMandatory: true, requirementGroup: '', requirementGroupMinimum: null, allowedLevels: ['JR', 'STD', 'SR'] };
       }
       if (type === 'METHODOLOGICAL') {
-        return { ...current, certificationType: type, technologyId: '', validityMonths: null, initialCompletionDays: null, expiringSoonDays: null, maxAttempts: null, recertificationEnabled: false, requiresAttempts: true, requiresApplicationDate: true, defaultMandatory: true, requirementGroup: 'METHODOLOGICAL', requirementGroupMinimum: 1, allowedLevels: ['GENERIC'] };
+        return { ...current, certificationType: type, technologyId: '', validityMonths: null, initialCompletionDays: null, expiringSoonDays: null, maxAttempts: null, tracksScore: false, recertificationEnabled: false, requiresAttempts: true, requiresApplicationDate: true, defaultMandatory: true, requirementGroup: 'METHODOLOGICAL', requirementGroupMinimum: 1, allowedLevels: ['GENERIC'] };
       }
       if (type === 'DEVELOPMENT_SECURITY') {
-        return { ...current, certificationType: type, technologyId: '', validityMonths: 12, initialCompletionDays: 90, expiringSoonDays: 90, maxAttempts: null, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true, defaultMandatory: true, requirementGroup: '', requirementGroupMinimum: null, allowedLevels: ['GENERIC'] };
+        return { ...current, certificationType: type, technologyId: '', validityMonths: 12, initialCompletionDays: 90, expiringSoonDays: 90, maxAttempts: null, tracksScore: true, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true, defaultMandatory: true, requirementGroup: '', requirementGroupMinimum: null, allowedLevels: ['GENERIC'] };
       }
       if (type === 'NORMATIVE_TESTING') {
-        return { ...current, certificationType: type, technologyId: '', validityMonths: 12, initialCompletionDays: 60, expiringSoonDays: 90, maxAttempts: null, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true, defaultMandatory: true, requirementGroup: '', requirementGroupMinimum: null, allowedLevels: ['GENERIC'] };
+        return { ...current, certificationType: type, technologyId: '', validityMonths: 12, initialCompletionDays: 60, expiringSoonDays: 90, maxAttempts: null, tracksScore: true, recertificationEnabled: true, requiresAttempts: true, requiresApplicationDate: true, defaultMandatory: true, requirementGroup: '', requirementGroupMinimum: null, allowedLevels: ['GENERIC'] };
       }
-      return { ...current, certificationType: type, technologyId: '', validityMonths: null, initialCompletionDays: null, expiringSoonDays: null, maxAttempts: null, recertificationEnabled: false, requiresAttempts: false, requiresApplicationDate: false, defaultMandatory: false, requirementGroup: '', requirementGroupMinimum: null, allowedLevels: ['GENERIC'] };
+      return { ...current, certificationType: type, technologyId: '', validityMonths: null, initialCompletionDays: null, expiringSoonDays: null, maxAttempts: null, tracksScore: false, recertificationEnabled: false, requiresAttempts: false, requiresApplicationDate: false, defaultMandatory: false, requirementGroup: '', requirementGroupMinimum: null, allowedLevels: ['GENERIC'] };
     });
   };
 
@@ -138,7 +139,8 @@ export const CertificationCatalogForm: React.FC<Props> = ({ selected, saving, mo
         <div className="mt-3 grid gap-3 md:grid-cols-12">
           <label className="md:col-span-3"><span className={labelClass}>Próxima a vencer (días)</span><input disabled={readOnly || saving || !values.validityMonths} className={fieldClass} type="number" min={1} max={3650} value={values.expiringSoonDays ?? ''} onChange={(e) => setValues((v) => ({ ...v, expiringSoonDays: e.target.value ? Number(e.target.value) : null }))} placeholder="90" /></label>
           <label className="md:col-span-3"><span className={labelClass}>Máximo de intentos</span><input disabled={readOnly || saving || !values.requiresAttempts} className={fieldClass} type="number" min={1} max={50} value={values.maxAttempts ?? ''} onChange={(e) => setValues((v) => ({ ...v, maxAttempts: e.target.value ? Number(e.target.value) : null }))} placeholder="Sin límite configurado" /></label>
-          <label className="md:col-span-6"><span className={labelClass}>Insumo</span><span className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" disabled={readOnly || saving} className="h-3.5 w-3.5 accent-blue-600" checked={values.includesTraining} onChange={(e) => setValues((v) => ({ ...v, includesTraining: e.target.checked }))} />Incluye entrenamiento / curso</span></label>
+          <label className="md:col-span-3"><span className={labelClass}>Insumo</span><span className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" disabled={readOnly || saving} className="h-3.5 w-3.5 accent-blue-600" checked={values.includesTraining} onChange={(e) => setValues((v) => ({ ...v, includesTraining: e.target.checked }))} />Incluye entrenamiento / curso</span></label>
+          <label className="md:col-span-3"><span className={labelClass}>Calificación</span><span className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" disabled={readOnly || saving} className="h-3.5 w-3.5 accent-blue-600" checked={values.tracksScore} onChange={(e) => setValues((v) => ({ ...v, tracksScore: e.target.checked }))} />Participa en promedio / KPI</span></label>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <label className="flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-[10.5px] text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/70 [.bbva-dark_&]:text-slate-300"><input type="checkbox" disabled={readOnly || saving} className="h-3.5 w-3.5 accent-blue-600" checked={values.recertificationEnabled} onChange={(e) => setValues((v) => ({ ...v, recertificationEnabled: e.target.checked }))} />Recertificación</label>

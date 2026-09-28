@@ -23,7 +23,7 @@ import { buildDashboardOperationalPriorities } from '../lib/dashboardInsights';
 import { comparisonText } from '../lib/dashboardHistory';
 import type { DashboardFilters, DashboardHistoricalMetricKey, DashboardRecommendation, DashboardResponse } from '../types/dashboard';
 
-const initialFilters: DashboardFilters = { technologyId:'', profileId:'', certificationStatus:'', deliveryManager:'', talentType:'', fromDate:'', toDate:'', search:'', historyDays:'90', comparisonDays:'7', activityDays:'30', activityLimit:'12' };
+const initialFilters: DashboardFilters = { technologyId:'', profileId:'', technologyProfile:'', certificationId:'', bbvaStructureLevel2:'', certificationStatus:'', deliveryManager:'', talentType:'', fromDate:'', toDate:'', search:'', historyDays:'90', comparisonDays:'7', activityDays:'30', activityLimit:'12' };
 const certificationStatusLabels: Record<string,string> = { VALID:'Vigentes', EXPIRING:'Próximas a vencer', EXPIRED:'Vencidas', RECERTIFICATION_PENDING:'Recertificación pendiente', PENDING:'Pendientes', FAILED:'Reprobadas' };
 const talentTypeLabels: Record<string,string> = { ACADEMY:'Academia', PROSPECT:'Prospectos', FORMER_COLLABORATOR:'Excolaboradores', BBVA_EXIT:'Bajas de BBVA' };
 const certificationSliceStatus: Record<string,string> = { 'Vigentes':'VALID', 'Próximas a vencer':'EXPIRING', 'Vencidas':'EXPIRED', 'Recertificación pendiente':'RECERTIFICATION_PENDING', 'Pendientes':'PENDING' };
@@ -40,6 +40,7 @@ export const BBVADashboardPage: React.FC = () => {
   const [sort,setSort]=useState<AttentionSort>('alerts');
   const [direction,setDirection]=useState<'asc'|'desc'>('desc');
   const [historyMetric,setHistoryMetric]=useState<DashboardHistoricalMetricKey>('coveragePercent');
+  const [scoreDetailId,setScoreDetailId]=useState<string | null>(null);
   const query=useBbvaDashboard(filters); const data=query.data; const cards=data?.cards;
 
   const profileDistribution=useMemo(()=>{const counts=new Map<string,number>();for(const row of data?.attention??[]){const label=row.profile||'Sin perfil';counts.set(label,(counts.get(label)??0)+1);}return [...counts.entries()].map(([label,value])=>({key:label,label,value})).sort((a,b)=>b.value-a.value||a.label.localeCompare(b.label,'es-MX'));},[data?.attention]);
@@ -62,6 +63,9 @@ export const BBVADashboardPage: React.FC = () => {
     const effectiveStatus=status??filters.certificationStatus;
     if(filters.profileId)params.set('profileId',filters.profileId);
     if(filters.technologyId)params.set('technologyId',filters.technologyId);
+    if(filters.technologyProfile)params.set('technologyProfile',filters.technologyProfile);
+    if(filters.certificationId)params.set('certificationId',filters.certificationId);
+    if(filters.bbvaStructureLevel2)params.set('bbvaStructureLevel2',filters.bbvaStructureLevel2);
     if(effectiveStatus)params.set('certificationStatus',effectiveStatus);
     if(filters.talentType)params.set('talentType',filters.talentType);
     if(filters.fromDate)params.set('fromDate',filters.fromDate);
@@ -75,11 +79,14 @@ export const BBVADashboardPage: React.FC = () => {
   const activeFilters = useMemo<BBVAFilterSummaryItem[]>(() => {
     const items: BBVAFilterSummaryItem[] = [];
     if(filters.profileId){const label=data?.filters.profiles.find((item)=>item.id===filters.profileId)?.name??'Perfil';items.push({key:'profileId',label:`Perfil: ${label}`,onRemove:()=>update('profileId','')});}
+    if(filters.technologyProfile)items.push({key:'technologyProfile',label:`Perfil tecnológico: ${filters.technologyProfile}`,onRemove:()=>update('technologyProfile','')});
+    if(filters.certificationId){const label=data?.filters.certifications.find((item)=>item.id===filters.certificationId)?.name??'Certificación';items.push({key:'certificationId',label:`Certificación: ${label}`,onRemove:()=>update('certificationId','')});}
+    if(filters.bbvaStructureLevel2)items.push({key:'bbvaStructureLevel2',label:`Estructura BBVA: ${filters.bbvaStructureLevel2}`,onRemove:()=>update('bbvaStructureLevel2','')});
     if(filters.technologyId){const label=data?.filters.technologies.find((item)=>item.id===filters.technologyId)?.name??'Tecnología';items.push({key:'technologyId',label:`Tecnología: ${label}`,onRemove:()=>update('technologyId','')});}
     if(filters.certificationStatus)items.push({key:'certificationStatus',label:`Estado: ${certificationStatusLabels[filters.certificationStatus]??filters.certificationStatus}`,onRemove:()=>update('certificationStatus','')});
     if(filters.talentType)items.push({key:'talentType',label:`Universo: ${talentTypeLabels[filters.talentType]??filters.talentType}`,onRemove:()=>update('talentType','')});
     return items;
-  },[data?.filters.profiles,data?.filters.technologies,filters.certificationStatus,filters.profileId,filters.talentType,filters.technologyId]);
+  },[data?.filters.certifications,data?.filters.profiles,data?.filters.technologies,filters.bbvaStructureLevel2,filters.certificationId,filters.certificationStatus,filters.profileId,filters.talentType,filters.technologyId,filters.technologyProfile]);
 
   const certificationDonutItems = useMemo<BBVADonutItem[]>(() => (data?.certificationCoverage??[]).map((item)=>({ ...item, key:certificationSliceStatus[item.label] })),[data?.certificationCoverage]);
 
@@ -93,6 +100,11 @@ export const BBVADashboardPage: React.FC = () => {
         <BBVASearchableSelect value={filters.certificationStatus??''} onChange={(v)=>update('certificationStatus',v)} options={[{value:'',label:'Todos los estados de certificación'},{value:'VALID',label:'Vigentes'},{value:'EXPIRING',label:'Próximas a vencer'},{value:'EXPIRED',label:'Vencidas'},{value:'RECERTIFICATION_PENDING',label:'Recertificación pendiente'},{value:'PENDING',label:'Pendientes'},{value:'FAILED',label:'Reprobadas'}]} ariaLabel="Estado de certificación"/>
         <BBVASearchableSelect value={filters.talentType??''} onChange={(v)=>update('talentType',v)} options={[{value:'',label:'Todo el universo'},{value:'ACADEMY',label:'Academia'},{value:'PROSPECT',label:'Prospectos'},{value:'FORMER_COLLABORATOR',label:'Excolaboradores'},{value:'BBVA_EXIT',label:'Bajas de BBVA'}]} ariaLabel="Universo"/>
       </div>
+      <div className="mt-2 grid gap-2 md:grid-cols-3">
+        <BBVASearchableSelect value={filters.technologyProfile??''} onChange={(v)=>update('technologyProfile',v)} options={[{value:'',label:'Todos los perfiles tecnológicos'},...(data?.filters.technologyProfiles??[]).map((value)=>({value,label:value}))]} ariaLabel="Perfil tecnológico"/>
+        <BBVASearchableSelect value={filters.certificationId??''} onChange={(v)=>update('certificationId',v)} options={[{value:'',label:'Todas las certificaciones'},...(data?.filters.certifications??[]).map((item)=>({value:item.id,label:item.name}))]} ariaLabel="Certificación"/>
+        <BBVASearchableSelect value={filters.bbvaStructureLevel2??''} onChange={(v)=>update('bbvaStructureLevel2',v)} options={[{value:'',label:'Todas las estructuras BBVA'},...(data?.filters.bbvaStructures??[]).map((value)=>({value,label:value}))]} ariaLabel="Estructura BBVA"/>
+      </div>
       {activeFilters.length?<div className="mt-2 flex flex-wrap items-center justify-between gap-2"><BBVAFilterSummary items={activeFilters}/><BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar filtros</BBVAButton></div>:null}
     </section>
 
@@ -105,10 +117,17 @@ export const BBVADashboardPage: React.FC = () => {
         <BBVAMetricCard label="Colaboradores activos" value={cards.collaboratorsActive} icon={<UsersRound className="h-4 w-4"/>} help={dashboardMetricDefinitions.collaboratorsActive} supportingText="Universo actual" trendText={comparisonText(data.history.comparisons.collaboratorsActive)} onAction={()=>navigate('/bbva/collaborators')} actionLabel="Ver colaboradores"/>
         <BBVAMetricCard label="Banco de talento" value={cards.talentBankActive} icon={<UserRoundCheck className="h-4 w-4"/>} tone="violet" help={dashboardMetricDefinitions.talentBankActive} supportingText="Entradas activas" trendText={comparisonText(data.history.comparisons.talentBankActive)} onAction={()=>navigate('/bbva/talent-bank')} actionLabel="Ver banco"/>
         <BBVAMetricCard label="Cobertura de certificaciones" value={`${cards.coveragePercent}%`} icon={<Award className="h-4 w-4"/>} tone="emerald" help={dashboardMetricDefinitions.coveragePercent} supportingText={`${cards.certificationsApplicable} aplicables`} trendText={comparisonText(data.history.comparisons.coveragePercent)} onAction={()=>navigate(metricsUrl())} actionLabel="Ver métricas"/>
+        <BBVAMetricCard label="Promedio certificaciones" value={cards.certificationAverage ?? '—'} icon={<Award className="h-4 w-4"/>} tone="blue" help={dashboardMetricDefinitions.certificationAverage} supportingText={`${cards.certificationScoreBase} resultados actuales`} onAction={()=>navigate(metricsUrl())} actionLabel="Ver detalle"/>
         <BBVAMetricCard label="Atención requerida" value={attentionCount} icon={<AlertCircle className="h-4 w-4"/>} tone={attentionCount?'amber':'emerald'} help={dashboardMetricDefinitions.attentionRequired} supportingText={attentionCount?'Personas con elementos por revisar':'Sin pendientes en este contexto'} onAction={()=>navigate('/bbva/certifications/tracking')} actionLabel="Ver seguimiento"/>
         <BBVAMetricCard label="Tecnologías representadas" value={representedTechnologies} icon={<Layers3 className="h-4 w-4"/>} tone="blue" help={dashboardMetricDefinitions.technologiesRepresented} supportingText="Con al menos una persona"/>
         <BBVAMetricCard label="Datos por completar" value={cards.dataQualityPending} icon={<Briefcase className="h-4 w-4"/>} tone={cards.dataQualityPending?'amber':'emerald'} help={dashboardMetricDefinitions.dataQualityPending} supportingText={cards.dataQualityPending?'Requieren completar información':'Información completa en el universo actual'} trendText={comparisonText(data.history.comparisons.dataQualityPending)}/>
       </div>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+        <div className="border-b border-slate-200 px-4 py-3 [.bbva-dark_&]:border-slate-800"><h2 className="text-sm font-semibold text-slate-950 [.bbva-dark_&]:text-slate-100">Promedio actual por certificación</h2><p className="mt-0.5 text-[9.5px] text-slate-500">Una evidencia válida más reciente por persona y certificación. No pondera intentos adicionales.</p></div>
+        <div className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-4">{data.certificationScores.length ? data.certificationScores.map((item)=><button key={item.certificationId} type="button" onClick={()=>setScoreDetailId(scoreDetailId===item.certificationId?null:item.certificationId)} className={`rounded-xl border p-3 text-left transition ${scoreDetailId===item.certificationId?'border-blue-400 bg-blue-50':'border-slate-200 hover:border-blue-200 hover:bg-slate-50'}`}><div className="truncate text-[10px] font-semibold text-slate-800">{item.certificationName}</div><div className="mt-2 text-2xl font-semibold tabular-nums text-blue-700">{item.average.toFixed(2)}</div><div className="mt-1 text-[9px] text-slate-500">{item.peopleCount} colaboradores · Ver detalle</div></button>):<div className="col-span-full"><BBVAEmptyState compact title="Sin calificaciones válidas" description="No existen certificaciones configuradas con resultados válidos para este universo."/></div>}</div>
+        {scoreDetailId ? <div className="border-t border-slate-200 p-3"><div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-[10px]"><thead className="bg-slate-50 text-[8.5px] uppercase text-slate-500"><tr><th className="px-3 py-2">Colaborador</th><th className="px-3 py-2">Resultado</th><th className="px-3 py-2 text-center">Calificación</th><th className="px-3 py-2">Fecha</th><th className="px-3 py-2 text-center">Intento</th></tr></thead><tbody className="divide-y divide-slate-100">{data.certificationScoreDetails.filter((row)=>row.certificationId===scoreDetailId).map((row)=><tr key={`${row.personId}-${row.certificationId}`}><td className="px-3 py-2 font-medium">{row.fullName}</td><td className="px-3 py-2">{row.result ?? '—'}</td><td className="px-3 py-2 text-center font-semibold">{row.score10.toFixed(2)}</td><td className="px-3 py-2">{row.applicationDate ?? '—'}</td><td className="px-3 py-2 text-center">{row.attemptNumber ?? '—'}</td></tr>)}</tbody></table></div></div>:null}
+      </section>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.4fr)]">
         <BBVAChartCard title="Prioridades operativas" description="Estados que requieren revisión según las reglas actuales de certificación. El orden no es un score de riesgo." action={<BBVAButton variant="table" size="sm" onClick={()=>navigate('/bbva/certifications/tracking')}>Abrir seguimiento</BBVAButton>}>

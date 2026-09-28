@@ -24,6 +24,12 @@ export interface ImportPersonRecord {
   expertise: string | null;
   startDate: string | null;
   hireDate: string | null;
+  originalFullName: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
+  bbvaAccessEndDate: string | null;
+  bbvaAccessAuthorizer: string | null;
+  bbvaAccessStatus: string | null;
   notes: string | null;
 }
 
@@ -44,6 +50,12 @@ export interface ImportPersonInput {
   expertise: string | null;
   startDate: string | null;
   hireDate: string | null;
+  originalFullName: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
+  bbvaAccessEndDate: string | null;
+  bbvaAccessAuthorizer: string | null;
+  bbvaAccessStatus: string | null;
   notes: string | null;
 }
 
@@ -77,6 +89,12 @@ const PERSON_IMPORT_SELECT = `
     p.Expertise AS expertise,
     CONVERT(VARCHAR(10),c.StartDate,23) AS startDate,
     CONVERT(VARCHAR(10),p.HireDate,23) AS hireDate,
+    p.OriginalFullName AS originalFullName,
+    p.BbvaStructureLevel2 AS bbvaStructureLevel2,
+    p.BbvaStructureLevel3 AS bbvaStructureLevel3,
+    CONVERT(VARCHAR(10),p.BbvaAccessEndDate,23) AS bbvaAccessEndDate,
+    p.BbvaAccessAuthorizer AS bbvaAccessAuthorizer,
+    p.BbvaAccessStatus AS bbvaAccessStatus,
     p.Notes AS notes
   FROM bbva.Person p
   LEFT JOIN bbva.Collaborator c ON c.PersonId=p.Id
@@ -106,6 +124,12 @@ function bindPerson(request: sql.Request, input: ImportPersonInput): sql.Request
     .input('expertise', sql.NVarChar(40), input.expertise)
     .input('startDate', sql.Date, input.startDate)
     .input('hireDate', sql.Date, input.hireDate)
+    .input('originalFullName', sql.NVarChar(300), input.originalFullName)
+    .input('bbvaStructureLevel2', sql.NVarChar(220), input.bbvaStructureLevel2)
+    .input('bbvaStructureLevel3', sql.NVarChar(220), input.bbvaStructureLevel3)
+    .input('bbvaAccessEndDate', sql.Date, input.bbvaAccessEndDate)
+    .input('bbvaAccessAuthorizer', sql.NVarChar(220), input.bbvaAccessAuthorizer)
+    .input('bbvaAccessStatus', sql.NVarChar(100), input.bbvaAccessStatus)
     .input('notes', sql.NVarChar(2000), input.notes);
 }
 
@@ -204,11 +228,11 @@ export class CollaboratorImportRepository {
           INSERT INTO bbva.Person(
             Id,SofttekCode,CorporateUser,BbvaUser,Email,SofttekEmail,BbvaEmail,FirstName,LastName,Profile,ProfileCatalogId,
             TechnologyProfile,TechnologyProfileCatalogId,CurrentTechnology,CurrentTechnologyCatalogId,
-            Expertise,HireDate,Notes,CreatedByEmail,UpdatedByEmail
+            Expertise,HireDate,OriginalFullName,BbvaStructureLevel2,BbvaStructureLevel3,BbvaAccessEndDate,BbvaAccessAuthorizer,BbvaAccessStatus,Notes,CreatedByEmail,UpdatedByEmail
           ) VALUES(
             @personId,@softtekCode,@corporateUser,@corporateUser,@email,@email,@bbvaEmail,@firstName,@lastName,@profile,@profileCatalogId,
             @technologyProfile,@technologyProfileCatalogId,@currentTechnology,@currentTechnologyCatalogId,
-            @expertise,@hireDate,@notes,@actorEmail,@actorEmail
+            @expertise,@hireDate,@originalFullName,@bbvaStructureLevel2,@bbvaStructureLevel3,@bbvaAccessEndDate,@bbvaAccessAuthorizer,@bbvaAccessStatus,@notes,@actorEmail,@actorEmail
           );
         `);
       await new sql.Request(transaction)
@@ -247,7 +271,7 @@ export class CollaboratorImportRepository {
             SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,BbvaEmail=@bbvaEmail,FirstName=@firstName,LastName=@lastName,
             Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,
             TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,
-            CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,
+            CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,OriginalFullName=@originalFullName,BbvaStructureLevel2=@bbvaStructureLevel2,BbvaStructureLevel3=@bbvaStructureLevel3,BbvaAccessEndDate=@bbvaAccessEndDate,BbvaAccessAuthorizer=@bbvaAccessAuthorizer,BbvaAccessStatus=@bbvaAccessStatus,Notes=@notes,
             UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
           WHERE Id=@personId;
         `);
@@ -281,7 +305,7 @@ export class CollaboratorImportRepository {
             SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,BbvaEmail=@bbvaEmail,FirstName=@firstName,LastName=@lastName,
             Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,
             TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,
-            CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,Notes=@notes,
+            CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,OriginalFullName=@originalFullName,BbvaStructureLevel2=@bbvaStructureLevel2,BbvaStructureLevel3=@bbvaStructureLevel3,BbvaAccessEndDate=@bbvaAccessEndDate,BbvaAccessAuthorizer=@bbvaAccessAuthorizer,BbvaAccessStatus=@bbvaAccessStatus,Notes=@notes,
             UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
           WHERE Id=@personId;
         `);
@@ -341,4 +365,30 @@ export class CollaboratorImportRepository {
       throw error;
     }
   }
+  async recordImportProvenance(personId: string, fields: Array<{ fieldName: string; sourceType: 'TABLERO' | 'HEADCOUNT' | 'IMPORT'; value: string | null; rowNumber: number | null }>, actorEmail: string): Promise<void> {
+    const effective = fields.filter((item) => item.value !== null && String(item.value).trim() !== '');
+    if (!effective.length) return;
+    const pool = await getDbConnection();
+    await pool.request()
+      .input('personId', sql.UniqueIdentifier, personId)
+      .input('itemsJson', sql.NVarChar(sql.MAX), JSON.stringify(effective))
+      .input('actorEmail', sql.NVarChar(255), actorEmail)
+      .query(`
+        MERGE bbva.PersonFieldProvenance AS target
+        USING (
+          SELECT @personId AS PersonId,j.fieldName AS FieldName,j.sourceType AS SourceType,j.value AS SourceValue,j.rowNumber AS SourceRowNumber
+          FROM OPENJSON(@itemsJson) WITH (
+            fieldName NVARCHAR(80) '$.fieldName',
+            sourceType NVARCHAR(24) '$.sourceType',
+            value NVARCHAR(1500) '$.value',
+            rowNumber INT '$.rowNumber'
+          ) j
+        ) source
+        ON target.PersonId=source.PersonId AND target.FieldName=source.FieldName AND target.SourceType=source.SourceType
+        WHEN MATCHED THEN UPDATE SET SourceValue=source.SourceValue,SourceRowNumber=source.SourceRowNumber,LastSeenAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+        WHEN NOT MATCHED THEN INSERT(PersonId,FieldName,SourceType,SourceValue,SourceRowNumber,CreatedByEmail,UpdatedByEmail)
+          VALUES(source.PersonId,source.FieldName,source.SourceType,source.SourceValue,source.SourceRowNumber,@actorEmail,@actorEmail);
+      `);
+  }
+
 }

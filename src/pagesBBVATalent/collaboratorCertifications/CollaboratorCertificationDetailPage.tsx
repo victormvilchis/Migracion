@@ -66,13 +66,15 @@ export const CollaboratorCertificationDetailPage: React.FC<Props> = ({ mode = 'v
             </div>
             <span className="w-fit rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold text-slate-700">{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>
           </div>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
             <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Última aprobación</div><div className="mt-1 text-[11px] font-semibold">{formatDate(item.approvedDate)}</div></div>
             <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Vencimiento</div><div className="mt-1 text-[11px] font-semibold">{formatDate(item.expirationDate)}</div></div>
             <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Ciclo actual</div><div className="mt-1 text-[11px] font-semibold">{item.currentCycle}</div></div>
             <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Intentos del ciclo</div><div className="mt-1 text-[11px] font-semibold">{item.attemptCount}{item.maxAttempts ? ` / ${item.maxAttempts}` : ''}</div></div>
             <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Próxima presentación</div><div className="mt-1 text-[11px] font-semibold">{formatDate(item.scheduledDate)}</div></div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2"><div className="text-[8.5px] font-semibold uppercase text-slate-400">Calificación actual</div><div className="mt-1 text-[11px] font-semibold">{item.lastScore10 == null ? '—' : item.lastScore10.toFixed(2)}</div></div>
           </div>
+          {item.softtekManagement ? <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/50 px-3 py-2 text-[10.5px] text-slate-700"><span className="font-semibold text-blue-700">Gestión Softtek: </span>{item.softtekManagement}</div> : null}
           {item.notes ? <div className="mt-3 rounded-xl border border-slate-200 px-3 py-2 text-[10.5px] text-slate-600"><span className="font-semibold text-slate-700">Observaciones: </span>{item.notes}</div> : null}
         </section>
 

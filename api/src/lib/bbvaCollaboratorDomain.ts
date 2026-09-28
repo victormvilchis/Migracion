@@ -17,6 +17,12 @@ export interface CollaboratorInput {
   expertise: string | null;
   bbvaStartDate: string | null;
   softtekHireDate: string | null;
+  originalFullName: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
+  bbvaAccessEndDate: string | null;
+  bbvaAccessAuthorizer: string | null;
+  bbvaAccessStatus: string | null;
   notes: string | null;
   expectedUpdatedAt: string | null;
 }
@@ -46,6 +52,12 @@ export interface CollaboratorRecord {
   status: CollaboratorStatus;
   bbvaStartDate: string | null;
   softtekHireDate: string | null;
+  originalFullName: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
+  bbvaAccessEndDate: string | null;
+  bbvaAccessAuthorizer: string | null;
+  bbvaAccessStatus: string | null;
   /** Alias temporal para compatibilidad. */
   startDate: string | null;
   /** Alias temporal para compatibilidad. */

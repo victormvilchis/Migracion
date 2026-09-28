@@ -14,6 +14,9 @@ export async function bbvaDashboardHandler(request: HttpRequest, context: Invoca
     const result = await service.get({
       technologyId: params.get('technologyId'),
       profileId: params.get('profileId'),
+      technologyProfile: params.get('technologyProfile'),
+      certificationId: params.get('certificationId'),
+      bbvaStructureLevel2: params.get('bbvaStructureLevel2'),
       certificationStatus: params.get('certificationStatus'),
       deliveryManager: params.get('deliveryManager'),
       talentType: params.get('talentType'),

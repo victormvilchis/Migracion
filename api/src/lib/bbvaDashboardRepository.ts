@@ -13,6 +13,8 @@ export interface DashboardCollaboratorRow {
   deliveryManager: string | null;
   profileId: string | null;
   profile: string | null;
+  technologyProfile: string | null;
+  bbvaStructureLevel2: string | null;
   technologyId: string | null;
   technology: string | null;
   startDate: string | null;
@@ -49,6 +51,21 @@ export interface DashboardCertificationRow {
   criticalResolutionStatus: string | null;
 }
 
+export interface DashboardCertificationScoreRow {
+  collaboratorId: string;
+  personId: string;
+  fullName: string;
+  profileId: string | null;
+  technologyId: string | null;
+  deliveryManager: string | null;
+  certificationId: string;
+  certificationName: string;
+  score10: number;
+  applicationDate: string | null;
+  attemptNumber: number | null;
+  result: string | null;
+}
+
 export class BbvaDashboardRepository {
   async collaborators(): Promise<DashboardCollaboratorRow[]> {
     const pool = await getDbConnection();
@@ -63,6 +80,8 @@ export class BbvaDashboardRepository {
              c.DeliveryManager AS deliveryManager,
              CAST(p.ProfileCatalogId AS NVARCHAR(36)) AS profileId,
              p.Profile AS profile,
+             p.TechnologyProfile AS technologyProfile,
+             p.BbvaStructureLevel2 AS bbvaStructureLevel2,
              CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS technologyId,
              p.CurrentTechnology AS technology,
              CONVERT(VARCHAR(10),c.StartDate,23) AS startDate
@@ -127,6 +146,44 @@ export class BbvaDashboardRepository {
       currentCycle: Number(row.currentCycle ?? 1),
       attemptCount: Number(row.attemptCount ?? 0),
     })) as DashboardCertificationRow[];
+  }
+
+  async certificationScores(): Promise<DashboardCertificationScoreRow[]> {
+    const pool = await getDbConnection();
+    const result = await pool.request().query(`
+      SELECT CAST(c.Id AS NVARCHAR(36)) AS collaboratorId,CAST(p.Id AS NVARCHAR(36)) AS personId,
+             LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS fullName,
+             CAST(p.ProfileCatalogId AS NVARCHAR(36)) AS profileId,
+             CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS technologyId,
+             c.DeliveryManager AS deliveryManager,
+             CAST(cc.Id AS NVARCHAR(36)) AS certificationId,cc.Name AS certificationName,
+             scoreEvidence.Score10 AS score10,
+             CONVERT(VARCHAR(10),scoreEvidence.ApplicationDate,23) AS applicationDate,
+             scoreEvidence.AttemptNumber AS attemptNumber,
+             scoreEvidence.Result AS result
+      FROM bbva.Collaborator c
+      INNER JOIN bbva.Person p ON p.Id=c.PersonId
+      INNER JOIN bbva.PersonCertification pc ON pc.PersonId=p.Id
+      INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+      OUTER APPLY (
+        SELECT TOP 1 evidence.Score10,evidence.ApplicationDate,evidence.AttemptNumber,evidence.Result,evidence.EvidenceAt
+        FROM (
+          SELECT a.Score10,a.ApplicationDate,a.AttemptNumber,a.Result,a.CreatedAt AS EvidenceAt
+          FROM bbva.PersonCertificationAttempt a
+          WHERE a.PersonCertificationId=pc.Id AND a.Score10 IS NOT NULL AND a.Score10 BETWEEN 0 AND 10
+          UNION ALL
+          SELECT pc.LastScore10,pc.ApplicationDate,pc.ImportedAttemptNumber,COALESCE(pc.ImportedExamStatus,pc.BaseStatus),pc.LastImportedAt
+          WHERE pc.LastScore10 IS NOT NULL AND pc.LastScore10 BETWEEN 0 AND 10
+        ) evidence
+        ORDER BY COALESCE(evidence.ApplicationDate,CONVERT(date,evidence.EvidenceAt)) DESC,
+                 evidence.EvidenceAt DESC,evidence.AttemptNumber DESC
+      ) scoreEvidence
+      WHERE c.Status=N'ACTIVE' AND pc.Applicable=1 AND cc.TracksScore=1
+        AND scoreEvidence.Score10 IS NOT NULL;
+    `);
+    return result.recordset.map((row:any) => ({
+      ...row, score10:Number(row.score10), attemptNumber:row.attemptNumber===null?null:Number(row.attemptNumber),
+    })) as DashboardCertificationScoreRow[];
   }
 
   async recentActivity(days = 30, limit = 12, referenceDate: string): Promise<DashboardActivityItem[]> {
@@ -285,14 +342,20 @@ export class BbvaDashboardRepository {
 
   async filterOptions() {
     const pool = await getDbConnection();
-    const [technologies, profiles, deliveryManagers] = await Promise.all([
+    const [technologies, profiles, certifications, technologyProfiles, bbvaStructures, deliveryManagers] = await Promise.all([
       pool.request().query(`SELECT CAST(Id AS NVARCHAR(36)) AS id,Name AS name FROM bbva.CatalogTechnology WHERE Status=N'ACTIVE' ORDER BY Name;`),
       pool.request().query(`SELECT CAST(Id AS NVARCHAR(36)) AS id,Name AS name FROM bbva.CatalogProfile WHERE Status=N'ACTIVE' ORDER BY Name;`),
+      pool.request().query(`SELECT CAST(Id AS NVARCHAR(36)) AS id,Name AS name FROM bbva.CertificationCatalog WHERE Status=N'ACTIVE' ORDER BY Name;`),
+      pool.request().query(`SELECT DISTINCT LTRIM(RTRIM(TechnologyProfile)) AS name FROM bbva.Person WHERE NULLIF(LTRIM(RTRIM(TechnologyProfile)),N'') IS NOT NULL ORDER BY name;`),
+      pool.request().query(`SELECT DISTINCT LTRIM(RTRIM(BbvaStructureLevel2)) AS name FROM bbva.Person WHERE NULLIF(LTRIM(RTRIM(BbvaStructureLevel2)),N'') IS NOT NULL ORDER BY name;`),
       pool.request().query(`SELECT DISTINCT LTRIM(RTRIM(DeliveryManager)) AS name FROM bbva.Collaborator WHERE Status=N'ACTIVE' AND NULLIF(LTRIM(RTRIM(DeliveryManager)),N'') IS NOT NULL ORDER BY name;`),
     ]);
     return {
       technologies: technologies.recordset as Array<{ id: string; name: string }>,
       profiles: profiles.recordset as Array<{ id: string; name: string }>,
+      certifications: certifications.recordset as Array<{ id: string; name: string }>,
+      technologyProfiles: (technologyProfiles.recordset as Array<{ name: string }>).map((item)=>item.name),
+      bbvaStructures: (bbvaStructures.recordset as Array<{ name: string }>).map((item)=>item.name),
       deliveryManagers: (deliveryManagers.recordset as Array<{ name: string }>).map((item) => item.name),
     };
   }

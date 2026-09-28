@@ -11,7 +11,8 @@ export type DashboardMetricKey =
   | 'expiring'
   | 'expired'
   | 'recertificationPending'
-  | 'pending';
+  | 'pending'
+  | 'certificationAverage';
 
 export const dashboardMetricDefinitions: Record<DashboardMetricKey, BBVADataHelpContent> = {
   collaboratorsActive: {
@@ -63,6 +64,11 @@ export const dashboardMetricDefinitions: Record<DashboardMetricKey, BBVADataHelp
     what: 'Certificaciones vencidas cuya configuración habilita un proceso de recertificación.',
     calculation: 'Conteo de certificaciones cuyo estado calculado actual es Recertificación pendiente.',
     interpretation: 'Identifica certificaciones vencidas que deben continuar por el flujo configurado de recertificación.',
+  },
+  certificationAverage: {
+    what: 'Calificación promedio actual de las certificaciones configuradas para manejar promedio.',
+    calculation: 'Usa una sola calificación válida por persona y certificación: la evidencia válida más reciente. Excluye Sin examen, No aplica y registros sin calificación.',
+    interpretation: 'Mide desempeño actual sin dar mayor peso a una persona por acumular más intentos.',
   },
   pending: {
     what: 'Certificaciones aplicables que todavía no están cubiertas y requieren seguimiento.',

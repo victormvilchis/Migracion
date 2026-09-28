@@ -1,6 +1,9 @@
 export interface DashboardFilters {
   technologyId: string;
   profileId: string;
+  technologyProfile: string;
+  certificationId: string;
+  bbvaStructureLevel2: string;
   certificationStatus: string;
   deliveryManager: string;
   talentType: string;
@@ -79,6 +82,8 @@ export interface DashboardResponse {
     vendorReadyPercent: number;
     vendorPending: number;
     vendorExitRequired: number;
+    certificationAverage: number | null;
+    certificationScoreBase: number;
   };
   vendorQuarter: {
     calendarName: string;
@@ -121,6 +126,8 @@ export interface DashboardResponse {
   technologyDistribution: Array<{ technologyId: string | null; label: string; value: number }>;
   deliveryManagerDistribution: Array<{ label: string; value: number }>;
   talentComposition: Array<{ label: string; value: number }>;
+  certificationScores: Array<{ certificationId:string; certificationName:string; average:number; peopleCount:number }>;
+  certificationScoreDetails: Array<{ collaboratorId:string; personId:string; fullName:string; certificationId:string; certificationName:string; result:string|null; score10:number; applicationDate:string|null; attemptNumber:number|null }>;
   attention: Array<{
     collaboratorId: string;
     fullName: string;
@@ -137,6 +144,9 @@ export interface DashboardResponse {
   filters: {
     technologies: Array<{ id: string; name: string }>;
     profiles: Array<{ id: string; name: string }>;
+    certifications: Array<{ id: string; name: string }>;
+    technologyProfiles: string[];
+    bbvaStructures: string[];
     deliveryManagers: string[];
   };
 }

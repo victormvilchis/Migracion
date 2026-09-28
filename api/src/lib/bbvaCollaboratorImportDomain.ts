@@ -23,7 +23,7 @@ export interface ImportFieldChange {
 
 
 export interface ImportCertificationFieldComparison {
-  field: 'applicable' | 'certificationStatus' | 'examStatus' | 'applicationDate' | 'score10' | 'administrativeAttempt' | 'lifecycle' | 'initialDueDate' | 'expirationDate' | 'lastApproval';
+  field: 'applicable' | 'certificationStatus' | 'examStatus' | 'applicationDate' | 'score10' | 'administrativeAttempt' | 'lifecycle' | 'initialDueDate' | 'expirationDate' | 'lastApproval' | 'softtekManagement';
   label: string;
   currentValue: string | null;
   excelValue: string | null;
@@ -78,6 +78,12 @@ export interface ImportNewCandidate {
   expertise: string | null;
   startDate: string | null;
   hireDate: string | null;
+  originalFullName: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
+  bbvaAccessEndDate: string | null;
+  bbvaAccessAuthorizer: string | null;
+  bbvaAccessStatus: string | null;
   catalogActions: ImportCatalogAction[];
   certifications: ImportCertificationPreview[];
 }
@@ -141,6 +147,17 @@ export interface ImportResolvedItem {
   certification?: ImportCertificationPreview;
 }
 
+export interface ImportQualitySummary {
+  homologatedPeople: number;
+  enrichedPeople: number;
+  newDataFields: number;
+  preservedExistingFields: number;
+  differences: number;
+  identityConflicts: number;
+  bbvaFieldsAdded: number;
+  softtekFieldsAdded: number;
+}
+
 export interface ImportPreviewResponse {
   totalRowsAnalyzed: number;
   ignoredRows: number;
@@ -153,6 +170,7 @@ export interface ImportPreviewResponse {
   certificationChanges: number;
   certificationResults: number;
   certificationRuleGaps: string[];
+  qualitySummary: ImportQualitySummary;
 }
 
 export interface ImportApplyRequest {

@@ -38,6 +38,7 @@ export interface CollaboratorCertificationRecord {
   lastDataSource: 'MANUAL' | 'IMPORT' | 'AUTO' | null;
   lastImportFingerprint: string | null;
   lastImportedAt: string | null;
+  softtekManagement: string | null;
   currentCycle: number;
   baseStatus: 'PENDING' | 'SCHEDULED' | 'APPLIED' | 'FAILED' | 'APPROVED' | 'NOT_APPLICABLE';
   status: CollaboratorCertificationStatus;

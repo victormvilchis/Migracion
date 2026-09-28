@@ -123,6 +123,7 @@ export class BbvaCertificationCatalogService {
     const expiringSoonDays = nullablePositiveInteger(value.expiringSoonDays, 'Los días de próxima expiración');
     const maxAttempts = nullablePositiveInteger(value.maxAttempts, 'El máximo de intentos', 50);
     const includesTraining = normalizeBoolean(value.includesTraining);
+    const tracksScore = normalizeBoolean(value.tracksScore);
     const recertificationEnabled = normalizeBoolean(value.recertificationEnabled);
     const requiresAttempts = normalizeBoolean(value.requiresAttempts);
     const requiresApplicationDate = normalizeBoolean(value.requiresApplicationDate);
@@ -162,6 +163,7 @@ export class BbvaCertificationCatalogService {
       expiringSoonDays,
       maxAttempts: requiresAttempts ? maxAttempts : null,
       includesTraining,
+      tracksScore,
       recertificationEnabled,
       requiresAttempts,
       requiresApplicationDate,

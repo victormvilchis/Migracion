@@ -54,6 +54,12 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
     expertise: cleanText(payload?.expertise, 40)?.toUpperCase() ?? catalogs.profileSeniority,
     bbvaStartDate,
     softtekHireDate: normalizeDate(payload?.softtekHireDate ?? payload?.hireDate, 'Fecha de contratación Softtek'),
+    originalFullName: cleanText(payload?.originalFullName, 300),
+    bbvaStructureLevel2: cleanText(payload?.bbvaStructureLevel2, 220),
+    bbvaStructureLevel3: cleanText(payload?.bbvaStructureLevel3, 220),
+    bbvaAccessEndDate: normalizeDate(payload?.bbvaAccessEndDate, 'Fecha fin de accesos BBVA'),
+    bbvaAccessAuthorizer: cleanText(payload?.bbvaAccessAuthorizer, 220),
+    bbvaAccessStatus: cleanText(payload?.bbvaAccessStatus, 100),
     notes: cleanText(payload?.notes, 2000),
     expectedUpdatedAt: cleanText(payload?.expectedUpdatedAt, 64),
   };

@@ -58,6 +58,7 @@ export interface ImportCertificationCurrentState {
   importedAttemptNumber: number | null;
   lastDataSource: string | null;
   lastImportFingerprint: string | null;
+  softtekManagement: string | null;
   hasManualResult: boolean;
   attempts: Array<{
     id: string;
@@ -88,6 +89,7 @@ export interface ParsedCertificationEvidence {
   score10: number | null;
   administrativeAttempt: number | null;
   normativeLimitDate: string | null;
+  softtekManagement: string | null;
   baseStatus: ImportCertificationBaseStatus | null;
   initialDueDate: string | null;
   approvedDate: string | null;
@@ -159,6 +161,26 @@ const HEADERS: Record<ImportCertificationBlock, {
     status: ['STATUS GITHUB', 'ESTATUS GITHUB'],
   },
 };
+
+
+const SOFTTEK_MANAGEMENT_OCCURRENCE: Partial<Record<ImportCertificationBlock, number>> = {
+  DEVELOPMENT_SECURITY: 1,
+  TECHNOLOGICAL: 2,
+  NORMATIVE_TESTING: 3,
+  AGILE: 4,
+};
+
+function repeatedHeaderValue(values: Record<string, string>, baseHeader: string, occurrence: number): string | null {
+  const target = normalizeKey(baseHeader);
+  for (const [header, value] of Object.entries(values)) {
+    const match = String(header).trim().match(/^(.*?)(?:\s+\[(\d+)\])?$/);
+    const rawBase = match?.[1] ?? header;
+    const rawOccurrence = Number(match?.[2] ?? 1);
+    if (normalizeKey(rawBase) !== target || rawOccurrence !== occurrence) continue;
+    return clean(value, 1500);
+  }
+  return null;
+}
 
 function normalizeKey(value: unknown): string {
   return String(value ?? '')
@@ -310,8 +332,10 @@ export function parseCertificationEvidence(args: {
   const rawScore = valueByAliases(source.values, headers.score);
   const rawAttempt = valueByAliases(source.values, headers.attempt);
   const rawLimitDate = valueByAliases(source.values, headers.limitDate);
+  const managementOccurrence = SOFTTEK_MANAGEMENT_OCCURRENCE[block];
+  const softtekManagement = managementOccurrence ? repeatedHeaderValue(source.values, 'GESTIÓN SOFTTEK', managementOccurrence) : null;
 
-  if (![rawApplicable, rawCertificationStatus, rawExamStatus, rawDate, rawScore, rawAttempt, rawLimitDate].some(Boolean)) return null;
+  if (![rawApplicable, rawCertificationStatus, rawExamStatus, rawDate, rawScore, rawAttempt, rawLimitDate, softtekManagement].some(Boolean)) return null;
 
   const issues: ImportCertificationIssue[] = [];
   const applicable = parseApplicability(rawApplicable, block);
@@ -389,6 +413,7 @@ export function parseCertificationEvidence(args: {
     score.value,
     attempt.value,
     normativeLimitDate,
+    softtekManagement,
     baseStatus,
     initialDueDate,
     expirationDate,
@@ -405,6 +430,7 @@ export function parseCertificationEvidence(args: {
     score10: score.value,
     administrativeAttempt: attempt.value,
     normativeLimitDate,
+    softtekManagement,
     baseStatus,
     initialDueDate,
     approvedDate,

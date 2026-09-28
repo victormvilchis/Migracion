@@ -32,6 +32,7 @@ interface BaseRow {
   expiringSoonDays: number | null;
   maxAttempts: number | null;
   includesTraining: boolean;
+  tracksScore: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;
@@ -61,6 +62,7 @@ const BASE_SELECT = `
     c.ExpiringSoonDays AS expiringSoonDays,
     c.MaxAttempts AS maxAttempts,
     c.IncludesTraining AS includesTraining,
+    c.TracksScore AS tracksScore,
     c.RecertificationEnabled AS recertificationEnabled,
     c.RequiresAttempts AS requiresAttempts,
     c.RequiresApplicationDate AS requiresApplicationDate,
@@ -142,7 +144,7 @@ export class BbvaCertificationCatalogRepository {
              c.CertificationType AS certificationType,
              CAST(c.TechnologyId AS NVARCHAR(36)) AS technologyId, t.Name AS technologyName,
              c.ValidityMonths AS validityMonths, c.InitialCompletionDays AS initialCompletionDays, c.ExpiringSoonDays AS expiringSoonDays,
-             c.RecertificationEnabled AS recertificationEnabled, c.DefaultMandatory AS defaultMandatory,
+             c.RecertificationEnabled AS recertificationEnabled, c.DefaultMandatory AS defaultMandatory, c.TracksScore AS tracksScore,
              (SELECT STRING_AGG(l.LevelCode,N',') WITHIN GROUP (ORDER BY l.LevelCode) FROM bbva.CertificationAllowedLevel l WHERE l.CertificationId=c.Id) AS allowedLevelsCsv
       FROM bbva.CertificationCatalog c
       LEFT JOIN bbva.CatalogTechnology t ON t.Id=c.TechnologyId
@@ -258,6 +260,7 @@ export class BbvaCertificationCatalogRepository {
       .input('expiringSoonDays', sql.Int, input.expiringSoonDays)
       .input('maxAttempts', sql.Int, input.maxAttempts)
                         .input('includesTraining', sql.Bit, input.includesTraining)
+      .input('tracksScore', sql.Bit, input.tracksScore)
       .input('recertificationEnabled', sql.Bit, input.recertificationEnabled)
       .input('requiresAttempts', sql.Bit, input.requiresAttempts)
       .input('requiresApplicationDate', sql.Bit, input.requiresApplicationDate)
@@ -269,11 +272,11 @@ export class BbvaCertificationCatalogRepository {
     if (create) {
       await request.query(`
         INSERT INTO bbva.CertificationCatalog (
-          Id,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionDays,ExpiringSoonDays,MaxAttempts,IncludesTraining,
+          Id,Name,Description,CertificationType,Provider,TechnologyId,ValidityMonths,InitialCompletionDays,ExpiringSoonDays,MaxAttempts,IncludesTraining,TracksScore,
           RecertificationEnabled,RequiresAttempts,RequiresApplicationDate,DefaultMandatory,RequirementGroup,RequirementGroupMinimum,
           Status,CreatedByEmail,UpdatedByEmail
         ) VALUES (
-          @id,@name,@description,@certificationType,@provider,@technologyId,@validityMonths,@initialCompletionDays,@expiringSoonDays,@maxAttempts,@includesTraining,
+          @id,@name,@description,@certificationType,@provider,@technologyId,@validityMonths,@initialCompletionDays,@expiringSoonDays,@maxAttempts,@includesTraining,@tracksScore,
           @recertificationEnabled,@requiresAttempts,@requiresApplicationDate,@defaultMandatory,@requirementGroup,@requirementGroupMinimum,
           N'ACTIVE',@actorEmail,@actorEmail
         );
@@ -283,7 +286,7 @@ export class BbvaCertificationCatalogRepository {
         UPDATE bbva.CertificationCatalog SET
           Name=@name,Description=@description,CertificationType=@certificationType,Provider=@provider,TechnologyId=@technologyId,
           ValidityMonths=@validityMonths,InitialCompletionDays=@initialCompletionDays,ExpiringSoonDays=@expiringSoonDays,MaxAttempts=@maxAttempts,
-          IncludesTraining=@includesTraining,RecertificationEnabled=@recertificationEnabled,
+          IncludesTraining=@includesTraining,TracksScore=@tracksScore,RecertificationEnabled=@recertificationEnabled,
           RequiresAttempts=@requiresAttempts,RequiresApplicationDate=@requiresApplicationDate,DefaultMandatory=@defaultMandatory,
           RequirementGroup=@requirementGroup,RequirementGroupMinimum=@requirementGroupMinimum,
           UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail

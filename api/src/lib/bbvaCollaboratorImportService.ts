@@ -62,9 +62,15 @@ const HEADER_ALIASES = {
   technologyProfile: ['PERFIL TECNOLOGICO', 'PERFIL TECNOLÓGICO'],
   currentTechnology: ['TECNOLOGIA EN LA QUE SE CERTIFICA', 'TECNOLOGÍA EN LA QUE SE CERTIFICA', 'TECNOLOGIA ACTUAL', 'TECNOLOGÍA ACTUAL'],
   expertise: ['EXPERTISE', 'SENIORITY'],
-  startDate: ['FECHA ALTA BBVA', 'FECHA ALTA XM', 'FECHA DE ALTA'],
+  startDate: ['FECHA ALTA BBVA', 'FECHA DE ALTA'],
   hireDate: ['FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK', 'FECHA INGRESO SOFTTEK', 'FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP', 'FECHA DE CONTRATACION', 'FECHA DE CONTRATACIÓN'],
   resourceStatus: ['ESTATUS DEL RECURSO', 'ESTADO DEL RECURSO', 'STATUS SOFTTEK'],
+  originalFullName: ['NOMBRE EXTERNO', 'NOMBRE COMPLETO', 'COLABORADOR', 'NOMBRE', 'NAME'],
+  bbvaStructureLevel2: ['ESTRUCTURA NIVEL 2', 'ESTRUCTURA N2'],
+  bbvaStructureLevel3: ['ESTRUCTURA NIVEL 3', 'ESTRUCTURA N3'],
+  bbvaAccessEndDate: ['FECHA FIN DE ACCESOS', 'FECHA FIN ACCESOS'],
+  bbvaAccessAuthorizer: ['NOMBRE AUTORIZADOR', 'AUTORIZADOR'],
+  bbvaAccessStatus: ['STATUS ACCESOS', 'ESTATUS ACCESOS'],
 } as const;
 
 type ImportField = keyof typeof HEADER_ALIASES | 'lifecycleState';
@@ -85,6 +91,12 @@ interface NormalizedRow {
   startDate: string | null;
   hireDate: string | null;
   resourceStatus: string | null;
+  originalFullName: string | null;
+  bbvaStructureLevel2: string | null;
+  bbvaStructureLevel3: string | null;
+  bbvaAccessEndDate: string | null;
+  bbvaAccessAuthorizer: string | null;
+  bbvaAccessStatus: string | null;
   source: ImportSourceRow;
 }
 
@@ -109,6 +121,12 @@ const FIELD_LABELS: Record<ImportField, string> = {
   startDate: 'Fecha de alta BBVA',
   hireDate: 'Fecha de contratación Softtek',
   resourceStatus: 'Estado del recurso',
+  originalFullName: 'Nombre completo de origen',
+  bbvaStructureLevel2: 'Estructura nivel 2',
+  bbvaStructureLevel3: 'Estructura nivel 3',
+  bbvaAccessEndDate: 'Fecha fin de accesos',
+  bbvaAccessAuthorizer: 'Nombre autorizador',
+  bbvaAccessStatus: 'Status accesos',
   lifecycleState: 'Estado operativo',
 };
 
@@ -191,10 +209,13 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
 
   const rawStartDate = valueByAliases(source.values, HEADER_ALIASES.startDate);
   const rawHireDate = valueByAliases(source.values, HEADER_ALIASES.hireDate);
+  const rawAccessEndDate = valueByAliases(source.values, HEADER_ALIASES.bbvaAccessEndDate);
   const startDate = normalizeDate(rawStartDate);
   const hireDate = normalizeDate(rawHireDate);
+  const bbvaAccessEndDate = normalizeDate(rawAccessEndDate);
   if (rawStartDate && !startDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA ALTA BBVA no tiene un formato válido: ${rawStartDate}.` };
   if (rawHireDate && !hireDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA DE CONTRATACIÓN SOFTTEK no tiene un formato válido: ${rawHireDate}.` };
+  if (rawAccessEndDate && !bbvaAccessEndDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA FIN DE ACCESOS no tiene un formato válido: ${rawAccessEndDate}.` };
 
   const email = clean(valueByAliases(source.values, HEADER_ALIASES.email), 255)?.toLowerCase() ?? null;
   if (email && !isEmail(email)) return { rowKey, rowNumber: source.rowNumber, fullName, message: `El correo Softtek del Excel no tiene un formato válido: ${email}.` };
@@ -231,6 +252,12 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
     startDate,
     hireDate,
     resourceStatus: upper(valueByAliases(source.values, HEADER_ALIASES.resourceStatus), 80),
+    originalFullName: clean(valueByAliases(source.values, HEADER_ALIASES.originalFullName), 300),
+    bbvaStructureLevel2: clean(valueByAliases(source.values, HEADER_ALIASES.bbvaStructureLevel2), 220),
+    bbvaStructureLevel3: clean(valueByAliases(source.values, HEADER_ALIASES.bbvaStructureLevel3), 220),
+    bbvaAccessEndDate,
+    bbvaAccessAuthorizer: clean(valueByAliases(source.values, HEADER_ALIASES.bbvaAccessAuthorizer), 220),
+    bbvaAccessStatus: clean(valueByAliases(source.values, HEADER_ALIASES.bbvaAccessStatus), 100),
     source,
   };
 }
@@ -276,7 +303,7 @@ function buildChange(person: ImportPersonRecord, row: NormalizedRow, field: Impo
     label: FIELD_LABELS[field],
     currentValue,
     excelValue,
-    decision: 'APPLY_EXCEL',
+    decision: field === 'lifecycleState' || !currentValue ? 'APPLY_EXCEL' : 'KEEP_CURRENT',
     resolvedPreviously: false,
   };
 }
@@ -328,7 +355,12 @@ async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, 
   };
 
   const resolvedFullName = applyField('fullName', row.fullName, existing?.fullName ?? null) || row.fullName;
-  const names = splitMexicanFullName(resolvedFullName);
+  const nameChange = changes?.find((item) => item.field === 'fullName');
+  const incomingNameAccepted = !existing || (nameChange && (decisions?.get(nameChange.resolutionKey) ?? nameChange.decision) === 'APPLY_EXCEL');
+  const parsedNames = splitMexicanFullName(resolvedFullName);
+  const names = existing && !incomingNameAccepted
+    ? { firstName: existing.firstName, lastName: existing.lastName }
+    : parsedNames;
   const profile = canonicalCatalog(applyField('profile', row.profile, existing?.profile ?? null));
   const technologyProfile = canonicalCatalog(applyField('technologyProfile', row.technologyProfile, existing?.technologyProfile ?? null));
   const currentTechnology = canonicalCatalog(applyField('currentTechnology', row.currentTechnology, existing?.currentTechnology ?? null));
@@ -361,8 +393,40 @@ async function toInput(row: NormalizedRow, existing: ImportPersonRecord | null, 
     expertise,
     startDate: applyField('startDate', row.startDate, existing?.startDate ?? null),
     hireDate: applyField('hireDate', row.hireDate, existing?.hireDate ?? null),
+    originalFullName: applyField('originalFullName', row.originalFullName, existing?.originalFullName ?? null) || resolvedFullName,
+    bbvaStructureLevel2: applyField('bbvaStructureLevel2', row.bbvaStructureLevel2, existing?.bbvaStructureLevel2 ?? null),
+    bbvaStructureLevel3: applyField('bbvaStructureLevel3', row.bbvaStructureLevel3, existing?.bbvaStructureLevel3 ?? null),
+    bbvaAccessEndDate: applyField('bbvaAccessEndDate', row.bbvaAccessEndDate, existing?.bbvaAccessEndDate ?? null),
+    bbvaAccessAuthorizer: applyField('bbvaAccessAuthorizer', row.bbvaAccessAuthorizer, existing?.bbvaAccessAuthorizer ?? null),
+    bbvaAccessStatus: applyField('bbvaAccessStatus', row.bbvaAccessStatus, existing?.bbvaAccessStatus ?? null),
     notes: existing?.notes ?? null,
   };
+}
+
+
+function provenanceForRow(row: NormalizedRow) {
+  const sourceFor = (field: string, fallback: 'TABLERO' | 'HEADCOUNT' | 'IMPORT') =>
+    normalizeKey(row.source.values[`__BFS_SOURCE_${field}`]) === 'HEADCOUNT' ? 'HEADCOUNT' as const : fallback;
+  const field = (fieldName: string, sourceType: 'TABLERO' | 'HEADCOUNT' | 'IMPORT', value: string | null) => ({ fieldName, sourceType, value, rowNumber: row.rowNumber });
+  return [
+    field('OriginalFullName',sourceFor('fullName','TABLERO'),row.originalFullName),
+    field('SofttekCode',sourceFor('softtekCode','HEADCOUNT'),row.softtekCode),
+    field('BbvaUser',sourceFor('corporateUser','HEADCOUNT'),row.corporateUser),
+    field('SofttekEmail',sourceFor('softtekEmail','HEADCOUNT'),row.email),
+    field('BbvaEmail',sourceFor('bbvaEmail','HEADCOUNT'),row.bbvaEmail),
+    field('DeliveryManager',sourceFor('deliveryManager','TABLERO'),row.deliveryManager),
+    field('Profile',sourceFor('profile','TABLERO'),row.profile),
+    field('TechnologyProfile','TABLERO',row.technologyProfile),
+    field('CurrentTechnology','TABLERO',row.currentTechnology),
+    field('Expertise','TABLERO',row.expertise),
+    field('BbvaStartDate','TABLERO',row.startDate),
+    field('SofttekHireDate',sourceFor('hireDate','HEADCOUNT'),row.hireDate),
+    field('BbvaStructureLevel2','TABLERO',row.bbvaStructureLevel2),
+    field('BbvaStructureLevel3','TABLERO',row.bbvaStructureLevel3),
+    field('BbvaAccessEndDate','TABLERO',row.bbvaAccessEndDate),
+    field('BbvaAccessAuthorizer','TABLERO',row.bbvaAccessAuthorizer),
+    field('BbvaAccessStatus','TABLERO',row.bbvaAccessStatus),
+  ];
 }
 
 function collectAllChanges(preview: ImportPreviewResponse): Map<string, ImportFieldChange[]> {
@@ -475,11 +539,12 @@ function buildCertificationFields(current: ImportCertificationCurrentState | nul
     { field:'initialDueDate' as const,label:'Fecha límite inicial',currentValue:current?.initialDueDate ?? null,excelValue:evidence.normativeLimitDate,calculatedValue:evidence.initialDueDate,origin:current?.lastDataSource ?? current?.source ?? null },
     { field:'expirationDate' as const,label:'Vencimiento',currentValue:current?.expirationDate ?? null,excelValue:null,calculatedValue:evidence.expirationDate,origin:current?.lastDataSource ?? current?.source ?? null },
     { field:'lastApproval' as const,label:'Última aprobación',currentValue:current?.approvedDate ?? null,excelValue:evidence.baseStatus === 'APPROVED' ? evidence.applicationDate : null,calculatedValue:evidence.approvedDate,origin:current?.lastDataSource ?? current?.source ?? null },
+    { field:'softtekManagement' as const,label:'Gestión Softtek',currentValue:current?.softtekManagement ?? null,excelValue:evidence.softtekManagement,calculatedValue:evidence.softtekManagement,origin:current?.lastDataSource ?? current?.source ?? null },
   ];
 }
 
 function effectiveEvidenceChanged(current: ImportCertificationCurrentState | null, evidence: ParsedCertificationEvidence): boolean {
-  return !sameEffectiveImportCertificationState(current, evidence);
+  return !sameEffectiveImportCertificationState(current, evidence) || normalizeKey(current?.softtekManagement) !== normalizeKey(evidence.softtekManagement);
 }
 
 function currentCertificationResolutionFingerprint(current: ImportCertificationCurrentState | null): string {
@@ -491,7 +556,7 @@ function currentCertificationResolutionFingerprint(current: ImportCertificationC
   return hash(
     'CERT_CURRENT', current.certificationId, String(current.applicable), current.baseStatus, current.applicationDate,
     current.initialDueDate, formatNumber(current.lastScore10), formatNumber(current.importedAttemptNumber),
-    current.lastDataSource, attempts,
+    current.lastDataSource, current.softtekManagement, attempts,
   );
 }
 
@@ -703,12 +768,12 @@ export class CollaboratorImportService {
           rowKey: match.row.rowKey,rowNumber: match.row.rowNumber,fullName: match.row.fullName,email: match.row.email,
           softtekCode: match.row.softtekCode,corporateUser: match.row.corporateUser,bbvaEmail: match.row.bbvaEmail,deliveryManager: match.row.deliveryManager,profile: match.row.profile,
           technologyProfile: match.row.technologyProfile,currentTechnology: match.row.currentTechnology,expertise: match.row.expertise,
-          startDate: match.row.startDate,hireDate: match.row.hireDate,catalogActions: rowCatalogActions,certifications: prepared.map((item) => item.preview),
+          startDate: match.row.startDate,hireDate: match.row.hireDate,originalFullName:match.row.originalFullName,bbvaStructureLevel2:match.row.bbvaStructureLevel2,bbvaStructureLevel3:match.row.bbvaStructureLevel3,bbvaAccessEndDate:match.row.bbvaAccessEndDate,bbvaAccessAuthorizer:match.row.bbvaAccessAuthorizer,bbvaAccessStatus:match.row.bbvaAccessStatus,catalogActions: rowCatalogActions,certifications: prepared.map((item) => item.preview),
         });
         continue;
       }
 
-      const fields: ImportField[] = ['fullName','softtekCode','corporateUser','email','bbvaEmail','deliveryManager','profile','technologyProfile','currentTechnology','expertise','startDate','hireDate'];
+      const fields: ImportField[] = ['fullName','softtekCode','corporateUser','email','bbvaEmail','deliveryManager','profile','technologyProfile','currentTechnology','expertise','startDate','hireDate','originalFullName','bbvaStructureLevel2','bbvaStructureLevel3','bbvaAccessEndDate','bbvaAccessAuthorizer','bbvaAccessStatus'];
       const changes = fields.map((field) => buildChange(match.person as ImportPersonRecord, match.row, field)).filter((item): item is ImportFieldChange => Boolean(item));
       if (match.person.collaboratorStatus !== 'ACTIVE') {
         const lifecycle = buildChange(match.person, match.row, 'lifecycleState');
@@ -775,9 +840,23 @@ export class CollaboratorImportService {
       .map((person) => ({ collaboratorId:person.collaboratorId as string,personId:person.personId,fullName:person.fullName,email:person.email,profile:person.profile,currentTechnology:person.currentTechnology,decision:'REVIEW' }));
 
     const certPreviews = [...newItems.flatMap((item) => item.certifications), ...changedItems.flatMap((item) => item.certifications)];
+    const visibleChangedItems = changedItems.filter((item) => item.changes.length > 0 || item.reactivationRequired || item.certifications.some((cert) => cert.hasChanges));
+    const enrichedRowKeys = new Set(allChanges.filter((item) => !item.change.currentValue && Boolean(item.change.excelValue)).map((item) => item.row.rowKey));
+    const bbvaFieldNames = new Set<ImportField>(['corporateUser','bbvaEmail','startDate','bbvaStructureLevel2','bbvaStructureLevel3','bbvaAccessEndDate','bbvaAccessAuthorizer','bbvaAccessStatus']);
+    const softtekFieldNames = new Set<ImportField>(['softtekCode','email','hireDate']);
+    const qualitySummary = {
+      homologatedPeople: matches.filter((item) => Boolean(item.person) && !item.conflict).length,
+      enrichedPeople: enrichedRowKeys.size,
+      newDataFields: allChanges.filter((item) => !item.change.currentValue && Boolean(item.change.excelValue)).length,
+      preservedExistingFields: allChanges.filter((item) => Boolean(item.change.currentValue) && item.change.decision === 'KEEP_CURRENT').length,
+      differences: allChanges.length,
+      identityConflicts: conflicts.filter((item) => item.issueCode === 'IDENTITY_CONFLICT').length,
+      bbvaFieldsAdded: allChanges.filter((item) => !item.change.currentValue && bbvaFieldNames.has(item.change.field as ImportField)).length,
+      softtekFieldsAdded: allChanges.filter((item) => !item.change.currentValue && softtekFieldNames.has(item.change.field as ImportField)).length,
+    };
     return {
       totalRowsAnalyzed:rows.length,ignoredRows:Math.max(0,inputRows.length-rows.length),newItems,
-      changedItems:changedItems.filter((item) => item.changes.length > 0 || item.reactivationRequired || item.certifications.some((cert) => cert.hasChanges)),
+      changedItems:visibleChangedItems,
       possibleLows,conflicts,errors,resolvedPreviously,
       certificationChanges:certPreviews.filter((item) => item.hasChanges && !item.issues.some(isCertificationDataError)).length,
       certificationResults:certPreviews.filter((item) => {
@@ -785,6 +864,7 @@ export class CollaboratorImportService {
         return item.hasChanges && !item.issues.some(isCertificationDataError) && Boolean(exam?.excelValue) && ['APPROVED','FAILED'].includes(exam?.calculatedValue ?? '');
       }).length,
       certificationRuleGaps:[...new Set(certPreviews.map((item) => item.ruleGap).filter((item): item is string => Boolean(item)))],
+      qualitySummary,
     };
   }
 
@@ -999,6 +1079,7 @@ export class CollaboratorImportService {
 
         const input = await toInput(row,null,actorEmail,requestedEmail,undefined,undefined,requestedIs,requestedDm);
         created = await repository.create(input,actorEmail);
+        await repository.recordImportProvenance(created.personId, provenanceForRow(row), actorEmail);
         result.created += 1;
         reserve(reservedIdentities.softtekCode, input.softtekCode, item.fullName);
         reserve(reservedIdentities.email, input.email, item.fullName);
@@ -1056,6 +1137,7 @@ export class CollaboratorImportService {
             await repository.update(person,input,actorEmail);
             result.updated += 1;
           }
+          await repository.recordImportProvenance(person.personId, provenanceForRow(row), actorEmail);
         } catch (error) {
           coreSucceeded = false;
           result.skipped += 1;

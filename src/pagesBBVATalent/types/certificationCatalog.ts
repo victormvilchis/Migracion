@@ -29,6 +29,7 @@ export interface CertificationCatalogRecord {
   expiringSoonDays: number | null;
   maxAttempts: number | null;
   includesTraining: boolean;
+  tracksScore: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;
@@ -55,6 +56,7 @@ export interface CertificationCatalogPayload {
   expiringSoonDays: number | null;
   maxAttempts: number | null;
   includesTraining: boolean;
+  tracksScore: boolean;
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;

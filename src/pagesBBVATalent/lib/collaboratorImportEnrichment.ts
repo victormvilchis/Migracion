@@ -9,7 +9,7 @@ const ALIASES = {
   bbvaEmail: ['CORREO BBVA', 'CORREO CORPORATIVO'],
   deliveryManager: ['DM', 'DELIVERY MANAGER'],
   profile: ['PERFIL', 'PERFIL CLIENTE'],
-  startDate: ['FECHA ALTA BBVA', 'FECHA ALTA XM', 'FECHA DE ALTA'],
+  startDate: ['FECHA ALTA BBVA', 'FECHA DE ALTA'],
   hireDate: ['FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK', 'FECHA INGRESO SOFTTEK', 'FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP'],
 } as const;
 
@@ -175,6 +175,7 @@ export function enrichImportRows(mainRows: ImportSourceRow[], supplementaryRows:
               : null;
       if (duplicateSet?.has(normalizeValue(complement))) return;
       values[CANONICAL[field]] = complement;
+      values[`__BFS_SOURCE_${field}`] = 'HEADCOUNT';
       fieldsAdded += 1;
     };
 
@@ -184,7 +185,6 @@ export function enrichImportRows(mainRows: ImportSourceRow[], supplementaryRows:
     mergeField('bbvaEmail');
     mergeField('deliveryManager');
     mergeField('profile');
-    mergeField('startDate');
     mergeField('hireDate');
 
     return { ...main, values };

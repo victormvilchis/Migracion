@@ -58,6 +58,7 @@ const BASE_SELECT = `
     pc.LastDataSource AS lastDataSource,
     pc.LastImportFingerprint AS lastImportFingerprint,
     CONVERT(VARCHAR(33),pc.LastImportedAt,127) AS lastImportedAt,
+    pc.SofttekManagement AS softtekManagement,
     pc.CurrentCycle AS currentCycle,
     pc.BaseStatus AS baseStatus,
     ${STATUS_CASE} AS status,
@@ -764,7 +765,7 @@ export class CollaboratorCertificationRepository {
              CONVERT(VARCHAR(10),pc.InitialDueDate,23) AS initialDueDate,
              pc.ImportedCertificationStatus AS importedCertificationStatus,pc.ImportedExamStatus AS importedExamStatus,
              pc.LastScore10 AS lastScore10,pc.ImportedAttemptNumber AS importedAttemptNumber,
-             pc.LastDataSource AS lastDataSource,pc.LastImportFingerprint AS lastImportFingerprint
+             pc.LastDataSource AS lastDataSource,pc.LastImportFingerprint AS lastImportFingerprint,pc.SofttekManagement AS softtekManagement
       FROM bbva.PersonCertification pc
       INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
       LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
@@ -818,7 +819,7 @@ export class CollaboratorCertificationRepository {
         importedCertificationStatus:row.importedCertificationStatus ?? null, importedExamStatus:row.importedExamStatus ?? null,
         lastScore10:row.lastScore10 === null ? null : Number(row.lastScore10),
         importedAttemptNumber:row.importedAttemptNumber === null ? null : Number(row.importedAttemptNumber),
-        lastDataSource:row.lastDataSource ?? null, lastImportFingerprint:row.lastImportFingerprint ?? null,
+        lastDataSource:row.lastDataSource ?? null, lastImportFingerprint:row.lastImportFingerprint ?? null, softtekManagement:row.softtekManagement ?? null,
         hasManualResult:(attemptsByRecord.get(String(row.recordId)) ?? []).some((attempt) => (attempt.source ?? 'MANUAL').toUpperCase() !== 'IMPORT'),
         attempts:attemptsByRecord.get(String(row.recordId)) ?? [],
       };
@@ -859,7 +860,7 @@ export class CollaboratorCertificationRepository {
         SELECT Applicable,BaseStatus,CONVERT(VARCHAR(10),ApplicationDate,23) AS ApplicationDate,
                CONVERT(VARCHAR(10),ApprovedDate,23) AS ApprovedDate,CONVERT(VARCHAR(10),ExpirationDate,23) AS ExpirationDate,
                CONVERT(VARCHAR(10),InitialDueDate,23) AS InitialDueDate,ImportedCertificationStatus,ImportedExamStatus,
-               LastScore10,ImportedAttemptNumber,LastImportFingerprint
+               LastScore10,ImportedAttemptNumber,LastImportFingerprint,SofttekManagement
         FROM bbva.PersonCertification WHERE Id=@id;
       `);
       const previous = before.recordset[0] as any;
@@ -925,13 +926,13 @@ export class CollaboratorCertificationRepository {
           .input('importedExamStatus',sql.NVarChar(60),evidence.rawExamStatus)
           .input('lastScore10',sql.Decimal(5,2),evidence.score10)
           .input('importedAttemptNumber',sql.Int,evidence.administrativeAttempt)
-          .input('fingerprint',sql.Char(64),evidence.fingerprint).input('actorEmail',sql.NVarChar(255),actorEmail)
+          .input('fingerprint',sql.Char(64),evidence.fingerprint).input('softtekManagement',sql.NVarChar(1500),evidence.softtekManagement).input('actorEmail',sql.NVarChar(255),actorEmail)
           .query(`UPDATE bbva.PersonCertification SET Applicable=@applicable,BaseStatus=@baseStatus,
                     ApplicationDate=@applicationDate,ApprovedDate=CASE WHEN @baseStatus=N'APPROVED' THEN @approvedDate ELSE ApprovedDate END,
                     ExpirationDate=CASE WHEN @baseStatus=N'APPROVED' THEN @expirationDate WHEN @baseStatus=N'NOT_APPLICABLE' THEN NULL ELSE ExpirationDate END,
                     InitialDueDate=@initialDueDate,ImportedCertificationStatus=@importedCertificationStatus,
                     ImportedExamStatus=@importedExamStatus,LastScore10=@lastScore10,ImportedAttemptNumber=@importedAttemptNumber,
-                    LastDataSource=N'IMPORT',LastImportFingerprint=@fingerprint,LastImportedAt=SYSUTCDATETIME(),
+                    SofttekManagement=COALESCE(@softtekManagement,SofttekManagement),LastDataSource=N'IMPORT',LastImportFingerprint=@fingerprint,LastImportedAt=SYSUTCDATETIME(),
                     UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@id;`);
       }
 

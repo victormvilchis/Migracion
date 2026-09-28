@@ -290,10 +290,11 @@ export class BbvaDashboardService {
     const historyDays = Math.max(comparisonDays + 7, boundedInteger(options.historyDays, 90, 7, 365));
     const activityDays = boundedInteger(options.activityDays, 30, 1, 365);
     const activityLimit = boundedInteger(options.activityLimit, 12, 1, 100);
-    const [allCollaborators, allTalent, allCertifications, filterOptions] = await Promise.all([
+    const [allCollaborators, allTalent, allCertifications, allCertificationScores, filterOptions] = await Promise.all([
       repository.collaborators(),
       repository.talent(),
       repository.certifications(),
+      repository.certificationScores(),
       repository.filterOptions(),
     ]);
 
@@ -309,6 +310,8 @@ export class BbvaDashboardService {
     let collaborators = allCollaborators.filter((row) => {
       if (filters.technologyId && row.technologyId !== filters.technologyId) return false;
       if (filters.profileId && row.profileId !== filters.profileId) return false;
+      if (filters.technologyProfile && row.technologyProfile !== filters.technologyProfile) return false;
+      if (filters.bbvaStructureLevel2 && row.bbvaStructureLevel2 !== filters.bbvaStructureLevel2) return false;
       if (filters.deliveryManager && row.deliveryManager !== filters.deliveryManager) return false;
       if (!matchesDate(row.startDate, fromDate, toDate)) return false;
       if (search && !`${row.fullName} ${row.email} ${row.softtekCode ?? ''} ${row.bbvaUser ?? ''} ${row.bbvaEmail ?? ''} ${row.deliveryManager ?? ''} ${row.profile ?? ''} ${row.technology ?? ''}`.toLocaleLowerCase('es-MX').includes(search)) return false;
@@ -324,8 +327,37 @@ export class BbvaDashboardService {
       collaborators = collaborators.filter((row) => personIds.has(row.personId));
     }
 
+    if (filters.certificationId) {
+      const personIds = new Set(allCertifications.filter((cert) => cert.certificationId === filters.certificationId && cert.applicable).map((cert) => cert.personId));
+      collaborators = collaborators.filter((row) => personIds.has(row.personId));
+    }
+
     const collaboratorPersonIds = new Set(collaborators.map((row) => row.personId));
-    const certifications = allCertifications.filter((row) => collaboratorPersonIds.has(row.personId) && row.applicable && certStatusById.get(row.id) !== 'NOT_APPLICABLE');
+    const certifications = allCertifications.filter((row) => collaboratorPersonIds.has(row.personId) && row.applicable && certStatusById.get(row.id) !== 'NOT_APPLICABLE' && (!filters.certificationId || row.certificationId === filters.certificationId));
+
+    const certificationScoreRows = allCertificationScores.filter((row) => {
+      if (!collaboratorPersonIds.has(row.personId)) return false;
+      if (filters.certificationId && row.certificationId !== filters.certificationId) return false;
+      if (!matchesDate(row.applicationDate, fromDate, toDate)) return false;
+      return true;
+    });
+    const certificationScoreMap = new Map<string, { certificationId: string; certificationName: string; sum: number; count: number }>();
+    for (const row of certificationScoreRows) {
+      const current = certificationScoreMap.get(row.certificationId) ?? { certificationId: row.certificationId, certificationName: row.certificationName, sum: 0, count: 0 };
+      current.sum += row.score10;
+      current.count += 1;
+      certificationScoreMap.set(row.certificationId, current);
+    }
+    const certificationScores = [...certificationScoreMap.values()].map((item) => ({
+      certificationId: item.certificationId,
+      certificationName: item.certificationName,
+      peopleCount: item.count,
+      average: Math.round((item.sum / item.count) * 100) / 100,
+    })).sort((a, b) => b.average - a.average || a.certificationName.localeCompare(b.certificationName, 'es-MX'));
+    const certificationScoreBase = certificationScoreRows.length;
+    const certificationAverage = certificationScoreBase
+      ? Math.round((certificationScoreRows.reduce((sum, row) => sum + row.score10, 0) / certificationScoreBase) * 100) / 100
+      : null;
 
     const counts = { valid: 0, expiring: 0, expired: 0, recertificationPending: 0, pending: 0, failed: 0 };
     for (const cert of certifications) {
@@ -482,6 +514,8 @@ export class BbvaDashboardService {
       vendorReadyPercent: vendorReadinessPercent,
       vendorPending: pendingCollaborators,
       vendorExitRequired: exhaustedByPerson.size,
+      certificationAverage,
+      certificationScoreBase,
     };
 
     const vendorQuarter = {
@@ -527,6 +561,11 @@ export class BbvaDashboardService {
       deliveryManagerDistribution: sortSlices(deliveryManagerMap),
       talentComposition: sortSlices(talentMap),
       attention,
+      certificationScores,
+      certificationScoreDetails: certificationScoreRows.map((row) => ({
+        collaboratorId: row.collaboratorId, personId: row.personId, fullName: row.fullName, certificationId: row.certificationId,
+        certificationName: row.certificationName, result: row.result, score10: row.score10, applicationDate: row.applicationDate, attemptNumber: row.attemptNumber,
+      })),
       filters: filterOptions,
     };
   }

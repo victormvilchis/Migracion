@@ -1,6 +1,9 @@
 export interface DashboardFilters {
   technologyId?: string | null;
   profileId?: string | null;
+  technologyProfile?: string | null;
+  certificationId?: string | null;
+  bbvaStructureLevel2?: string | null;
   certificationStatus?: string | null;
   deliveryManager?: string | null;
   talentType?: string | null;
@@ -23,6 +26,8 @@ export interface DashboardMetricCards {
   vendorReadyPercent: number;
   vendorPending: number;
   vendorExitRequired: number;
+  certificationAverage: number | null;
+  certificationScoreBase: number;
 }
 
 export type DashboardHistoricalMetricKey =
@@ -97,6 +102,25 @@ export interface DashboardSlice { label: string; value: number; }
 export interface DashboardMonthlyPoint { month: string; label: string; value: number; }
 export interface DashboardTechnologyPoint { technologyId: string | null; label: string; value: number; }
 
+export interface DashboardCertificationScoreSummary {
+  certificationId: string;
+  certificationName: string;
+  average: number;
+  peopleCount: number;
+}
+
+export interface DashboardCertificationScoreDetail {
+  collaboratorId: string;
+  personId: string;
+  fullName: string;
+  certificationId: string;
+  certificationName: string;
+  result: string | null;
+  score10: number;
+  applicationDate: string | null;
+  attemptNumber: number | null;
+}
+
 export interface DashboardAttentionRow {
   collaboratorId: string;
   fullName: string;
@@ -137,9 +161,14 @@ export interface BbvaDashboardResponse {
   deliveryManagerDistribution: DashboardSlice[];
   talentComposition: DashboardSlice[];
   attention: DashboardAttentionRow[];
+  certificationScores: DashboardCertificationScoreSummary[];
+  certificationScoreDetails: DashboardCertificationScoreDetail[];
   filters: {
     technologies: Array<{ id: string; name: string }>;
     profiles: Array<{ id: string; name: string }>;
+    certifications: Array<{ id: string; name: string }>;
+    technologyProfiles: string[];
+    bbvaStructures: string[];
     deliveryManagers: string[];
   };
 }

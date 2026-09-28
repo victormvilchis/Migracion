@@ -376,6 +376,13 @@ export const CollaboratorImportPage: React.FC = () => {
             {summaryCard('Posibles bajas', preview.possibleLows.length, 'requieren decisión explícita', <XCircle className="h-4 w-4" />, activeTab === 'lows', () => setActiveTab('lows'))}
           </div>
 
+          <details className="mt-3 rounded-xl border border-blue-100 bg-blue-50/30">
+            <summary className="cursor-pointer list-none px-3 py-2.5 text-[10px] font-semibold text-blue-800">Doble check de calidad de datos</summary>
+            <div className="grid gap-2 border-t border-blue-100 p-3 sm:grid-cols-3 xl:grid-cols-6">
+              {[['Personas homologadas',preview.qualitySummary.homologatedPeople],['Personas enriquecidas',preview.qualitySummary.enrichedPeople],['Datos nuevos',preview.qualitySummary.newDataFields],['Datos preservados',preview.qualitySummary.preservedExistingFields],['Diferencias',preview.qualitySummary.differences],['Conflictos de identidad',preview.qualitySummary.identityConflicts]].map(([label,value])=><div key={String(label)} className="rounded-xl border border-blue-100 bg-white px-3 py-2"><div className="text-[8.5px] font-semibold uppercase tracking-[.04em] text-slate-400">{label}</div><div className="mt-1 text-lg font-semibold tabular-nums text-slate-900">{value}</div></div>)}
+            </div>
+          </details>
+
           {(requiredFieldRowKeys.size || unresolvedConflicts.length || blockingPreviewErrors.length || previewWarnings.length) ? (
             <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 px-3 py-2.5 text-[9.5px] text-amber-900">
               <b>Revisión previa:</b> {requiredFieldRowKeys.size ? `${requiredFieldRowKeys.size} fila${requiredFieldRowKeys.size === 1 ? '' : 's'} nueva${requiredFieldRowKeys.size === 1 ? '' : 's'} requiere${requiredFieldRowKeys.size === 1 ? '' : 'n'} IS, correo o DM. ` : ''}{blockingPreviewErrors.length ? `${blockingPreviewErrors.length} dato${blockingPreviewErrors.length === 1 ? '' : 's'} requiere${blockingPreviewErrors.length === 1 ? '' : 'n'} corrección. ` : ''}{unresolvedConflicts.length ? `${unresolvedConflicts.length} conflicto${unresolvedConflicts.length === 1 ? '' : 's'} necesita${unresolvedConflicts.length === 1 ? '' : 'n'} decisión. ` : ''}{previewWarnings.length ? `${previewWarnings.length} aviso${previewWarnings.length === 1 ? '' : 's'} se resolverá${previewWarnings.length === 1 ? '' : 'n'} automáticamente.` : ''}
