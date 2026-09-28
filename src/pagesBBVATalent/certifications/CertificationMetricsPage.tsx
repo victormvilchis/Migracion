@@ -8,8 +8,8 @@ import { BBVADatePicker } from '../../componentsBBVATalent/BBVADatePicker';
 import { BBVADonutChart, type BBVADonutItem } from '../../componentsBBVATalent/BBVADonutChart';
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
 import { BBVAFilterSummary, type BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
+import { BBVAHistoricalMetricPanel } from '../../componentsBBVATalent/BBVAHistoricalMetricPanel';
 import { BBVAHorizontalBars } from '../../componentsBBVATalent/BBVAHorizontalBars';
-import { BBVAHistorySparkline } from '../../componentsBBVATalent/BBVAHistorySparkline';
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
 import { BBVAMetricsSkeleton } from '../../componentsBBVATalent/BBVAMetricsSkeleton';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
@@ -17,7 +17,7 @@ import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHea
 import { useBBVAListQueryState } from '../hooks/useBBVAListQueryState';
 import { useBbvaDashboard } from '../hooks/useDashboard';
 import { dashboardMetricDefinitions } from '../lib/dashboardMetricDefinitions';
-import type { DashboardMetricComparison } from '../types/dashboard';
+import type { DashboardHistoricalMetricKey, DashboardMetricComparison } from '../types/dashboard';
 
 interface MetricsFilterState extends Record<string,string> {
   technologyId: string;
@@ -28,9 +28,11 @@ interface MetricsFilterState extends Record<string,string> {
   fromDate: string;
   toDate: string;
   search: string;
+  historyDays: string;
+  comparisonDays: string;
 }
 
-const initialFilters: MetricsFilterState = { technologyId:'', profileId:'', deliveryManager:'', certificationStatus:'', talentType:'', fromDate:'', toDate:'', search:'' };
+const initialFilters: MetricsFilterState = { technologyId:'', profileId:'', deliveryManager:'', certificationStatus:'', talentType:'', fromDate:'', toDate:'', search:'', historyDays:'90', comparisonDays:'7' };
 const certificationStatusLabels: Record<string,string> = { VALID:'Vigentes', EXPIRING:'Próximas a vencer', EXPIRED:'Vencidas', RECERTIFICATION_PENDING:'Recertificación pendiente', PENDING:'Pendientes', FAILED:'Reprobadas' };
 const talentTypeLabels: Record<string,string> = { ACADEMY:'Academia', PROSPECT:'Prospectos', FORMER_COLLABORATOR:'Excolaboradores', BBVA_EXIT:'Bajas de BBVA' };
 const certificationSliceStatus: Record<string,string> = { 'Vigentes':'VALID', 'Próximas a vencer':'EXPIRING', 'Vencidas':'EXPIRED', 'Recertificación pendiente':'RECERTIFICATION_PENDING', 'Pendientes':'PENDING' };
@@ -42,6 +44,7 @@ export const CertificationMetricsPage: React.FC = () => {
   const { state: filters, update: updateFilters, reset } = useBBVAListQueryState(initialFilters);
   const [sort, setSort] = useState<'priority' | 'name' | 'technology' | 'valid' | 'expiring' | 'expired' | 'pending'>('priority');
   const [direction,setDirection]=useState<'asc'|'desc'>('desc');
+  const [historyMetric,setHistoryMetric]=useState<DashboardHistoricalMetricKey>('coveragePercent');
   const query = useBbvaDashboard(filters);
   const data = query.data;
 
@@ -89,7 +92,14 @@ export const CertificationMetricsPage: React.FC = () => {
           <BBVADatePicker value={filters.fromDate} onChange={(value) => update('fromDate', value)} ariaLabel="Desde" placeholder="Desde" />
           <BBVADatePicker value={filters.toDate} onChange={(value) => update('toDate', value)} ariaLabel="Hasta" placeholder="Hasta" />
         </div>
-        {activeFilters.length?<div className="mt-2 flex flex-wrap items-center justify-between gap-2"><BBVAFilterSummary items={activeFilters}/><BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar filtros</BBVAButton></div>:null}
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <div>{activeFilters.length ? <BBVAFilterSummary items={activeFilters}/> : null}</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-[180px]"><BBVASearchableSelect value={filters.historyDays} onChange={(value)=>update('historyDays',value)} options={[{value:'30',label:'Histórico · 30 días'},{value:'90',label:'Histórico · 90 días'},{value:'180',label:'Histórico · 180 días'},{value:'365',label:'Histórico · 365 días'}]} ariaLabel="Ventana histórica"/></div>
+            <div className="w-[180px]"><BBVASearchableSelect value={filters.comparisonDays} onChange={(value)=>update('comparisonDays',value)} options={[{value:'1',label:'Comparar · 1 día'},{value:'7',label:'Comparar · 7 días'},{value:'30',label:'Comparar · 30 días'},{value:'90',label:'Comparar · 90 días'}]} ariaLabel="Periodo de comparación"/></div>
+            {activeFilters.length ? <BBVAButton variant="secondary" size="sm" onClick={()=>{const h=filters.historyDays;const c=filters.comparisonDays;reset();updateFilters({historyDays:h,comparisonDays:c});}}>Limpiar filtros</BBVAButton> : null}
+          </div>
+        </div>
       </section>
 
       {query.isLoading || !cards ? <BBVAMetricsSkeleton cards={8}/> : (
@@ -110,9 +120,7 @@ export const CertificationMetricsPage: React.FC = () => {
             <BBVAChartCard title="Estado de certificaciones" description="Distribución de las certificaciones aplicables. Selecciona un estado para filtrar toda la vista."><BBVADonutChart items={certificationDonutItems} center={cards.certificationsApplicable} caption="aplicables" selectedKey={filters.certificationStatus} onSelect={(item)=>item.key&&toggleCertificationStatus(item.key)} emptyTitle="Sin certificaciones aplicables" emptyDescription="No existen certificaciones aplicables para los filtros actuales." /></BBVAChartCard>
           </div>
 
-          {data.history.points.length >= 2 ? <BBVAChartCard title="Evolución histórica de cobertura" description={`Snapshots globales diarios. Comparación disponible contra ${data.history.previousSnapshotDate ?? 'el periodo anterior'}.`}>
-            <BBVAHistorySparkline points={data.history.points.map((point)=>({label:point.snapshotDate,value:point.coveragePercent}))} suffix="%" ariaLabel={`Histórico de cobertura: ${data.history.points.map((point)=>`${point.snapshotDate} ${point.coveragePercent}%`).join(', ')}`} />
-          </BBVAChartCard> : !activeFilters.length ? <BBVAChartCard title="Evolución histórica de cobertura" description="El histórico KPI comenzó a capturarse. La comparación aparecerá cuando exista un snapshot de una fecha anterior."><BBVAEmptyState compact title="Histórico iniciado" description="Se necesita al menos un snapshot de un día anterior para mostrar una tendencia real." /></BBVAChartCard> : null}
+          {!activeFilters.length ? <BBVAHistoricalMetricPanel history={data.history} metric={historyMetric} onMetricChange={setHistoryMetric} allowedMetrics={['coveragePercent','certificationsApplicable','expiring','expired','recertificationPending','pending','vendorReadyPercent','vendorPending','vendorExitRequired']} title="Evolución histórica de certificaciones" /> : <BBVAChartCard title="Histórico global" description="Las tendencias históricas no se mezclan con filtros de persona, perfil o tecnología para evitar comparar universos distintos."><BBVAEmptyState compact title="Quita los filtros para ver tendencias" description="El histórico KPI se captura sobre el universo global y sólo se compara cuando el contexto es equivalente." /></BBVAChartCard>}
 
           <div className="grid gap-3 xl:grid-cols-2">
             <BBVAChartCard title="Vencimientos programados · 12 meses" description="Distribución futura de fechas de vencimiento. No representa una tendencia histórica.">

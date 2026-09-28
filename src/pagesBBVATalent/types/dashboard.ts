@@ -7,6 +7,10 @@ export interface DashboardFilters {
   fromDate: string;
   toDate: string;
   search: string;
+  historyDays?: string;
+  comparisonDays?: string;
+  activityDays?: string;
+  activityLimit?: string;
 }
 
 export type DashboardHistoricalMetricKey =
@@ -55,7 +59,7 @@ export interface DashboardRecommendation {
   eyebrow: string;
   title: string;
   description: string;
-  target: 'TRACKING' | 'METRICS' | 'COLLABORATORS' | 'TALENT_BANK';
+  target: 'TRACKING' | 'METRICS' | 'COLLABORATORS' | 'TALENT_BANK' | 'REPORTS';
   certificationStatus: string | null;
   actionLabel: string;
 }
@@ -91,9 +95,25 @@ export interface DashboardResponse {
   history: {
     available: boolean;
     previousSnapshotDate: string | null;
+    comparisonDays: number;
+    comparisonTargetDate: string;
+    historyDays: number;
     points: DashboardMetricSnapshotPoint[];
     comparisons: Partial<Record<DashboardHistoricalMetricKey, DashboardMetricComparison>>;
   };
+  activity: Array<{
+    id: string;
+    category: 'COLLABORATOR' | 'TALENT' | 'CERTIFICATION';
+    eventType: string;
+    title: string;
+    description: string;
+    occurredAt: string;
+    actorEmail: string;
+    collaboratorId: string | null;
+    talentId: string | null;
+    certificationRecordId: string | null;
+    certificationName: string | null;
+  }>;
   recommendations: DashboardRecommendation[];
   collaboratorFocus: Array<{ label: string; value: number }>;
   certificationCoverage: Array<{ label: string; value: number }>;

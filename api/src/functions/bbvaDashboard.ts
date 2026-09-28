@@ -20,7 +20,12 @@ export async function bbvaDashboardHandler(request: HttpRequest, context: Invoca
       fromDate: params.get('fromDate'),
       toDate: params.get('toDate'),
       search: params.get('search'),
-    }, user.email);
+    }, user.email, {
+      historyDays: Number(params.get('historyDays') || 90),
+      comparisonDays: Number(params.get('comparisonDays') || 1),
+      activityDays: Number(params.get('activityDays') || 30),
+      activityLimit: Number(params.get('activityLimit') || 12),
+    });
     return { status: 200, jsonBody: result };
   } catch (error) {
     return bbvaErrorResponse(error, context, 'Dashboard');

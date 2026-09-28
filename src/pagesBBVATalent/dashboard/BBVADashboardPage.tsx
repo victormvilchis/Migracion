@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { AlertCircle, Award, Briefcase, CalendarRange, Layers3, RefreshCw, ShieldCheck, UserRoundCheck, UsersRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { BBVAActivityFeed } from '../../componentsBBVATalent/BBVAActivityFeed';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVAChartCard } from '../../componentsBBVATalent/BBVAChartCard';
 import { BBVADonutChart, type BBVADonutItem } from '../../componentsBBVATalent/BBVADonutChart';
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
 import { BBVAFilterSummary, type BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
+import { BBVAHistoricalMetricPanel } from '../../componentsBBVATalent/BBVAHistoricalMetricPanel';
 import { BBVAHorizontalBars } from '../../componentsBBVATalent/BBVAHorizontalBars';
 import { BBVAInsightCard } from '../../componentsBBVATalent/BBVAInsightCard';
 import { BBVAOperationalPriorities } from '../../componentsBBVATalent/BBVAOperationalPriorities';
@@ -18,9 +20,10 @@ import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useBbvaDashboard } from '../hooks/useDashboard';
 import { dashboardMetricDefinitions } from '../lib/dashboardMetricDefinitions';
 import { buildDashboardOperationalPriorities } from '../lib/dashboardInsights';
-import type { DashboardFilters, DashboardMetricComparison, DashboardRecommendation, DashboardResponse } from '../types/dashboard';
+import { comparisonText } from '../lib/dashboardHistory';
+import type { DashboardFilters, DashboardHistoricalMetricKey, DashboardRecommendation, DashboardResponse } from '../types/dashboard';
 
-const initialFilters: DashboardFilters = { technologyId:'', profileId:'', certificationStatus:'', deliveryManager:'', talentType:'', fromDate:'', toDate:'', search:'' };
+const initialFilters: DashboardFilters = { technologyId:'', profileId:'', certificationStatus:'', deliveryManager:'', talentType:'', fromDate:'', toDate:'', search:'', historyDays:'90', comparisonDays:'7', activityDays:'30', activityLimit:'12' };
 const certificationStatusLabels: Record<string,string> = { VALID:'Vigentes', EXPIRING:'Próximas a vencer', EXPIRED:'Vencidas', RECERTIFICATION_PENDING:'Recertificación pendiente', PENDING:'Pendientes', FAILED:'Reprobadas' };
 const talentTypeLabels: Record<string,string> = { ACADEMY:'Academia', PROSPECT:'Prospectos', FORMER_COLLABORATOR:'Excolaboradores', BBVA_EXIT:'Bajas de BBVA' };
 const certificationSliceStatus: Record<string,string> = { 'Vigentes':'VALID', 'Próximas a vencer':'EXPIRING', 'Vencidas':'EXPIRED', 'Recertificación pendiente':'RECERTIFICATION_PENDING', 'Pendientes':'PENDING' };
@@ -29,7 +32,6 @@ type AttentionSort = 'fullName'|'profile'|'technology'|'deliveryManager'|'alerts
 
 function rowAlerts(row: AttentionRow){return row.critical+row.expiring+row.expired+row.pending+row.recertificationPending;}
 function alertBreakdown(row: AttentionRow){return `Críticos 2/2: ${row.critical} · Vencidas: ${row.expired} · Próximas: ${row.expiring} · Pendientes: ${row.pending} · Recertificación: ${row.recertificationPending}`;}
-function comparisonText(comparison?: DashboardMetricComparison){if(!comparison)return undefined;const delta=comparison.delta;const sign=delta>0?'+':'';const unit=comparison.unit==='PERCENTAGE_POINTS'?' pp':'';return `${sign}${delta.toLocaleString('es-MX',{maximumFractionDigits:2})}${unit} vs ${comparison.previousSnapshotDate}`;}
 const recommendationTone=(priority:DashboardRecommendation['priority'])=>priority==='CRITICAL'?'rose':priority==='ATTENTION'?'orange':priority==='PREVENTIVE'?'amber':'blue';
 
 export const BBVADashboardPage: React.FC = () => {
@@ -37,6 +39,7 @@ export const BBVADashboardPage: React.FC = () => {
   const {state:filters,patch,reset}=useBBVAListMemory<DashboardFilters>('dashboard-filters',initialFilters);
   const [sort,setSort]=useState<AttentionSort>('alerts');
   const [direction,setDirection]=useState<'asc'|'desc'>('desc');
+  const [historyMetric,setHistoryMetric]=useState<DashboardHistoricalMetricKey>('coveragePercent');
   const query=useBbvaDashboard(filters); const data=query.data; const cards=data?.cards;
 
   const profileDistribution=useMemo(()=>{const counts=new Map<string,number>();for(const row of data?.attention??[]){const label=row.profile||'Sin perfil';counts.set(label,(counts.get(label)??0)+1);}return [...counts.entries()].map(([label,value])=>({key:label,label,value})).sort((a,b)=>b.value-a.value||a.label.localeCompare(b.label,'es-MX'));},[data?.attention]);
@@ -68,7 +71,7 @@ export const BBVADashboardPage: React.FC = () => {
     return `/bbva/certifications/metrics${queryString?`?${queryString}`:''}`;
   };
 
-  const recommendationUrl=(item:DashboardRecommendation)=>item.target==='COLLABORATORS'?'/bbva/collaborators':item.target==='TALENT_BANK'?'/bbva/talent-bank':item.target==='METRICS'?metricsUrl(item.certificationStatus??undefined):item.id==='critical-two-attempts'?'/bbva/certifications/tracking?critical=OPEN':item.certificationStatus?`/bbva/certifications/tracking?certificationStatus=${encodeURIComponent(item.certificationStatus)}`:'/bbva/certifications/tracking';
+  const recommendationUrl=(item:DashboardRecommendation)=>item.target==='COLLABORATORS'?'/bbva/collaborators':item.target==='TALENT_BANK'?'/bbva/talent-bank':item.target==='REPORTS'?'/bbva/reports/certifications':item.target==='METRICS'?metricsUrl(item.certificationStatus??undefined):item.id==='critical-two-attempts'?'/bbva/certifications/tracking?critical=OPEN':item.certificationStatus?`/bbva/certifications/tracking?certificationStatus=${encodeURIComponent(item.certificationStatus)}`:'/bbva/certifications/tracking';
   const activeFilters = useMemo<BBVAFilterSummaryItem[]>(() => {
     const items: BBVAFilterSummaryItem[] = [];
     if(filters.profileId){const label=data?.filters.profiles.find((item)=>item.id===filters.profileId)?.name??'Perfil';items.push({key:'profileId',label:`Perfil: ${label}`,onRemove:()=>update('profileId','')});}
@@ -115,6 +118,23 @@ export const BBVADashboardPage: React.FC = () => {
           <div className="grid gap-2 md:grid-cols-2">{recommendations.slice(0,4).map((item)=><BBVAInsightCard key={item.id} eyebrow={item.eyebrow} title={item.title} description={item.description} tone={recommendationTone(item.priority)} actionLabel={item.actionLabel} onAction={()=>navigate(recommendationUrl(item))}/>)}</div>
         </BBVAChartCard>
       </div>
+
+      {!activeFilters.length ? <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div><div className="text-[9px] font-semibold uppercase tracking-[.05em] text-slate-400">Histórico y actividad</div><div className="mt-0.5 text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">Comparaciones exclusivamente contra snapshots reales; la actividad proviene de historiales transaccionales.</div></div>
+          <div className="grid min-w-[520px] max-w-full grid-cols-3 gap-2">
+            <BBVASearchableSelect value={filters.historyDays??'90'} onChange={(v)=>update('historyDays',v)} options={[{value:'30',label:'Histórico · 30 días'},{value:'90',label:'Histórico · 90 días'},{value:'180',label:'Histórico · 180 días'},{value:'365',label:'Histórico · 365 días'}]} ariaLabel="Ventana histórica"/>
+            <BBVASearchableSelect value={filters.comparisonDays??'7'} onChange={(v)=>update('comparisonDays',v)} options={[{value:'1',label:'Comparar · 1 día'},{value:'7',label:'Comparar · 7 días'},{value:'30',label:'Comparar · 30 días'},{value:'90',label:'Comparar · 90 días'}]} ariaLabel="Periodo de comparación"/>
+            <BBVASearchableSelect value={filters.activityDays??'30'} onChange={(v)=>update('activityDays',v)} options={[{value:'7',label:'Actividad · 7 días'},{value:'30',label:'Actividad · 30 días'},{value:'90',label:'Actividad · 90 días'}]} ariaLabel="Periodo de actividad"/>
+          </div>
+        </div>
+        <div className="grid gap-3 xl:grid-cols-[1.2fr_.8fr]">
+          <BBVAHistoricalMetricPanel history={data.history} metric={historyMetric} onMetricChange={setHistoryMetric} />
+          <BBVAChartCard title="Actividad reciente" description={`Movimientos registrados durante los últimos ${filters.activityDays??'30'} días.`} action={<BBVAButton variant="table" size="sm" onClick={()=>navigate('/bbva/reports/talent')}>Ver reportes</BBVAButton>}>
+            <BBVAActivityFeed items={data.activity} onSelect={(item)=>item.collaboratorId?navigate(`/bbva/collaborators/${item.collaboratorId}`):item.talentId?navigate(`/bbva/talent-bank/${item.talentId}`):undefined} />
+          </BBVAChartCard>
+        </div>
+      </section> : null}
 
       <div className="grid gap-3 xl:grid-cols-3">
         <BBVAChartCard title="Distribución por tecnología" description="Colaboradores del universo actual. Selecciona una tecnología para filtrar el panel."><BBVAHorizontalBars items={technologyDistribution} max={maxTech} selectedKey={filters.technologyId??''} onSelect={(id)=>update('technologyId',filters.technologyId===id?'':id)}/></BBVAChartCard>

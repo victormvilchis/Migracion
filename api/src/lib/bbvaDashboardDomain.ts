@@ -56,12 +56,31 @@ export interface DashboardMetricComparison {
 export interface DashboardHistory {
   available: boolean;
   previousSnapshotDate: string | null;
+  comparisonDays: number;
+  comparisonTargetDate: string;
+  historyDays: number;
   points: DashboardMetricSnapshotPoint[];
   comparisons: Partial<Record<DashboardHistoricalMetricKey, DashboardMetricComparison>>;
 }
 
+export type DashboardActivityCategory = 'COLLABORATOR' | 'TALENT' | 'CERTIFICATION';
+
+export interface DashboardActivityItem {
+  id: string;
+  category: DashboardActivityCategory;
+  eventType: string;
+  title: string;
+  description: string;
+  occurredAt: string;
+  actorEmail: string;
+  collaboratorId: string | null;
+  talentId: string | null;
+  certificationRecordId: string | null;
+  certificationName: string | null;
+}
+
 export type DashboardRecommendationPriority = 'CRITICAL' | 'ATTENTION' | 'PREVENTIVE' | 'INFO';
-export type DashboardRecommendationTarget = 'TRACKING' | 'METRICS' | 'COLLABORATORS' | 'TALENT_BANK';
+export type DashboardRecommendationTarget = 'TRACKING' | 'METRICS' | 'COLLABORATORS' | 'TALENT_BANK' | 'REPORTS';
 
 export interface DashboardRecommendation {
   id: string;
@@ -109,6 +128,7 @@ export interface BbvaDashboardResponse {
   cards: DashboardMetricCards;
   vendorQuarter: VendorQuarterSummary;
   history: DashboardHistory;
+  activity: DashboardActivityItem[];
   recommendations: DashboardRecommendation[];
   collaboratorFocus: DashboardSlice[];
   certificationCoverage: DashboardSlice[];

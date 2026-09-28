@@ -34,6 +34,16 @@ const HISTORICAL_METRICS: DashboardHistoricalMetricKey[] = [
 interface DashboardGetOptions {
   includeHistory?: boolean;
   captureSnapshot?: boolean;
+  historyDays?: number;
+  comparisonDays?: number;
+  activityDays?: number;
+  activityLimit?: number;
+}
+
+function boundedInteger(value: number | undefined, fallback: number, min: number, max: number): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(min, Math.min(max, Math.trunc(numeric)));
 }
 
 function normalizeDate(value: string | null | undefined): string | null {
@@ -66,8 +76,15 @@ function isGlobalContext(filters: DashboardFilters): boolean {
   return !Object.values(filters).some((value) => String(value ?? '').trim());
 }
 
-function buildHistory(cards: DashboardMetricCards, points: DashboardMetricSnapshotPoint[], todayIso: string): DashboardHistory {
-  const previous = [...points].reverse().find((point) => point.snapshotDate < todayIso) ?? null;
+function subtractDays(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
+export function buildHistory(cards: DashboardMetricCards, points: DashboardMetricSnapshotPoint[], todayIso: string, comparisonDays: number, historyDays: number): DashboardHistory {
+  const comparisonTargetDate = subtractDays(todayIso, comparisonDays);
+  const previous = [...points].reverse().find((point) => point.snapshotDate <= comparisonTargetDate) ?? null;
   const comparisons: Partial<Record<DashboardHistoricalMetricKey, DashboardMetricComparison>> = {};
   if (previous) {
     for (const metric of HISTORICAL_METRICS) {
@@ -86,6 +103,9 @@ function buildHistory(cards: DashboardMetricCards, points: DashboardMetricSnapsh
   return {
     available: Boolean(previous),
     previousSnapshotDate: previous?.snapshotDate ?? null,
+    comparisonDays,
+    comparisonTargetDate,
+    historyDays,
     points,
     comparisons,
   };
@@ -113,10 +133,11 @@ function concentrationByTechnology(rows: BbvaDashboardResponse['attention'], met
   return `${label} concentra ${value} de ${total} casos (${percentage}%).`;
 }
 
-function buildRecommendations(
+export function buildRecommendations(
   cards: DashboardMetricCards,
   attention: BbvaDashboardResponse['attention'],
   vendorQuarter: BbvaDashboardResponse['vendorQuarter'],
+  history: DashboardHistory,
 ): DashboardRecommendation[] {
   const recommendations: DashboardRecommendation[] = [];
 
@@ -204,6 +225,34 @@ function buildRecommendations(
     });
   }
 
+  const coverageComparison = history.comparisons.coveragePercent;
+  if (coverageComparison && coverageComparison.delta < 0) {
+    recommendations.push({
+      id: 'coverage-decline',
+      priority: 'ATTENTION',
+      eyebrow: 'Tendencia de cobertura',
+      title: `La cobertura bajó ${Math.abs(coverageComparison.delta).toLocaleString('es-MX', { maximumFractionDigits: 2 })} pp.`,
+      description: `La comparación utiliza el snapshot real del ${coverageComparison.previousSnapshotDate}. Revisa vencidas, recertificaciones y pendientes que explican la brecha.`,
+      target: 'REPORTS',
+      certificationStatus: null,
+      actionLabel: 'Ver evolución',
+    });
+  }
+
+  const expiredComparison = history.comparisons.expired;
+  if (expiredComparison && expiredComparison.delta > 0) {
+    recommendations.push({
+      id: 'expired-increase',
+      priority: 'CRITICAL',
+      eyebrow: 'Cambio del periodo',
+      title: `Las certificaciones vencidas aumentaron en ${expiredComparison.delta.toLocaleString('es-MX')}.`,
+      description: `El cambio se compara contra el snapshot real del ${expiredComparison.previousSnapshotDate}.`,
+      target: 'TRACKING',
+      certificationStatus: 'EXPIRED',
+      actionLabel: 'Revisar vencidas',
+    });
+  }
+
   if (cards.dataQualityPending > 0) {
     recommendations.push({
       id: 'data-quality',
@@ -237,6 +286,10 @@ export class BbvaDashboardService {
   async get(filters: DashboardFilters, actorEmail: string, options: DashboardGetOptions = {}): Promise<BbvaDashboardResponse> {
     const includeHistory = options.includeHistory ?? true;
     const captureSnapshot = options.captureSnapshot ?? true;
+    const comparisonDays = boundedInteger(options.comparisonDays, 1, 1, 365);
+    const historyDays = Math.max(comparisonDays + 7, boundedInteger(options.historyDays, 90, 7, 365));
+    const activityDays = boundedInteger(options.activityDays, 30, 1, 365);
+    const activityLimit = boundedInteger(options.activityLimit, 12, 1, 100);
     const [allCollaborators, allTalent, allCertifications, filterOptions] = await Promise.all([
       repository.collaborators(),
       repository.talent(),
@@ -445,18 +498,28 @@ export class BbvaDashboardService {
     };
 
     const globalContext = isGlobalContext(filters);
-    let history: DashboardHistory = { available: false, previousSnapshotDate: null, points: [], comparisons: {} };
+    let history: DashboardHistory = {
+      available: false,
+      previousSnapshotDate: null,
+      comparisonDays,
+      comparisonTargetDate: subtractDays(todayIso, comparisonDays),
+      historyDays,
+      points: [],
+      comparisons: {},
+    };
     if (globalContext && captureSnapshot) await repository.upsertMetricSnapshot(cards, actorEmail, todayIso);
     if (globalContext && includeHistory) {
-      const points = await repository.metricHistory(90, todayIso);
-      history = buildHistory(cards, points, todayIso);
+      const points = await repository.metricHistory(historyDays, todayIso);
+      history = buildHistory(cards, points, todayIso, comparisonDays, historyDays);
     }
+    const activity = globalContext ? await repository.recentActivity(activityDays, activityLimit, todayIso) : [];
 
     return {
       cards,
       vendorQuarter,
       history,
-      recommendations: buildRecommendations(cards, attention, vendorQuarter),
+      activity,
+      recommendations: buildRecommendations(cards, attention, vendorQuarter, history),
       collaboratorFocus: [...collaboratorFocusMap.entries()].map(([label, value]) => ({ label, value })),
       certificationCoverage,
       expirationByMonth,

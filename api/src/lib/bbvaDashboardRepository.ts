@@ -1,6 +1,6 @@
 import sql from 'mssql';
 import { getDbConnection } from './db.js';
-import type { DashboardMetricCards, DashboardMetricSnapshotPoint } from './bbvaDashboardDomain.js';
+import type { DashboardActivityItem, DashboardMetricCards, DashboardMetricSnapshotPoint } from './bbvaDashboardDomain.js';
 
 export interface DashboardCollaboratorRow {
   collaboratorId: string;
@@ -127,6 +127,82 @@ export class BbvaDashboardRepository {
       currentCycle: Number(row.currentCycle ?? 1),
       attemptCount: Number(row.attemptCount ?? 0),
     })) as DashboardCertificationRow[];
+  }
+
+  async recentActivity(days = 30, limit = 12, referenceDate: string): Promise<DashboardActivityItem[]> {
+    const pool = await getDbConnection();
+    const result = await pool.request()
+      .input('days', sql.Int, Math.max(1, Math.min(365, days)))
+      .input('limit', sql.Int, Math.max(1, Math.min(100, limit)))
+      .input('referenceDate', sql.Date, referenceDate)
+      .query(`
+        WITH activity AS (
+          SELECT
+            CONCAT(N'COLLABORATOR:',CAST(h.Id AS NVARCHAR(36))) AS id,
+            N'COLLABORATOR' AS category,
+            h.EventType AS eventType,
+            LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS title,
+            h.Description AS description,
+            h.CreatedAt AS occurredAt,
+            h.CreatedByEmail AS actorEmail,
+            CAST(c.Id AS NVARCHAR(36)) AS collaboratorId,
+            CAST(NULL AS NVARCHAR(36)) AS talentId,
+            CAST(NULL AS NVARCHAR(36)) AS certificationRecordId,
+            CAST(NULL AS NVARCHAR(220)) AS certificationName
+          FROM bbva.CollaboratorHistory h
+          INNER JOIN bbva.Collaborator c ON c.Id=h.CollaboratorId
+          INNER JOIN bbva.Person p ON p.Id=c.PersonId
+          WHERE h.CreatedAt >= DATEADD(day,-@days,CAST(@referenceDate AS DATETIME2))
+
+          UNION ALL
+
+          SELECT
+            CONCAT(N'TALENT:',CAST(h.Id AS NVARCHAR(36))) AS id,
+            N'TALENT' AS category,
+            h.EventType AS eventType,
+            LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS title,
+            h.Description AS description,
+            h.CreatedAt AS occurredAt,
+            h.CreatedByEmail AS actorEmail,
+            CAST(NULL AS NVARCHAR(36)) AS collaboratorId,
+            CAST(t.Id AS NVARCHAR(36)) AS talentId,
+            CAST(NULL AS NVARCHAR(36)) AS certificationRecordId,
+            CAST(NULL AS NVARCHAR(220)) AS certificationName
+          FROM bbva.TalentHistory h
+          INNER JOIN bbva.TalentBankEntry t ON t.Id=h.TalentBankEntryId
+          INNER JOIN bbva.Person p ON p.Id=t.PersonId
+          WHERE h.CreatedAt >= DATEADD(day,-@days,CAST(@referenceDate AS DATETIME2))
+
+          UNION ALL
+
+          SELECT
+            CONCAT(N'CERTIFICATION:',CAST(h.Id AS NVARCHAR(36))) AS id,
+            N'CERTIFICATION' AS category,
+            h.EventType AS eventType,
+            LTRIM(RTRIM(CONCAT(p.FirstName,N' ',ISNULL(p.LastName,N'')))) AS title,
+            h.Description AS description,
+            h.CreatedAt AS occurredAt,
+            h.CreatedByEmail AS actorEmail,
+            CAST(c.Id AS NVARCHAR(36)) AS collaboratorId,
+            CAST(NULL AS NVARCHAR(36)) AS talentId,
+            CAST(pc.Id AS NVARCHAR(36)) AS certificationRecordId,
+            cc.Name AS certificationName
+          FROM bbva.PersonCertificationHistory h
+          INNER JOIN bbva.PersonCertification pc ON pc.Id=h.PersonCertificationId
+          INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+          INNER JOIN bbva.Person p ON p.Id=pc.PersonId
+          LEFT JOIN bbva.Collaborator c ON c.PersonId=p.Id AND c.Status=N'ACTIVE'
+          WHERE h.CreatedAt >= DATEADD(day,-@days,CAST(@referenceDate AS DATETIME2))
+            AND h.EventType<>N'IMPORTED_RECONCILIATION'
+        )
+        SELECT TOP (@limit)
+          id,category,eventType,title,description,
+          CONVERT(VARCHAR(33),occurredAt,127) AS occurredAt,
+          actorEmail,collaboratorId,talentId,certificationRecordId,certificationName
+        FROM activity
+        ORDER BY occurredAt DESC,id DESC;
+      `);
+    return result.recordset as DashboardActivityItem[];
   }
 
   async metricHistory(days = 90, referenceDate: string): Promise<DashboardMetricSnapshotPoint[]> {

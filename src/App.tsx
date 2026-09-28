@@ -30,6 +30,7 @@ const CertificationMetricsPage = React.lazy(() => import('./pagesBBVATalent/cert
 const CertificationCatalogListPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogListPage').then((m) => ({ default: m.CertificationCatalogListPage })));
 const CertificationCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogEditorPage').then((m) => ({ default: m.CertificationCatalogEditorPage })));
 const CertificationCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogDetailPage').then((m) => ({ default: m.CertificationCatalogDetailPage })));
+const BBVAReportsPage = React.lazy(() => import('./pagesBBVATalent/reports/BBVAReportsPage').then((m) => ({ default: m.BBVAReportsPage })));
 const AdminUsersPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
 const AdminUserEditorPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUserEditorPage').then((m) => ({ default: m.AdminUserEditorPage })));
 const AdminRolesPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminRolesPage').then((m) => ({ default: m.AdminRolesPage })));
@@ -100,6 +101,10 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
 
               <Route path="/bbva/certifications/tracking" element={modulePage(<CertificationTrackingPage />)} />
               <Route path="/bbva/certifications/metrics" element={modulePage(<CertificationMetricsPage />)} />
+
+              <Route path="/bbva/reports/talent" element={modulePage(<BBVAReportsPage type="talent" />)} />
+              <Route path="/bbva/reports/collaborators" element={modulePage(<BBVAReportsPage type="collaborators" />)} />
+              <Route path="/bbva/reports/certifications" element={modulePage(<BBVAReportsPage type="certifications" />)} />
 
               <Route path="/bbva/admin/users" element={modulePage(<AdminUsersPage />)} />
               <Route path="/bbva/admin/users/new" element={modulePage(<AdminUserEditorPage />)} />

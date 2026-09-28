@@ -104,7 +104,7 @@ assert.match(lifecycle, /reason\.reasonGroup !== 'BBVA_EXIT'/);
 const dashboardService = read('api/src/lib/bbvaDashboardService.ts');
 assert.match(dashboardService, /buildRecommendations/);
 assert.match(dashboardService, /upsertMetricSnapshot\(cards, actorEmail, todayIso\)/);
-assert.match(dashboardService, /metricHistory\(90, todayIso\)/);
+assert.match(dashboardService, /metricHistory\(historyDays, todayIso\)/);
 assert.match(dashboardService, /isCriticalResolutionOpen/);
 assert.match(dashboardService, /bbvaBusinessDate/);
 

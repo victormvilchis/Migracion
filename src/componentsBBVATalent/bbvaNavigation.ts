@@ -88,10 +88,10 @@ export const bbvaNavigation: BBVANavGroup[] = [
     label: 'Reportes',
     icon: BarChart3,
     modules: [
-      { id: 'reports-talent', label: 'Talento', path: '/bbva/reports/talent', status: 'planned' },
-      { id: 'reports-collaborators', label: 'Colaboradores', path: '/bbva/reports/collaborators', status: 'planned' },
+      { id: 'reports-talent', label: 'Talento', path: '/bbva/reports/talent', status: 'ready' },
+      { id: 'reports-collaborators', label: 'Colaboradores', path: '/bbva/reports/collaborators', status: 'ready' },
       { id: 'reports-evaluations', label: 'Evaluaciones', path: '/bbva/reports/evaluations', status: 'planned' },
-      { id: 'reports-certifications', label: 'Certificaciones', path: '/bbva/reports/certifications', status: 'planned' },
+      { id: 'reports-certifications', label: 'Certificaciones', path: '/bbva/reports/certifications', status: 'ready' },
     ],
   },
   {
