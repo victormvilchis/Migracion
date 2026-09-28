@@ -23,8 +23,8 @@ const migration = read('api/scripts/migrate-bbva-quality-reconciliation-v20.2.sq
 for (const token of ['BbvaStructureLevel2','BbvaStructureLevel3','BbvaAccessEndDate','BbvaAccessAuthorizer','BbvaAccessStatus','SofttekManagement','TracksScore','PersonFieldProvenance','sp_executesql']) assert.ok(migration.includes(token), `Falta ${token}`);
 
 const importService = read('api/src/lib/bbvaCollaboratorImportService.ts');
-assert.ok(importService.includes("startDate: ['FECHA ALTA BBVA', 'FECHA DE ALTA']"));
-assert.ok(importService.includes("hireDate: ['FECHA CONTRATACION SOFTTEK'"));
+assert.ok(importService.includes("startDate: ['FECHA DE ALTA', 'FECHA ALTA BBVA']"));
+assert.ok(importService.includes("hireDate: ['FECHA ALTA -SAP'"));
 assert.ok(importService.includes("decision: field === 'lifecycleState' || !currentValue ? 'APPLY_EXCEL' : 'KEEP_CURRENT'"));
 assert.ok(importService.includes('preservedExistingFields'));
 assert.ok(importService.includes('recordImportProvenance'));

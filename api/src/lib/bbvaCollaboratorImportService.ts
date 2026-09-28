@@ -58,12 +58,12 @@ const HEADER_ALIASES = {
   email: ['CORREO SOFTTEK', 'CORREO', 'CORREO ELECTRONICO', 'CORREO ELECTRÓNICO', 'EMAIL', 'E-MAIL'],
   bbvaEmail: ['CORREO BBVA', 'CORREO CORPORATIVO'],
   deliveryManager: ['DM', 'DELIVERY MANAGER', 'DELIVERY MANAGER SOFTTEK'],
-  profile: ['PERFIL', 'PERFIL CLIENTE'],
+  profile: ['PERFIL'],
   technologyProfile: ['PERFIL TECNOLOGICO', 'PERFIL TECNOLÓGICO'],
-  currentTechnology: ['TECNOLOGIA EN LA QUE SE CERTIFICA', 'TECNOLOGÍA EN LA QUE SE CERTIFICA', 'TECNOLOGIA ACTUAL', 'TECNOLOGÍA ACTUAL'],
+  currentTechnology: ['TECNOLOGIA ACTUAL', 'TECNOLOGÍA ACTUAL'],
   expertise: ['EXPERTISE', 'SENIORITY'],
-  startDate: ['FECHA ALTA BBVA', 'FECHA DE ALTA'],
-  hireDate: ['FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK', 'FECHA INGRESO SOFTTEK', 'FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP', 'FECHA DE CONTRATACION', 'FECHA DE CONTRATACIÓN'],
+  startDate: ['FECHA DE ALTA', 'FECHA ALTA BBVA'],
+  hireDate: ['FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP', 'FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK'],
   resourceStatus: ['ESTATUS DEL RECURSO', 'ESTADO DEL RECURSO', 'STATUS SOFTTEK'],
   originalFullName: ['NOMBRE EXTERNO', 'NOMBRE COMPLETO', 'COLABORADOR', 'NOMBRE', 'NAME'],
   bbvaStructureLevel2: ['ESTRUCTURA NIVEL 2', 'ESTRUCTURA N2'],
@@ -72,6 +72,9 @@ const HEADER_ALIASES = {
   bbvaAccessAuthorizer: ['NOMBRE AUTORIZADOR', 'AUTORIZADOR'],
   bbvaAccessStatus: ['STATUS ACCESOS', 'ESTATUS ACCESOS'],
 } as const;
+
+const CERTIFICATION_TECHNOLOGY_ALIASES = ['TECNOLOGIA EN LA QUE SE CERTIFICA', 'TECNOLOGÍA EN LA QUE SE CERTIFICA'] as const;
+const CURRENT_TECHNOLOGY_EXPERTISE_PREFIXES = ['TECNOLOGIA EN LA QUE DESARROLLA ACTUALMENTE Y EXPERTIS'] as const;
 
 type ImportField = keyof typeof HEADER_ALIASES | 'lifecycleState';
 
@@ -86,6 +89,7 @@ interface NormalizedRow {
   deliveryManager: string | null;
   profile: string | null;
   technologyProfile: string | null;
+  certificationTechnology: string | null;
   currentTechnology: string | null;
   expertise: string | null;
   startDate: string | null;
@@ -159,13 +163,42 @@ function isPlaceholderValue(value: string | null): boolean {
 }
 
 function valueByAliases(values: Record<string, string>, aliases: readonly string[]): string | null {
-  const normalizedAliases = new Set(aliases.map(normalizeHeader));
+  // El orden de aliases representa prioridad funcional y no el orden físico de columnas.
+  for (const alias of aliases) {
+    const wanted = normalizeHeader(alias);
+    for (const [header, value] of Object.entries(values)) {
+      if (normalizeHeader(header) !== wanted) continue;
+      const candidate = clean(value, 1000);
+      if (candidate && !isPlaceholderValue(candidate)) return candidate;
+    }
+  }
+  return null;
+}
+
+function valueByHeaderPrefix(values: Record<string, string>, prefixes: readonly string[]): string | null {
+  const wanted = prefixes.map(normalizeHeader);
   for (const [header, value] of Object.entries(values)) {
-    if (!normalizedAliases.has(normalizeHeader(header))) continue;
+    const normalized = normalizeHeader(header);
+    if (!wanted.some((prefix) => normalized.startsWith(prefix))) continue;
     const candidate = clean(value, 1000);
     if (candidate && !isPlaceholderValue(candidate)) return candidate;
   }
   return null;
+}
+
+function parseCurrentTechnologyAndExpertise(value: string | null): { technology: string | null; expertise: string | null } {
+  const candidate = clean(value, 240);
+  if (!candidate) return { technology: null, expertise: null };
+  const match = candidate.match(/^(.*?)[\s-]+(JR|STD|SR)\s*$/i);
+  if (!match) return { technology: canonicalCatalog(candidate), expertise: null };
+  return { technology: canonicalCatalog(match[1]), expertise: match[2].toUpperCase() };
+}
+
+export function resolveAuthoritativeImportDates(values: Record<string, string>): { startDate: string | null; hireDate: string | null } {
+  return {
+    startDate: normalizeDate(valueByAliases(values, HEADER_ALIASES.startDate)),
+    hireDate: normalizeDate(valueByAliases(values, HEADER_ALIASES.hireDate)),
+  };
 }
 
 function normalizeDate(value: string | null): string | null {
@@ -210,8 +243,7 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
   const rawStartDate = valueByAliases(source.values, HEADER_ALIASES.startDate);
   const rawHireDate = valueByAliases(source.values, HEADER_ALIASES.hireDate);
   const rawAccessEndDate = valueByAliases(source.values, HEADER_ALIASES.bbvaAccessEndDate);
-  const startDate = normalizeDate(rawStartDate);
-  const hireDate = normalizeDate(rawHireDate);
+  const { startDate, hireDate } = resolveAuthoritativeImportDates(source.values);
   const bbvaAccessEndDate = normalizeDate(rawAccessEndDate);
   if (rawStartDate && !startDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA ALTA BBVA no tiene un formato válido: ${rawStartDate}.` };
   if (rawHireDate && !hireDate) return { rowKey, rowNumber: source.rowNumber, fullName, message: `FECHA DE CONTRATACIÓN SOFTTEK no tiene un formato válido: ${rawHireDate}.` };
@@ -225,6 +257,9 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
 
   const softtekCode = upper(valueByAliases(source.values, HEADER_ALIASES.softtekCode), 80);
   const corporateUser = upper(valueByAliases(source.values, HEADER_ALIASES.corporateUser), 100);
+  const actualTechnology = parseCurrentTechnologyAndExpertise(valueByHeaderPrefix(source.values, CURRENT_TECHNOLOGY_EXPERTISE_PREFIXES));
+  const explicitCurrentTechnology = canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.currentTechnology));
+  const explicitExpertise = upper(valueByAliases(source.values, HEADER_ALIASES.expertise), 40);
   const identitySeed = softtekCode
     ? `IS:${normalizeKey(softtekCode)}`
     : corporateUser
@@ -247,8 +282,9 @@ function normalizeRow(source: ImportSourceRow): NormalizedRow | ImportErrorItem 
     deliveryManager,
     profile: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.profile)),
     technologyProfile: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.technologyProfile)),
-    currentTechnology: canonicalCatalog(valueByAliases(source.values, HEADER_ALIASES.currentTechnology)),
-    expertise: upper(valueByAliases(source.values, HEADER_ALIASES.expertise), 40),
+    certificationTechnology: canonicalCatalog(valueByAliases(source.values, CERTIFICATION_TECHNOLOGY_ALIASES)),
+    currentTechnology: explicitCurrentTechnology ?? actualTechnology.technology,
+    expertise: explicitExpertise ?? actualTechnology.expertise,
     startDate,
     hireDate,
     resourceStatus: upper(valueByAliases(source.values, HEADER_ALIASES.resourceStatus), 80),
@@ -478,16 +514,16 @@ function chooseCertificationConfig(
     if (inactive) return { config: inactive, issue: null, inactive: true };
     return { config: null, issue: `No existe una configuración de catálogo para ${certificationBlockLabel(block)}.`, inactive: false };
   }
-  if (!row.currentTechnology) return { config: null, issue: 'La fila no informa TECNOLOGÍA EN LA QUE SE CERTIFICA.', inactive: false };
-  const allCandidates = catalog.filter((item) => item.certificationType === 'TECHNOLOGICAL' && normalizeKey(item.technologyName) === normalizeKey(row.currentTechnology));
+  if (!row.certificationTechnology) return { config: null, issue: 'La fila no informa TECNOLOGÍA EN LA QUE SE CERTIFICA.', inactive: false };
+  const allCandidates = catalog.filter((item) => item.certificationType === 'TECHNOLOGICAL' && normalizeKey(item.technologyName) === normalizeKey(row.certificationTechnology));
   const candidates = allCandidates.filter((item) => item.status === 'ACTIVE');
   if (!candidates.length && allCandidates.some((item) => item.status === 'INACTIVE')) {
     return { config: allCandidates.find((item) => item.status === 'INACTIVE') ?? null, issue: null, inactive: true };
   }
-  if (!candidates.length) return { config: null, issue: `No existe una certificación tecnológica asociada a ${row.currentTechnology}.`, inactive: false };
+  if (!candidates.length) return { config: null, issue: `No existe una certificación tecnológica asociada a ${row.certificationTechnology}.`, inactive: false };
   if (candidates.length === 1) return { config: candidates[0], issue: null, inactive: false };
 
-  const exact = candidates.filter((item) => normalizeKey(item.name) === normalizeKey(row.currentTechnology));
+  const exact = candidates.filter((item) => normalizeKey(item.name) === normalizeKey(row.certificationTechnology));
   if (exact.length === 1) return { config: exact[0], issue: null, inactive: false };
 
   const activeCurrent = candidates.filter((candidate) => currentStates.some((state) => state.certificationId === candidate.id && state.applicable && state.baseStatus !== 'NOT_APPLICABLE'));
@@ -496,13 +532,13 @@ function chooseCertificationConfig(
   const profileText = normalizeKey(`${row.profile ?? ''} ${row.technologyProfile ?? ''} ${person?.profile ?? ''}`);
   const profileMatches = candidates.filter((candidate) => {
     const candidateName = normalizeKey(candidate.name);
-    const technology = normalizeKey(row.currentTechnology);
+    const technology = normalizeKey(row.certificationTechnology);
     const discriminator = candidateName.replace(technology, '').trim();
     return discriminator.length >= 3 && profileText.includes(discriminator);
   });
   if (profileMatches.length === 1) return { config: profileMatches[0], issue: null, inactive: false };
 
-  return { config: null, issue: `La tecnología ${row.currentTechnology} tiene más de una certificación aplicable (${candidates.map((item) => item.name).join(', ')}) y el perfil no permite elegir una de forma inequívoca.`, inactive: false };
+  return { config: null, issue: `La tecnología ${row.certificationTechnology} tiene más de una certificación aplicable (${candidates.map((item) => item.name).join(', ')}) y el perfil no permite elegir una de forma inequívoca.`, inactive: false };
 }
 
 function rawStatusToCalculated(rawStatus: string | null): string | null {

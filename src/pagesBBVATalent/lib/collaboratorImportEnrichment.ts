@@ -8,10 +8,13 @@ const ALIASES = {
   softtekEmail: ['CORREO SOFTTEK', 'CORREO', 'CORREO ELECTRONICO', 'CORREO ELECTRÓNICO', 'EMAIL', 'E-MAIL'],
   bbvaEmail: ['CORREO BBVA', 'CORREO CORPORATIVO'],
   deliveryManager: ['DM', 'DELIVERY MANAGER'],
-  profile: ['PERFIL', 'PERFIL CLIENTE'],
-  startDate: ['FECHA ALTA BBVA', 'FECHA DE ALTA'],
-  hireDate: ['FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK', 'FECHA INGRESO SOFTTEK', 'FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP'],
+  profile: ['PERFIL'],
+  startDate: ['FECHA DE ALTA', 'FECHA ALTA BBVA'],
+  hireDate: ['FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP', 'FECHA CONTRATACION SOFTTEK', 'FECHA CONTRATACIÓN SOFTTEK'],
 } as const;
+
+const TABLERO_START_DATE_ALIASES = ['FECHA DE ALTA'] as const;
+const HEADCOUNT_HIRE_DATE_ALIASES = ['FECHA ALTA -SAP', 'FECHA ALTA - SAP', 'FECHA ALTA –SAP', 'FECHA ALTA – SAP', 'FECHA ALTA SAP'] as const;
 
 type FieldKey = keyof typeof ALIASES;
 
@@ -46,12 +49,16 @@ function normalizeValue(value: string | null | undefined): string {
 }
 
 function aliasValue(values: Record<string, string>, aliases: readonly string[]): string | null {
-  const wanted = new Set(aliases.map(normalizedHeader));
-  for (const [header, raw] of Object.entries(values)) {
-    if (!wanted.has(normalizedHeader(header))) continue;
-    const value = String(raw ?? '').trim();
-    if (!value || ['#N/A', 'N/A', 'NA', 'TBD', 'NULL', 'SIN DATO', 'NO DISPONIBLE', '-'].includes(normalizeValue(value))) continue;
-    return value;
+  // El orden de aliases es prioridad funcional. Una columna canónica derivada
+  // nunca debe ganar sólo porque aparezca antes físicamente en el Excel.
+  for (const alias of aliases) {
+    const wanted = normalizedHeader(alias);
+    for (const [header, raw] of Object.entries(values)) {
+      if (normalizedHeader(header) !== wanted) continue;
+      const value = String(raw ?? '').trim();
+      if (!value || ['#N/A', 'N/A', 'NA', 'TBD', 'NULL', 'SIN DATO', 'NO DISPONIBLE', '-'].includes(normalizeValue(value))) continue;
+      return value;
+    }
   }
   return null;
 }
@@ -164,6 +171,22 @@ export function enrichImportRows(mainRows: ImportSourceRow[], supplementaryRows:
 
     matched += 1;
     const values = { ...main.values };
+
+    // Fechas autoritativas: no confiar en columnas derivadas de cargas previas.
+    const tableroStartDate = aliasValue(main.values, TABLERO_START_DATE_ALIASES);
+    if (tableroStartDate) {
+      values[CANONICAL.startDate] = tableroStartDate;
+      values.__BFS_SOURCE_startDate = 'TABLERO';
+    }
+
+    const headcountHireDate = aliasValue(match.values, HEADCOUNT_HIRE_DATE_ALIASES);
+    if (headcountHireDate) {
+      const alreadyHadCanonical = hasValue(main.values, [CANONICAL.hireDate]);
+      values[CANONICAL.hireDate] = headcountHireDate;
+      values.__BFS_SOURCE_hireDate = 'HEADCOUNT';
+      fieldsAdded += alreadyHadCanonical ? 0 : 1;
+    }
+
     const mergeField = (field: FieldKey) => {
       if (hasValue(values, ALIASES[field])) return;
       const complement = aliasValue(match!.values, ALIASES[field]);
@@ -184,8 +207,8 @@ export function enrichImportRows(mainRows: ImportSourceRow[], supplementaryRows:
     mergeField('softtekEmail');
     mergeField('bbvaEmail');
     mergeField('deliveryManager');
-    mergeField('profile');
-    mergeField('hireDate');
+    // PERFIL CLIENTE de Headcount no reemplaza ni completa PERFIL del Tablero.
+    // Las fechas críticas ya se resolvieron arriba desde sus fuentes autoritativas.
 
     return { ...main, values };
   });
