@@ -496,8 +496,8 @@ export class CollaboratorCertificationRepository {
         await transaction.rollback();
         return null;
       }
-      if (!Boolean(config.Applicable)) throw Object.assign(new Error('La certificación no está marcada como aplicable.'), { statusCode: 409 });
-      if (String(config.BaseStatus).toUpperCase() === 'APPROVED') {
+      if (!Boolean(config.applicable)) throw Object.assign(new Error('La certificación no está marcada como aplicable.'), { statusCode: 409 });
+      if (String(config.baseStatus).toUpperCase() === 'APPROVED') {
         throw Object.assign(new Error('El ciclo actual ya está aprobado. Para registrar una nueva presentación inicia primero la recertificación.'), { statusCode: 409 });
       }
       if (config?.RequiresApplicationDate && !input.applicationDate) {

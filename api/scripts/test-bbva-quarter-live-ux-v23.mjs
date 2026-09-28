@@ -48,17 +48,16 @@ assert.match(metrics, /cards=\{5\}/);
 assert.match(dashboard, /El Q seleccionado define vigencia, vencimientos y métricas/);
 assert.match(metrics, /Vigencia, cobertura y vencimientos responden al Q seleccionado/);
 
-// Estructuras disponibles en tabla y detalle de Seguimiento.
-assert.match(tracking, /Estructura BBVA/);
-assert.match(tracking, /bbvaStructureLevel2/);
-assert.match(tracking, /bbvaStructureLevel3/);
+// V24 simplifica Seguimiento: Q operativo en filtro/columna, sin duplicar Estructura ni Postal.
+assert.match(tracking, /quarterCode/);
+assert.match(tracking, />Q<\/th>/);
+assert.doesNotMatch(tracking, /Estructura BBVA/);
+assert.doesNotMatch(tracking, />Postal<\/BBVAButton>/);
 
-// Banco de talento: permanencia real y urgencia sólo por más de dos entradas históricas.
-assert.match(talentRepo, /talentBankEntryCount/);
-assert.match(talentRepo, /talentBankEntryCount > 2/);
-assert.match(talent, /Días en Banco/);
-assert.match(talent, /Entradas históricas/);
-assert.match(talent, /Urgente de asignar/);
+// Banco de talento: urgencia determinística por más de 60 días sin asignación.
+assert.match(talentRepo, /daysInTalentBank > 60/);
+assert.doesNotMatch(talentRepo, /talentBankEntryCount > 2/);
+assert.match(talent, /Urgente · \+60 días/);
 
 // Catálogos/roles: código técnico no forma parte del contrato de alta/edición ni de la UI.
 assert.doesNotMatch(roleEditor, /Código/);
@@ -75,13 +74,13 @@ assert.match(migration, /SET QuarterCode=N''GLOBAL''/);
 // Movimiento sutil y accesible.
 assert.match(css, /\.bbva-live-card/);
 assert.match(css, /prefers-reduced-motion/);
-assert.match(standards, /tipo oración/);
+assert.match(standards, /MAYÚSCULAS/);
 assert.match(standards, /nunca exponen códigos editables/);
-assert.match(standards, /Urgente de asignar/);
+assert.match(standards, /Más de 60 días/);
 
 console.log('Quarter + Live UX V23: OK');
 console.log('- Q actual/selector anual y vencimientos por Q: OK');
-console.log('- estructuras nivel 2/3 en filtros/tablas/detalle: OK');
-console.log('- Banco de talento con días, recurrencia y urgencia >2 entradas: OK');
+console.log('- Seguimiento simplificado con Q y sin estructura/postal: OK');
+console.log('- Banco de talento con urgencia >60 días: OK');
 console.log('- catálogos sin código editable/expuesto: OK');
-console.log('- tipo oración y microinteracciones accesibles: OK');
+console.log('- casing corporativo y microinteracciones accesibles: OK');

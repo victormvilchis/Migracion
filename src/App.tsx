@@ -30,6 +30,7 @@ const CertificationMetricsPage = React.lazy(() => import('./pagesBBVATalent/cert
 const CertificationCatalogListPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogListPage').then((m) => ({ default: m.CertificationCatalogListPage })));
 const CertificationCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogEditorPage').then((m) => ({ default: m.CertificationCatalogEditorPage })));
 const CertificationCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogDetailPage').then((m) => ({ default: m.CertificationCatalogDetailPage })));
+const StructureCatalogPage = React.lazy(() => import('./pagesBBVATalent/catalogs/StructureCatalogPage').then((m) => ({ default: m.StructureCatalogPage })));
 const BBVAReportsPage = React.lazy(() => import('./pagesBBVATalent/reports/BBVAReportsPage').then((m) => ({ default: m.BBVAReportsPage })));
 const AdminUsersPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
 const AdminUserEditorPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUserEditorPage').then((m) => ({ default: m.AdminUserEditorPage })));
@@ -136,6 +137,8 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/admin/catalogs/technology-profiles/:id/edit" element={modulePage(<CatalogEditorPage type="technology-profiles" />)} />
               <Route path="/bbva/admin/catalogs/technology-profiles/:id/delete" element={modulePage(<CatalogDetailPage type="technology-profiles" mode="delete" />)} />
               <Route path="/bbva/admin/catalogs/technology-profiles/:id" element={modulePage(<CatalogDetailPage type="technology-profiles" mode="view" />)} />
+
+              <Route path="/bbva/admin/catalogs/structures" element={modulePage(<StructureCatalogPage />)} />
 
               <Route path="/bbva/admin/catalogs/certifications" element={modulePage(<CertificationCatalogListPage />)} />
               <Route path="/bbva/admin/catalogs/certifications/new" element={modulePage(<CertificationCatalogEditorPage />)} />

@@ -52,11 +52,11 @@ const COLLABORATOR_SELECT = `
   OUTER APPLY (
     SELECT
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus<>N'NOT_APPLICABLE' THEN 1 END) AS applicable,
-      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND (pc.ExpirationDate IS NULL OR (pc.ExpirationDate >= ${BBVA_SQL_BUSINESS_DATE} AND (cc.ExpiringSoonDays IS NULL OR pc.ExpirationDate > DATEADD(day,cc.ExpiringSoonDays,${BBVA_SQL_BUSINESS_DATE})))) THEN 1 END) AS validCount,
-      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND cc.ExpiringSoonDays IS NOT NULL AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate >= ${BBVA_SQL_BUSINESS_DATE} AND pc.ExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,${BBVA_SQL_BUSINESS_DATE}) THEN 1 END) AS expiringCount,
-      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < ${BBVA_SQL_BUSINESS_DATE} AND cc.RecertificationEnabled=0 THEN 1 END) AS expiredCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND (effectiveDates.EffectiveExpirationDate IS NULL OR (effectiveDates.EffectiveExpirationDate >= ${BBVA_SQL_BUSINESS_DATE} AND (cc.ExpiringSoonDays IS NULL OR effectiveDates.EffectiveExpirationDate > DATEADD(day,cc.ExpiringSoonDays,${BBVA_SQL_BUSINESS_DATE})))) THEN 1 END) AS validCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND cc.ExpiringSoonDays IS NOT NULL AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate >= ${BBVA_SQL_BUSINESS_DATE} AND effectiveDates.EffectiveExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,${BBVA_SQL_BUSINESS_DATE}) THEN 1 END) AS expiringCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < ${BBVA_SQL_BUSINESS_DATE} AND cc.RecertificationEnabled=0 THEN 1 END) AS expiredCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus IN (N'PENDING',N'SCHEDULED',N'APPLIED',N'FAILED') THEN 1 END) AS pendingCount,
-      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND pc.ExpirationDate IS NOT NULL AND pc.ExpirationDate < ${BBVA_SQL_BUSINESS_DATE} AND cc.RecertificationEnabled=1 THEN 1 END) AS recertificationPendingCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < ${BBVA_SQL_BUSINESS_DATE} AND cc.RecertificationEnabled=1 THEN 1 END) AS recertificationPendingCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND ISNULL(attemptStats.failedAttemptCount,0) >= 2 AND ISNULL(criticalResolution.ResolutionStatus,N'PENDING_REVIEW') IN (N'PENDING_REVIEW',N'LOW_REQUESTED') THEN 1 END) AS criticalCount
     FROM bbva.PersonCertification pc
     INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
@@ -67,6 +67,21 @@ const COLLABORATOR_SELECT = `
         AND ca.CycleNumber=pc.CurrentCycle
         AND ca.Result=N'FAILED'
     ) attemptStats
+    OUTER APPLY (
+      SELECT MAX(a.ApplicationDate) AS LatestApprovedAttemptDate
+      FROM bbva.PersonCertificationAttempt a
+      WHERE a.PersonCertificationId=pc.Id
+        AND a.CycleNumber=pc.CurrentCycle
+        AND a.Result=N'APPROVED'
+    ) latestApproval
+    CROSS APPLY (
+      SELECT CASE
+        WHEN pc.BaseStatus=N'APPROVED' AND cc.ValidityMonths IS NOT NULL
+          AND (CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END) IS NOT NULL
+          THEN DATEADD(month,cc.ValidityMonths,(CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END))
+        ELSE pc.ExpirationDate
+      END AS EffectiveExpirationDate
+    ) effectiveDates
     OUTER APPLY (
       SELECT TOP 1 r.ResolutionStatus
       FROM bbva.CertificationCriticalResolution r

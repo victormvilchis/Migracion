@@ -24,7 +24,7 @@ const [pagination, alert, tracking, collaboratorForm, dashboard, importPage, imp
 assert(!pagination.includes("'…'") && !pagination.includes('>…<') && !pagination.includes('...pages'), 'La paginación no debe usar páginas ocultas con puntos suspensivos.');
 assert(pagination.includes('pagesToRender') && pagination.includes('visibleCount'), 'La paginación debe renderizar una ventana continua de páginas concretas.');
 assert(alert.includes('createPortal') && alert.includes('z-[4000]'), 'Las alertas deben renderizarse por portal por encima de modales.');
-assert(tracking.includes('variant="table"') && tracking.includes('Postal') && tracking.includes('Aprobar') && tracking.includes('Recertificar'), 'Seguimiento debe usar acciones de tabla estandarizadas e incluir Postal.');
+assert(tracking.includes('variant="table"') && !tracking.includes('>Postal</BBVAButton>') && tracking.includes('Aprobar') && tracking.includes('Recertificar') && tracking.includes('quarterCode'), 'Seguimiento debe usar acciones de tabla estandarizadas, Q operativo y no exponer Postal como acción rápida.');
 assert(collaboratorForm.includes('Gestión') && collaboratorForm.includes('ISLookupField') && collaboratorForm.indexOf('ISLookupField') < collaboratorForm.lastIndexOf('Delivery Manager'), 'El formulario de colaborador debe priorizar IS y agrupar fechas/DM en Gestión.');
 assert(!dashboard.includes('Buscar por nombre') && !dashboard.includes('Todos los DM'), 'El panel operativo no debe usar búsqueda libre ni filtro por DM.');
 assert(importPage.includes('Quitar archivo') && importPage.includes('Cambiar archivo') && importPage.includes('Solución:'), 'Importación debe permitir reemplazar/quitar archivo y siempre mostrar solución.');

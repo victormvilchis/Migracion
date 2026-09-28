@@ -393,8 +393,14 @@ export class BbvaDashboardService {
     if (!filters.talentType) talent = talent.filter(Boolean);
 
     const totalApplicable = certifications.length;
-    const covered = counts.valid + counts.expiring;
-    const coveragePercent = totalApplicable ? Math.round((covered / totalApplicable) * 10000) / 100 : 100;
+    // La cobertura operativa del Panel/Métricas es por Q: mide qué parte del universo
+    // aplicable NO vence dentro del Q seleccionado. Si no hay vencimientos en el Q,
+    // la cobertura es 100%, aunque existan pendientes sin fecha fuera de ese corte.
+    const quarterDueCount = selectedQuarter
+      ? certifications.filter((cert) => Boolean(cert.expirationDate && cert.expirationDate >= selectedQuarter.startDate && cert.expirationDate <= selectedQuarter.endDate)).length
+      : 0;
+    const qCovered = Math.max(0, totalApplicable - quarterDueCount);
+    const coveragePercent = totalApplicable ? Math.round((qCovered / totalApplicable) * 10000) / 100 : 100;
 
     const personCerts = new Map<string, DashboardCertificationRow[]>();
     for (const cert of certifications) {
@@ -528,7 +534,7 @@ export class BbvaDashboardService {
       talentBankActive: talent.length,
       certificationsApplicable: totalApplicable,
       coveragePercent,
-      expiring: counts.expiring,
+      expiring: quarterDueCount,
       expired: counts.expired,
       recertificationPending: counts.recertificationPending,
       pending: counts.pending + counts.failed,

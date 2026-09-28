@@ -1,5 +1,5 @@
 import React, { Fragment, useMemo, useState } from 'react';
-import { AlertCircle, ArrowRightLeft, CalendarClock, CalendarRange, CheckCircle2, Clock3, Eye, Mail, RefreshCw, Search, ShieldAlert } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CalendarClock, CalendarRange, CheckCircle2, Clock3, Eye, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
@@ -9,20 +9,17 @@ import { BBVAFilterSummary, type BBVAFilterSummaryItem } from '../../componentsB
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHeader';
-import { CertificationCommunicationDialog } from '../../componentsBBVATalent/CertificationCommunicationDialog';
 import { CertificationCriticalResolutionDialog } from '../../componentsBBVATalent/CertificationCriticalResolutionDialog';
 import { CertificationQuickApprovalDialog } from '../../componentsBBVATalent/CertificationQuickApprovalDialog';
 import {
   useAddCertificationAttempt,
   useCertificationTracking,
-  useGenerateCertificationCommunication,
-  usePrepareCertificationCommunicationEmail,
   useResolveCriticalCertification,
 } from '../hooks/useCollaboratorCertifications';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useBBVAListQueryState } from '../hooks/useBBVAListQueryState';
 import { publishBbvaDataChange } from '../lib/bbvaDataSync';
-import { sentenceCaseData } from '../lib/bbvaDisplayFormat';
+import { displayPersonName, displayRoleName, sentenceCaseData, upperDisplay } from '../lib/bbvaDisplayFormat';
 import {
   attemptContext,
   buildTrackingSummary,
@@ -36,7 +33,6 @@ import {
 } from '../lib/certificationTracking';
 import {
   COLLABORATOR_CERTIFICATION_STATUS_LABELS,
-  type CertificationCommunication,
   type CertificationTrackingItem,
   type CollaboratorCertificationStatus,
 } from '../types/collaboratorCertification';
@@ -48,8 +44,7 @@ const filterDefaults = {
   technology: '',
   certification: '',
   critical: '',
-  bbvaStructureLevel2: '',
-  bbvaStructureLevel3: '',
+  quarterCode: '',
 };
 
 type SortField = 'collaboratorName' | 'certificationName' | 'status' | 'expirationDate' | 'scheduledDate' | 'attempt';
@@ -123,13 +118,9 @@ export const CertificationTrackingPage: React.FC = () => {
   const { sort, direction } = sortState;
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [approval, setApproval] = useState<CertificationTrackingItem | null>(null);
-  const [communicationItem, setCommunicationItem] = useState<CertificationTrackingItem | null>(null);
-  const [communication, setCommunication] = useState<CertificationCommunication | null>(null);
   const [criticalItem, setCriticalItem] = useState<CertificationTrackingItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const approveMutation = useAddCertificationAttempt(approval?.collaboratorId ?? '');
-  const generateCommunication = useGenerateCertificationCommunication(communicationItem?.collaboratorId ?? '');
-  const prepareCommunication = usePrepareCertificationCommunicationEmail(communicationItem?.collaboratorId ?? '');
   const resolveCritical = useResolveCriticalCertification(criticalItem?.collaboratorId ?? '');
   const items = query.data?.items ?? [];
 
@@ -137,22 +128,19 @@ export const CertificationTrackingPage: React.FC = () => {
     profiles: uniqueOptions(items, (item) => item.profile),
     technologies: uniqueOptions(items, (item) => item.technology),
     certifications: uniqueOptions(items, (item) => item.certificationName),
-    structuresLevel2: uniqueOptions(items, (item) => item.bbvaStructureLevel2),
-    structuresLevel3: uniqueOptions(items, (item) => item.bbvaStructureLevel3),
   }), [items]);
 
   const contextItems = useMemo(() => {
     const term = filters.search.trim().toLocaleLowerCase('es-MX');
     return items.filter((item) => {
-      const searchable = `${item.collaboratorName} ${item.certificationName} ${item.profile ?? ''} ${item.technology ?? ''} ${item.technologyName ?? ''} ${item.bbvaStructureLevel2 ?? ''} ${item.bbvaStructureLevel3 ?? ''}`.toLocaleLowerCase('es-MX');
+      const searchable = `${item.collaboratorName} ${item.certificationName} ${item.profile ?? ''} ${item.technology ?? ''} ${item.technologyName ?? ''}`.toLocaleLowerCase('es-MX');
       return (!term || searchable.includes(term))
         && (!filters.profile || item.profile === filters.profile)
         && (!filters.technology || item.technology === filters.technology)
         && (!filters.certification || item.certificationName === filters.certification)
-        && (!filters.bbvaStructureLevel2 || item.bbvaStructureLevel2 === filters.bbvaStructureLevel2)
-        && (!filters.bbvaStructureLevel3 || item.bbvaStructureLevel3 === filters.bbvaStructureLevel3);
+        && (!filters.quarterCode || (filters.quarterCode === 'NO_QUARTER' ? !item.quarterCode : item.quarterCode === filters.quarterCode));
     });
-  }, [filters.bbvaStructureLevel2, filters.bbvaStructureLevel3, filters.certification, filters.profile, filters.search, filters.technology, items]);
+  }, [filters.certification, filters.profile, filters.quarterCode, filters.search, filters.technology, items]);
 
   const filtered = useMemo(() => contextItems
     .filter((item) => !filters.certificationStatus || item.status === filters.certificationStatus)
@@ -168,11 +156,10 @@ export const CertificationTrackingPage: React.FC = () => {
     if (filters.profile) active.push({ key: 'profile', label: `Perfil: ${sentenceCaseData(filters.profile)}`, onRemove: () => update({ profile: '' }) });
     if (filters.technology) active.push({ key: 'technology', label: `Tecnología: ${sentenceCaseData(filters.technology)}`, onRemove: () => update({ technology: '' }) });
     if (filters.certification) active.push({ key: 'certification', label: `Certificación: ${sentenceCaseData(filters.certification)}`, onRemove: () => update({ certification: '' }) });
-    if (filters.bbvaStructureLevel2) active.push({ key: 'bbvaStructureLevel2', label: `Estructura nivel 2: ${sentenceCaseData(filters.bbvaStructureLevel2)}`, onRemove: () => update({ bbvaStructureLevel2: '' }) });
-    if (filters.bbvaStructureLevel3) active.push({ key: 'bbvaStructureLevel3', label: `Estructura nivel 3: ${sentenceCaseData(filters.bbvaStructureLevel3)}`, onRemove: () => update({ bbvaStructureLevel3: '' }) });
+    if (filters.quarterCode) active.push({ key: 'quarterCode', label: `Q: ${filters.quarterCode === 'NO_QUARTER' ? 'Sin Q configurado' : filters.quarterCode}`, onRemove: () => update({ quarterCode: '' }) });
     if (filters.critical === 'OPEN') active.push({ key: 'critical', label: 'Críticos 2/2 abiertos', onRemove: () => update({ critical: '' }) });
     return active;
-  }, [filters.bbvaStructureLevel2, filters.bbvaStructureLevel3, filters.certification, filters.certificationStatus, filters.critical, filters.profile, filters.search, filters.technology, update]);
+  }, [filters.certification, filters.certificationStatus, filters.critical, filters.profile, filters.quarterCode, filters.search, filters.technology, update]);
 
   const changeSort = (field: SortField) => {
     if (sort === field) patchSort({ direction: direction === 'asc' ? 'desc' : 'asc' });
@@ -223,21 +210,6 @@ export const CertificationTrackingPage: React.FC = () => {
     }
   };
 
-  const openCommunication = async (item: CertificationTrackingItem) => {
-    if (!item.latestAttemptId) {
-      setError('Registra primero un resultado en el ciclo actual para generar la postal.');
-      return;
-    }
-    try {
-      setError(null);
-      setCommunicationItem(item);
-      const response = await generateCommunication.mutateAsync({ recordId: item.certificationRecordId, attemptId: item.latestAttemptId });
-      setCommunication(response.item);
-    } catch (e) {
-      setCommunicationItem(null);
-      setError((e as Error).message);
-    }
-  };
 
   if (query.error) return <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert>;
 
@@ -268,8 +240,7 @@ export const CertificationTrackingPage: React.FC = () => {
             <BBVASearchableSelect value={filters.technology} onChange={(value) => update({ technology: value })} options={[{ value: '', label: 'Todas las tecnologías' }, ...options.technologies.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Tecnología" />
             <BBVASearchableSelect value={filters.profile} onChange={(value) => update({ profile: value })} options={[{ value: '', label: 'Todos los perfiles' }, ...options.profiles.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Perfil" />
             <BBVASearchableSelect value={filters.certification} onChange={(value) => update({ certification: value })} options={[{ value: '', label: 'Todas las certificaciones' }, ...options.certifications.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Certificación" />
-            <BBVASearchableSelect value={filters.bbvaStructureLevel2} onChange={(value) => update({ bbvaStructureLevel2: value })} options={[{ value: '', label: 'Estructura nivel 2' }, ...options.structuresLevel2.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Estructura nivel 2" />
-            <BBVASearchableSelect value={filters.bbvaStructureLevel3} onChange={(value) => update({ bbvaStructureLevel3: value })} options={[{ value: '', label: 'Estructura nivel 3' }, ...options.structuresLevel3.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Estructura nivel 3" />
+            <BBVASearchableSelect value={filters.quarterCode} onChange={(value) => update({ quarterCode: value })} options={[{ value: '', label: 'Todos los Q' }, ...(query.data?.vendorQuarter.quarters ?? []).map((item) => ({ value: item.code, label: `${item.year} · Q${item.quarter}${item.code === query.data?.vendorQuarter.currentCode ? ' · Actual' : ''}`, description: `${item.startDate} → ${item.endDate}` })), { value: 'NO_QUARTER', label: 'Sin Q configurado' }]} ariaLabel="Q de vencimiento" />
           </div>
           {activeFilters.length ? (
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
@@ -284,7 +255,7 @@ export const CertificationTrackingPage: React.FC = () => {
             <thead className="bg-slate-50 text-[9px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:bg-slate-950/40"><tr>
               <th className="px-3 py-2"><BBVATableSortHeader label="Colaborador" active={sort === 'collaboratorName'} direction={direction} onClick={() => changeSort('collaboratorName')} /></th>
               <th className="px-3 py-2"><BBVATableSortHeader label="Certificación" active={sort === 'certificationName'} direction={direction} onClick={() => changeSort('certificationName')} /></th>
-              <th className="px-3 py-2">Estructura BBVA</th>
+              <th className="px-3 py-2">Q</th>
               <th className="px-3 py-2"><BBVATableSortHeader label="Estado" active={sort === 'status'} direction={direction} onClick={() => changeSort('status')} /></th>
               <th className="px-3 py-2"><BBVATableSortHeader label="Vigencia" active={sort === 'expirationDate'} direction={direction} onClick={() => changeSort('expirationDate')} /></th>
               <th className="px-3 py-2"><BBVATableSortHeader label="Programación" active={sort === 'scheduledDate'} direction={direction} onClick={() => changeSort('scheduledDate')} /></th>
@@ -315,9 +286,9 @@ export const CertificationTrackingPage: React.FC = () => {
                   aria-label={`${item.collaboratorName}, ${item.certificationName}. ${isExpanded ? 'Ocultar' : 'Mostrar'} contexto`}
                   title="Clic para desplegar contexto"
                 >
-                  <td className="px-3 py-2.5"><div className="font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{sentenceCaseData(item.collaboratorName)}</div><div className="mt-0.5 text-[9px] text-slate-400">{sentenceCaseData(item.profile,'Sin perfil')} · {sentenceCaseData(item.technology,'Sin tecnología')}</div></td>
+                  <td className="px-3 py-2.5"><div className="font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{displayPersonName(item.collaboratorName)}</div><div className="mt-0.5 text-[9px] text-slate-400">{displayRoleName(item.profile,'SIN PERFIL')} · {upperDisplay(item.technology,'SIN TECNOLOGÍA')}</div></td>
                   <td className="px-3 py-2.5"><div className="font-semibold text-slate-800 [.bbva-dark_&]:text-slate-200">{sentenceCaseData(item.certificationName)}</div><div className="mt-0.5 text-[9px] text-slate-400">{sentenceCaseData(item.technologyName || item.certificationType)}</div></td>
-                  <td className="px-3 py-2.5"><div className="font-medium text-slate-700 [.bbva-dark_&]:text-slate-200">{sentenceCaseData(item.bbvaStructureLevel2)}</div><div className="mt-0.5 text-[9px] text-slate-400">{sentenceCaseData(item.bbvaStructureLevel3)}</div></td>
+                  <td className="px-3 py-2.5"><span className={`inline-flex rounded-full px-2 py-1 text-[9px] font-semibold ${item.quarterCode === query.data?.vendorQuarter.currentCode ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{item.quarterCode ?? '—'}</span></td>
                   <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-1 text-[8.5px] font-bold uppercase tracking-[.04em] text-white">Crítico</span> : <BBVACertificationStatusBadge status={item.status} />}<div className={`mt-1 text-[9px] leading-3 ${criticalOpen ? 'font-semibold text-rose-700 [.bbva-dark_&]:text-rose-300' : 'text-slate-500 [.bbva-dark_&]:text-slate-400'}`}>{criticalDecision ? '2/2 intentos agotados · decisión pendiente' : item.criticalResolutionStatus === 'LOW_REQUESTED' ? 'Baja solicitada · falta confirmar salida' : item.criticalResolutionStatus === 'INTERN' ? 'Caso resuelto como becario' : item.criticalResolutionStatus === 'LOW_CONFIRMED' ? 'Baja de BBVA confirmada' : item.status === 'EXPIRED' ? 'Revisión de vigencia' : item.status === 'RECERTIFICATION_PENDING' ? 'Nuevo ciclo requerido' : item.status === 'EXPIRING' ? 'Seguimiento preventivo' : item.status === 'FAILED' ? 'Revisar siguiente intento' : item.status === 'SCHEDULED' ? 'Presentación programada' : 'Acción pendiente'}</div></td>
                   <td className="px-3 py-2.5"><div className="font-medium text-slate-700 [.bbva-dark_&]:text-slate-200">{formatDate(item.expirationDate)}</div><div className={`mt-0.5 text-[9px] ${item.status === 'EXPIRED' ? 'font-semibold text-rose-600 [.bbva-dark_&]:text-rose-300' : item.status === 'EXPIRING' ? 'font-semibold text-amber-600 [.bbva-dark_&]:text-amber-300' : 'text-slate-400'}`}>{expirationContext(item)}</div></td>
                   <td className="px-3 py-2.5">{item.scheduledDate ? <><span className="inline-flex items-center gap-1 font-medium text-blue-700 [.bbva-dark_&]:text-cyan-300"><CalendarClock className="h-3 w-3" />{formatDate(item.scheduledDate)}</span>{scheduleText ? <div className="mt-0.5 text-[9px] text-slate-400">{scheduleText}</div> : null}</> : <span className="text-slate-400">Sin fecha programada</span>}</td>
@@ -326,7 +297,6 @@ export const CertificationTrackingPage: React.FC = () => {
                     {criticalDecision ? <BBVAButton variant="table" size="sm" className="border-rose-300 bg-rose-50 font-semibold text-rose-700 hover:bg-rose-100" onClick={() => setCriticalItem(item)}>Resolver</BBVAButton> : item.criticalResolutionStatus === 'LOW_REQUESTED' ? <BBVAButton variant="table" size="sm" className="border-rose-200 text-rose-700 hover:bg-rose-50" onClick={() => navigate(`/bbva/collaborators/${item.collaboratorId}/move-to-talent`, { state: { criticalCertification: item.certificationName, criticalMessage: 'Solicitud de baja registrada por agotamiento 2/2. Completa el movimiento para confirmar la salida de BBVA.', preferredReasonGroup: 'BBVA_EXIT' } })}><ArrowRightLeft className="h-3 w-3" />Continuar baja</BBVAButton> : null}
                     {canApprove ? <BBVAButton variant="table" size="sm" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50" onClick={() => setApproval(item)}><CheckCircle2 className="h-3 w-3" />Aprobar</BBVAButton> : null}
                     {['EXPIRING', 'EXPIRED', 'RECERTIFICATION_PENDING'].includes(item.status) && item.recertificationEnabled ? <BBVAButton variant="table" size="sm" className="border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => void startRecertification(item)}><RefreshCw className="h-3 w-3" />Recertificar</BBVAButton> : null}
-                    {item.latestAttemptId ? <BBVAButton variant="table" size="sm" onClick={() => void openCommunication(item)}><Mail className="h-3 w-3" />Postal</BBVAButton> : null}
                     <BBVAButton variant="table" size="sm" onClick={() => navigate(`/bbva/collaborators/${item.collaboratorId}/certifications/${item.certificationRecordId}`, { state: { returnTo: `/bbva/certifications/tracking${window.location.search}` } })}><Eye className="h-3 w-3" />Ver</BBVAButton>
                   </div></td>
                 </tr>
@@ -337,8 +307,6 @@ export const CertificationTrackingPage: React.FC = () => {
                   <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Vencimiento</div><div className="mt-1 text-[10px] font-semibold text-slate-700 [.bbva-dark_&]:text-slate-200">{formatDate(item.expirationDate)}</div></div>
                   <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Intentos</div><div className="mt-1 text-[10px] font-semibold text-slate-700 [.bbva-dark_&]:text-slate-200">{attemptContext(item)}</div></div>
                   <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Resultado del ciclo</div><div className="mt-1 text-[10px] font-semibold text-slate-700 [.bbva-dark_&]:text-slate-200">{latestAttemptLabel(item)}</div></div>
-                  <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Estructura nivel 2</div><div className="mt-1 text-[10px] font-semibold text-slate-700 [.bbva-dark_&]:text-slate-200">{sentenceCaseData(item.bbvaStructureLevel2)}</div></div>
-                  <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Estructura nivel 3</div><div className="mt-1 text-[10px] font-semibold text-slate-700 [.bbva-dark_&]:text-slate-200">{sentenceCaseData(item.bbvaStructureLevel3)}</div></div>
                   <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Resolución crítica</div><div className="mt-1 text-[10px] font-semibold text-slate-700 [.bbva-dark_&]:text-slate-200">{item.criticalResolutionStatus === 'INTERN' ? 'Becario' : item.criticalResolutionStatus === 'LOW_REQUESTED' ? 'Baja solicitada' : item.criticalResolutionStatus === 'LOW_CONFIRMED' ? 'Baja confirmada' : criticalDecision ? 'Pendiente' : 'No aplica'}</div></div>
                 </div></td></tr> : null}
               </Fragment>;
@@ -393,25 +361,7 @@ export const CertificationTrackingPage: React.FC = () => {
         onCancel={() => setCriticalItem(null)}
         onResolve={(resolution, notes) => void resolveCriticalItem(resolution, notes)}
       />
-      <CertificationCommunicationDialog
-        open={Boolean(communicationItem && communication)}
-        communication={communication}
-        certificationName={communicationItem?.certificationName ?? ''}
-        busy={generateCommunication.isPending || prepareCommunication.isPending}
-        onClose={() => { setCommunicationItem(null); setCommunication(null); }}
-        onRegenerate={async () => {
-          if (!communicationItem?.latestAttemptId) throw new Error('No hay un resultado del ciclo actual disponible para regenerar la postal.');
-          const response = await generateCommunication.mutateAsync({ recordId: communicationItem.certificationRecordId, attemptId: communicationItem.latestAttemptId, regenerate: true });
-          setCommunication(response.item);
-          return response.item;
-        }}
-        onPrepareEmail={async (payload) => {
-          if (!communicationItem || !communication) throw new Error('No hay una comunicación seleccionada.');
-          const response = await prepareCommunication.mutateAsync({ recordId: communicationItem.certificationRecordId, communicationId: communication.id, payload });
-          setCommunication(response.item);
-          return response.item;
-        }}
-      />
+
     </div>
   );
 };

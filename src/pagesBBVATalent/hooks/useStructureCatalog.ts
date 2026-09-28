@@ -1,0 +1,12 @@
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { structureCatalogApi } from '../api/structureCatalogApi';
+import { publishBbvaDataChange } from '../lib/bbvaDataSync';
+import type { StructurePayload,StructureStatus } from '../types/structureCatalog';
+const key=['bbva-structures'] as const;
+export const useStructureCatalog=(search='',status:StructureStatus|'ALL'='ACTIVE')=>useQuery({queryKey:[...key,'list',search,status],queryFn:()=>structureCatalogApi.list(search,status)});
+export const useStructureOptions=()=>useQuery({queryKey:[...key,'options'],queryFn:structureCatalogApi.options,staleTime:60_000});
+const invalidate=(client:ReturnType<typeof useQueryClient>)=>{void client.invalidateQueries({queryKey:key});publishBbvaDataChange(['catalogs','collaborators','dashboard']);};
+export const useCreateStructure=()=>{const c=useQueryClient();return useMutation({mutationFn:(payload:StructurePayload)=>structureCatalogApi.create(payload),onSuccess:()=>invalidate(c)});};
+export const useUpdateStructure=()=>{const c=useQueryClient();return useMutation({mutationFn:({id,payload}:{id:string;payload:StructurePayload})=>structureCatalogApi.update(id,payload),onSuccess:()=>invalidate(c)});};
+export const useStructureStatus=()=>{const c=useQueryClient();return useMutation({mutationFn:({id,status}:{id:string;status:StructureStatus})=>structureCatalogApi.status(id,status),onSuccess:()=>invalidate(c)});};
+export const useDeleteStructure=()=>{const c=useQueryClient();return useMutation({mutationFn:(id:string)=>structureCatalogApi.delete(id),onSuccess:()=>invalidate(c)});};

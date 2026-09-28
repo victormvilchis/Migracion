@@ -1,7 +1,7 @@
 import { CollaboratorCertificationRepository } from './bbvaCollaboratorCertificationRepository.js';
 import type { CertificationAttemptInput, CertificationUpdateInput, CertificationCriticalResolutionInput } from './bbvaCollaboratorCertificationDomain.js';
 import { CRITICAL_TWO_ATTEMPT_TYPES, isCriticalResolutionOpen, isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
-import { vendorQuarterContext } from './bbvaVendorCalendar.js';
+import { vendorQuarterContext, vendorQuarterForDate } from './bbvaVendorCalendar.js';
 import { bbvaBusinessDate } from './bbvaBusinessTime.js';
 
 const repository = new CollaboratorCertificationRepository();
@@ -67,7 +67,8 @@ export class CollaboratorCertificationService {
   }
 
   async tracking() {
-    const items = await repository.tracking();
+    const rawItems = await repository.tracking();
+    const items = rawItems.map((item) => ({ ...item, quarterCode: vendorQuarterForDate(item.expirationDate)?.code ?? null }));
     const quarter = vendorQuarterContext();
     const exhaustedAttempts = items.filter((item) =>
       isCriticalTwoAttemptExhausted({
@@ -88,6 +89,9 @@ export class CollaboratorCertificationService {
         daysToTargetStart: quarter.daysToTargetStart,
         pendingCertifications: items.length,
         exhaustedAttempts,
+        referenceDate: quarter.referenceDate,
+        years: quarter.years,
+        quarters: quarter.quarters,
       },
     };
   }

@@ -49,6 +49,12 @@ export function vendorQuarterByCode(code: string | null | undefined): VendorQuar
   return BBVA_VENDOR_QUARTERS.find((item) => item.code === normalized) ?? null;
 }
 
+export function vendorQuarterForDate(dateIso: string | null | undefined): VendorQuarterDefinition | null {
+  const value = String(dateIso ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  return BBVA_VENDOR_QUARTERS.find((item) => value >= item.startDate && value <= item.endDate) ?? null;
+}
+
 export function vendorQuarterContext(reference = new Date(), requestedCode?: string | null): VendorQuarterContext {
   const today = bbvaBusinessDate(reference);
   const currentQuarter = BBVA_VENDOR_QUARTERS.find((item) => today >= item.startDate && today <= item.endDate) ?? null;

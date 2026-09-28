@@ -91,7 +91,7 @@ function mapTalent(row: TalentRow): TalentRecord {
     ...base,
     daysInTalentBank,
     talentBankEntryCount,
-    urgentAssignment: talentBankEntryCount > 2,
+    urgentAssignment: daysInTalentBank > 60,
     cv: cvFileName
       ? {
           fileName: cvFileName,

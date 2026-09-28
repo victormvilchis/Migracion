@@ -115,6 +115,7 @@ export interface CertificationTrackingItem {
   technology: string | null;
   bbvaStructureLevel2: string | null;
   bbvaStructureLevel3: string | null;
+  quarterCode: string | null;
   certificationRecordId: string;
   certificationId: string;
   certificationName: string;

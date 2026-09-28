@@ -9,7 +9,7 @@ import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHea
 import { useCatalogOptions } from '../hooks/useCatalog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useCollaborators } from '../hooks/useCollaborators';
-import { sentenceCaseData, upperIdentity } from '../lib/bbvaDisplayFormat';
+import { displayPersonName, displayRoleName, displayStructure, sentenceCaseData, upperDisplay, upperIdentity } from '../lib/bbvaDisplayFormat';
 import type { Collaborator } from '../types/collaborator';
 
 function roleDisplay(profile?: string | null, technologyProfile?: string | null) {
@@ -101,10 +101,10 @@ export const CollaboratorsPage: React.FC = () => {
             aria-expanded={isExpanded}
             title="Clic para ver contexto del colaborador"
           >
-            <td className="px-2 py-1.5"><div className="min-w-0"><div className="truncate font-semibold text-slate-900">{sentenceCaseData(item.fullName)}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></td>
-            <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] text-slate-700">{sentenceCaseData(roleDisplay(item.profile,item.technologyProfile))}</div></td>
-            <td className="px-2 py-1.5 text-slate-700">{sentenceCaseData(technologyDisplay(item.currentTechnology,item.expertise))}</td>
-            <td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{sentenceCaseData(item.bbvaStructureLevel2)}</div><div className="truncate text-[9px] text-slate-400">{sentenceCaseData(item.bbvaStructureLevel3)}</div></td><td className="truncate px-2 py-1.5 text-slate-600" title={item.deliveryManager??''}>{sentenceCaseData(item.deliveryManager)}</td>
+            <td className="px-2 py-1.5"><div className="min-w-0"><div className="truncate font-semibold text-slate-900">{displayPersonName(item.fullName)}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></td>
+            <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] text-slate-700">{displayRoleName(roleDisplay(item.profile,item.technologyProfile))}</div></td>
+            <td className="px-2 py-1.5 text-slate-700">{upperDisplay(technologyDisplay(item.currentTechnology,item.expertise))}</td>
+            <td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{displayStructure(item.bbvaStructureLevel2)}</div><div className="truncate text-[9px] text-slate-400">{displayStructure(item.bbvaStructureLevel3)}</div></td><td className="truncate px-2 py-1.5 text-slate-600" title={item.deliveryManager??''}>{displayPersonName(item.deliveryManager)}</td>
             <td className="px-2 py-1.5 text-slate-600">{formatDate(item.bbvaStartDate)}</td>
             <td className="px-2 py-1.5"><div className="font-semibold text-slate-900">{item.certificationValid + item.certificationExpiring}/{item.certificationApplicable}</div><div className="text-[8.5px] text-slate-400">cubiertas / aplicables</div></td>
             <td className="px-2 py-1.5"><span className={`rounded-full px-2 py-1 text-[8.5px] font-semibold ${certificationTone[cert]}`}>{certificationLabels[cert]}</span></td>
@@ -117,8 +117,9 @@ export const CollaboratorsPage: React.FC = () => {
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Contratación Softtek</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{formatDate(item.softtekHireDate)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Perfil tecnológico</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.technologyProfile)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Nivel colaborador</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.expertise)}</div></div>
-            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Estructura nivel 2</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.bbvaStructureLevel2)}</div></div>
-            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Estructura nivel 3</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.bbvaStructureLevel3)}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Status accesos</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{sentenceCaseData(item.bbvaAccessStatus)}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Fin de accesos</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{formatDate(item.bbvaAccessEndDate)}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Autorizador</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{displayPersonName(item.bbvaAccessAuthorizer)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Por atender</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.certificationPending + item.certificationExpired + item.certificationRecertificationPending + item.certificationCritical}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Notas</div><div className="mt-1 line-clamp-2 text-[10px] font-medium text-slate-600" title={item.notes??''}>{sentenceCaseData(item.notes,'Sin notas')}</div></div>
           </div></td></tr> : null}

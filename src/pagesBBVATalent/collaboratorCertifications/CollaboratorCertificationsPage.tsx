@@ -123,7 +123,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const selectedCatalogOption = availableOptions.find((option) => option.id === certificationId) ?? null;
   const needsLevel = selectedCatalogOption?.certificationType === 'TECHNOLOGICAL';
   const criticalItems = visibleItems.filter(isCriticalExitOpen);
-  const attentionCount = (summary?.expiring ?? 0) + (summary?.expired ?? 0) + (summary?.failed ?? 0) + (summary?.pending ?? 0) + (summary?.recertificationPending ?? 0);
+  const attentionCount = (summary?.expired ?? 0) + (summary?.failed ?? 0) + (summary?.pending ?? 0) + (summary?.recertificationPending ?? 0);
 
   const add = async () => {
     if (!certificationId) return;
@@ -159,7 +159,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
 
           <div className="mt-3 grid overflow-hidden rounded-xl border border-slate-200 bg-white sm:grid-cols-3 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/70">
             <div className="border-b border-slate-100 px-3 py-2.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">Cobertura</div><div className="mt-1 text-[17px] font-semibold text-blue-700">{summary?.coveragePercent ?? 100}%</div><div className="text-[9.5px] text-slate-500">{(summary?.valid ?? 0) + (summary?.expiring ?? 0)} cubiertas de {summary?.applicable ?? 0} aplicables</div></div>
-            <div className="border-b border-slate-100 px-3 py-2.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">Atención</div><div className={`mt-1 text-[17px] font-semibold ${attentionCount ? 'text-amber-700' : 'text-emerald-700'}`}>{attentionCount}</div><div className="text-[9.5px] text-slate-500">pendientes, vencidas o por recertificar</div></div>
+            <div className="border-b border-slate-100 px-3 py-2.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">Atención</div><div className={`mt-1 text-[17px] font-semibold ${attentionCount ? 'text-amber-700' : 'text-emerald-700'}`}>{attentionCount}</div><div className="text-[9.5px] text-slate-500">pendientes, vencidas, reprobadas o por recertificar</div></div>
             <div className="px-3 py-2.5"><div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-slate-400">Próximas a vencer</div><div className="mt-1 text-[17px] font-semibold text-amber-700">{summary?.expiring ?? 0}</div><div className="text-[9.5px] text-slate-500">seguimiento preventivo</div></div>
           </div>
         </div>

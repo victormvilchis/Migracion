@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useCatalogOptions } from '../pagesBBVATalent/hooks/useCatalog';
 import { useDeliveryManagers } from '../pagesBBVATalent/hooks/useAdminUsers';
+import { useStructureOptions } from '../pagesBBVATalent/hooks/useStructureCatalog';
 import type { CatalogOption } from '../pagesBBVATalent/types/catalog';
 import type { Collaborator, CollaboratorPayload } from '../pagesBBVATalent/types/collaborator';
 import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
@@ -76,10 +77,13 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
   const technologyProfilesQuery = useCatalogOptions('technology-profiles');
   const technologiesQuery = useCatalogOptions('technologies');
   const deliveryManagersQuery = useDeliveryManagers();
+  const structuresQuery = useStructureOptions();
   const profiles = useMemo(() => profilesQuery.data?.items ?? [], [profilesQuery.data]);
   const technologyProfiles = useMemo(() => technologyProfilesQuery.data?.items ?? [], [technologyProfilesQuery.data]);
   const technologies = useMemo(() => technologiesQuery.data?.items ?? [], [technologiesQuery.data]);
   const deliveryManagers = useMemo(() => deliveryManagersQuery.data?.items ?? [], [deliveryManagersQuery.data]);
+  const structures = useMemo(() => structuresQuery.data?.items ?? [], [structuresQuery.data]);
+  const structureLevel2 = useMemo(() => structures.filter((item) => item.level === 2), [structures]);
   const { register, handleSubmit, reset, setValue, watch } = useForm<CollaboratorPayload>({ defaultValues: values(selected, [], [], []) });
 
   useEffect(() => reset(values(selected, profiles, technologyProfiles, technologies)), [profiles, reset, selected, technologies, technologyProfiles]);
@@ -94,7 +98,7 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
     });
   };
 
-  const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading || deliveryManagersQuery.isLoading;
+  const catalogsLoading = profilesQuery.isLoading || technologyProfilesQuery.isLoading || technologiesQuery.isLoading || deliveryManagersQuery.isLoading || structuresQuery.isLoading;
   const isValue = watch('softtekCode');
   const profileCatalogId = watch('profileCatalogId');
   const technologyProfileCatalogId = watch('technologyProfileCatalogId');
@@ -104,6 +108,11 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
   const bbvaStartDate = watch('bbvaStartDate');
   const softtekHireDate = watch('softtekHireDate');
   const bbvaAccessEndDate = watch('bbvaAccessEndDate');
+  const bbvaStructureLevel2 = watch('bbvaStructureLevel2');
+  const bbvaStructureLevel3 = watch('bbvaStructureLevel3');
+  const structureLevel3 = useMemo(() => structures.filter((item) => item.level === 3 && item.parentName === bbvaStructureLevel2), [bbvaStructureLevel2, structures]);
+  const structure2SelectOptions = useMemo(() => [{ value: '', label: 'Seleccionar nivel 2' }, ...structureLevel2.map((item) => ({ value: item.name, label: item.name })), ...(bbvaStructureLevel2 && !structureLevel2.some((item) => item.name === bbvaStructureLevel2) ? [{ value: bbvaStructureLevel2, label: `${bbvaStructureLevel2} · histórico` }] : [])], [bbvaStructureLevel2, structureLevel2]);
+  const structure3SelectOptions = useMemo(() => [{ value: '', label: 'Seleccionar nivel 3' }, ...structureLevel3.map((item) => ({ value: item.name, label: item.name })), ...(bbvaStructureLevel3 && !structureLevel3.some((item) => item.name === bbvaStructureLevel3) ? [{ value: bbvaStructureLevel3, label: `${bbvaStructureLevel3} · histórico` }] : [])], [bbvaStructureLevel3, structureLevel3]);
 
   const hydrateFromDirectory = (record: IdentityDirectoryRecord) => {
     if (record.bbvaUser || record.corporateUser) setValue('bbvaUser', record.bbvaUser || record.corporateUser || '', { shouldDirty: true, shouldValidate: true });
@@ -189,8 +198,8 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
       <details open={Boolean(selected?.bbvaStructureLevel2 || selected?.bbvaStructureLevel3 || selected?.bbvaAccessStatus || selected?.bbvaAccessEndDate || selected?.bbvaAccessAuthorizer)} className="group rounded-2xl border border-slate-200 bg-white shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[11px] font-semibold text-slate-900 [&::-webkit-details-marker]:hidden [.bbva-dark_&]:text-slate-100"><span>Información BBVA y accesos</span><span className="text-[9px] font-medium text-slate-400 group-open:hidden">Mostrar</span><span className="hidden text-[9px] font-medium text-slate-400 group-open:inline">Ocultar</span></summary>
         <div className="grid gap-3 border-t border-slate-100 px-4 pb-4 pt-3 md:grid-cols-12 [.bbva-dark_&]:border-slate-800">
-          <label className="md:col-span-4"><span className={labelClass}>Estructura nivel 2</span><input {...register('bbvaStructureLevel2')} disabled={readOnly || saving} className={fieldClass} /></label>
-          <label className="md:col-span-4"><span className={labelClass}>Estructura nivel 3</span><input {...register('bbvaStructureLevel3')} disabled={readOnly || saving} className={fieldClass} /></label>
+          <label className="md:col-span-4"><span className={labelClass}>Estructura nivel 2</span><BBVASearchableSelect value={bbvaStructureLevel2 ?? ''} onChange={(value) => { setValue('bbvaStructureLevel2', value, { shouldDirty: true }); if (value !== bbvaStructureLevel2) setValue('bbvaStructureLevel3', '', { shouldDirty: true }); }} options={structure2SelectOptions} disabled={readOnly || saving || structuresQuery.isLoading} ariaLabel="Estructura nivel 2"/><input type="hidden" {...register('bbvaStructureLevel2')} /></label>
+          <label className="md:col-span-4"><span className={labelClass}>Estructura nivel 3</span><BBVASearchableSelect value={bbvaStructureLevel3 ?? ''} onChange={(value) => setValue('bbvaStructureLevel3', value, { shouldDirty: true })} options={structure3SelectOptions} disabled={readOnly || saving || structuresQuery.isLoading || !bbvaStructureLevel2} ariaLabel="Estructura nivel 3"/><input type="hidden" {...register('bbvaStructureLevel3')} /></label>
           <label className="md:col-span-4"><span className={labelClass}>Status accesos</span><input {...register('bbvaAccessStatus')} disabled={readOnly || saving} className={fieldClass} /></label>
           <label className="md:col-span-4"><span className={labelClass}>Fecha fin de accesos</span><BBVADatePicker value={bbvaAccessEndDate} onChange={(value) => setValue('bbvaAccessEndDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha fin de accesos BBVA" /></label>
           <label className="md:col-span-8"><span className={labelClass}>Nombre autorizador</span><input {...register('bbvaAccessAuthorizer')} disabled={readOnly || saving} className={fieldClass} /></label>
