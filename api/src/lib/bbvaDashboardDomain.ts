@@ -25,6 +25,55 @@ export interface DashboardMetricCards {
   vendorExitRequired: number;
 }
 
+export type DashboardHistoricalMetricKey =
+  | 'collaboratorsActive'
+  | 'talentBankActive'
+  | 'certificationsApplicable'
+  | 'coveragePercent'
+  | 'expiring'
+  | 'expired'
+  | 'recertificationPending'
+  | 'pending'
+  | 'dataQualityPending'
+  | 'vendorReadyPercent'
+  | 'vendorPending'
+  | 'vendorExitRequired';
+
+export type DashboardMetricSnapshotPoint = Pick<DashboardMetricCards, DashboardHistoricalMetricKey> & {
+  snapshotDate: string;
+  capturedAt: string;
+};
+
+export interface DashboardMetricComparison {
+  metric: DashboardHistoricalMetricKey;
+  current: number;
+  previous: number;
+  delta: number;
+  unit: 'COUNT' | 'PERCENTAGE_POINTS';
+  previousSnapshotDate: string;
+}
+
+export interface DashboardHistory {
+  available: boolean;
+  previousSnapshotDate: string | null;
+  points: DashboardMetricSnapshotPoint[];
+  comparisons: Partial<Record<DashboardHistoricalMetricKey, DashboardMetricComparison>>;
+}
+
+export type DashboardRecommendationPriority = 'CRITICAL' | 'ATTENTION' | 'PREVENTIVE' | 'INFO';
+export type DashboardRecommendationTarget = 'TRACKING' | 'METRICS' | 'COLLABORATORS' | 'TALENT_BANK';
+
+export interface DashboardRecommendation {
+  id: string;
+  priority: DashboardRecommendationPriority;
+  eyebrow: string;
+  title: string;
+  description: string;
+  target: DashboardRecommendationTarget;
+  certificationStatus: string | null;
+  actionLabel: string;
+}
+
 export interface DashboardSlice { label: string; value: number; }
 export interface DashboardMonthlyPoint { month: string; label: string; value: number; }
 export interface DashboardTechnologyPoint { technologyId: string | null; label: string; value: number; }
@@ -40,6 +89,7 @@ export interface DashboardAttentionRow {
   expired: number;
   pending: number;
   recertificationPending: number;
+  critical: number;
 }
 
 export interface VendorQuarterSummary {
@@ -58,6 +108,8 @@ export interface VendorQuarterSummary {
 export interface BbvaDashboardResponse {
   cards: DashboardMetricCards;
   vendorQuarter: VendorQuarterSummary;
+  history: DashboardHistory;
+  recommendations: DashboardRecommendation[];
   collaboratorFocus: DashboardSlice[];
   certificationCoverage: DashboardSlice[];
   expirationByMonth: DashboardMonthlyPoint[];

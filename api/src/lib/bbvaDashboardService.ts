@@ -1,25 +1,52 @@
-import type { BbvaDashboardResponse, DashboardFilters, DashboardSlice } from './bbvaDashboardDomain.js';
-import { BbvaDashboardRepository, type DashboardCertificationRow, type DashboardCollaboratorRow } from './bbvaDashboardRepository.js';
+import type {
+  BbvaDashboardResponse,
+  DashboardFilters,
+  DashboardHistory,
+  DashboardHistoricalMetricKey,
+  DashboardMetricCards,
+  DashboardMetricComparison,
+  DashboardMetricSnapshotPoint,
+  DashboardRecommendation,
+  DashboardSlice,
+} from './bbvaDashboardDomain.js';
+import { BbvaDashboardRepository, type DashboardCertificationRow } from './bbvaDashboardRepository.js';
+import { isCertificationReadyForTarget, isCriticalResolutionOpen, isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import { vendorQuarterContext } from './bbvaVendorCalendar.js';
+import { addBusinessDays, bbvaBusinessDate } from './bbvaBusinessTime.js';
 
 const repository = new BbvaDashboardRepository();
+
+const HISTORICAL_METRICS: DashboardHistoricalMetricKey[] = [
+  'collaboratorsActive',
+  'talentBankActive',
+  'certificationsApplicable',
+  'coveragePercent',
+  'expiring',
+  'expired',
+  'recertificationPending',
+  'pending',
+  'dataQualityPending',
+  'vendorReadyPercent',
+  'vendorPending',
+  'vendorExitRequired',
+];
+
+interface DashboardGetOptions {
+  includeHistory?: boolean;
+  captureSnapshot?: boolean;
+}
 
 function normalizeDate(value: string | null | undefined): string | null {
   const candidate = String(value ?? '').trim();
   return /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : null;
 }
 
-function certificationStatus(row: DashboardCertificationRow, today: Date): string {
+function certificationStatus(row: DashboardCertificationRow, todayIso: string): string {
   if (!row.applicable || row.baseStatus === 'NOT_APPLICABLE') return 'NOT_APPLICABLE';
   if (row.baseStatus !== 'APPROVED') return row.baseStatus === 'FAILED' ? 'FAILED' : row.baseStatus;
   if (!row.expirationDate) return 'VALID';
-  const expiration = new Date(`${row.expirationDate}T23:59:59Z`);
-  if (expiration.getTime() < today.getTime()) return row.recertificationEnabled ? 'RECERTIFICATION_PENDING' : 'EXPIRED';
-  if (row.expiringSoonDays != null) {
-    const threshold = new Date(today);
-    threshold.setUTCDate(threshold.getUTCDate() + row.expiringSoonDays);
-    if (expiration.getTime() <= threshold.getTime()) return 'EXPIRING';
-  }
+  if (row.expirationDate < todayIso) return row.recertificationEnabled ? 'RECERTIFICATION_PENDING' : 'EXPIRED';
+  if (row.expiringSoonDays != null && row.expirationDate <= addBusinessDays(todayIso, row.expiringSoonDays)) return 'EXPIRING';
   return 'VALID';
 }
 
@@ -35,8 +62,181 @@ function sortSlices(values: Map<string, number>): DashboardSlice[] {
   return [...values.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, 'es-MX'));
 }
 
+function isGlobalContext(filters: DashboardFilters): boolean {
+  return !Object.values(filters).some((value) => String(value ?? '').trim());
+}
+
+function buildHistory(cards: DashboardMetricCards, points: DashboardMetricSnapshotPoint[], todayIso: string): DashboardHistory {
+  const previous = [...points].reverse().find((point) => point.snapshotDate < todayIso) ?? null;
+  const comparisons: Partial<Record<DashboardHistoricalMetricKey, DashboardMetricComparison>> = {};
+  if (previous) {
+    for (const metric of HISTORICAL_METRICS) {
+      const current = Number(cards[metric] ?? 0);
+      const previousValue = Number(previous[metric] ?? 0);
+      comparisons[metric] = {
+        metric,
+        current,
+        previous: previousValue,
+        delta: Math.round((current - previousValue) * 100) / 100,
+        unit: metric === 'coveragePercent' || metric === 'vendorReadyPercent' ? 'PERCENTAGE_POINTS' : 'COUNT',
+        previousSnapshotDate: previous.snapshotDate,
+      };
+    }
+  }
+  return {
+    available: Boolean(previous),
+    previousSnapshotDate: previous?.snapshotDate ?? null,
+    points,
+    comparisons,
+  };
+}
+
+function peopleWith(rows: BbvaDashboardResponse['attention'], metric: 'expired' | 'recertificationPending' | 'expiring' | 'pending' | 'critical'): number {
+  return rows.filter((row) => row[metric] > 0).length;
+}
+
+function concentrationByTechnology(rows: BbvaDashboardResponse['attention'], metric: 'expired' | 'recertificationPending' | 'expiring' | 'pending' | 'critical'): string {
+  const totals = new Map<string, number>();
+  let total = 0;
+  for (const row of rows) {
+    const value = row[metric];
+    if (value <= 0) continue;
+    total += value;
+    const label = row.technology?.trim() || 'Sin tecnología';
+    totals.set(label, (totals.get(label) ?? 0) + value);
+  }
+  if (!total || !totals.size) return '';
+  const [label, value] = [...totals.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es-MX'))[0];
+  if (label === 'Sin tecnología') return '';
+  if (value === total) return `Los ${total} casos se concentran en ${label}.`;
+  const percentage = Math.round((value / total) * 1000) / 10;
+  return `${label} concentra ${value} de ${total} casos (${percentage}%).`;
+}
+
+function buildRecommendations(
+  cards: DashboardMetricCards,
+  attention: BbvaDashboardResponse['attention'],
+  vendorQuarter: BbvaDashboardResponse['vendorQuarter'],
+): DashboardRecommendation[] {
+  const recommendations: DashboardRecommendation[] = [];
+
+  if (cards.vendorExitRequired > 0) {
+    const people = peopleWith(attention, 'critical');
+    recommendations.push({
+      id: 'critical-two-attempts',
+      priority: 'CRITICAL',
+      eyebrow: 'Resolución crítica',
+      title: `${cards.vendorExitRequired} ${cards.vendorExitRequired === 1 ? 'persona tiene' : 'personas tienen'} intentos 2/2 agotados.`,
+      description: `${people || cards.vendorExitRequired} ${people === 1 ? 'caso requiere' : 'casos requieren'} cerrar la resolución de baja o becario antes de continuar. ${concentrationByTechnology(attention, 'critical')}`.trim(),
+      target: 'TRACKING',
+      certificationStatus: 'FAILED',
+      actionLabel: 'Resolver casos',
+    });
+  }
+
+  if (cards.expired > 0) {
+    const people = peopleWith(attention, 'expired');
+    recommendations.push({
+      id: 'expired',
+      priority: 'CRITICAL',
+      eyebrow: 'Vigencia',
+      title: `${cards.expired} certificaciones vencidas afectan a ${people} ${people === 1 ? 'persona' : 'personas'}.`,
+      description: concentrationByTechnology(attention, 'expired') || 'Revisa primero los registros que ya están fuera de vigencia.',
+      target: 'TRACKING',
+      certificationStatus: 'EXPIRED',
+      actionLabel: 'Revisar vencidas',
+    });
+  }
+
+  if (cards.recertificationPending > 0) {
+    const people = peopleWith(attention, 'recertificationPending');
+    recommendations.push({
+      id: 'recertification',
+      priority: 'ATTENTION',
+      eyebrow: 'Recertificación',
+      title: `${cards.recertificationPending} certificaciones requieren un nuevo ciclo.`,
+      description: `${people} ${people === 1 ? 'persona está' : 'personas están'} involucradas. ${concentrationByTechnology(attention, 'recertificationPending')}`.trim(),
+      target: 'TRACKING',
+      certificationStatus: 'RECERTIFICATION_PENDING',
+      actionLabel: 'Ver recertificaciones',
+    });
+  }
+
+  if (cards.expiring > 0) {
+    const people = peopleWith(attention, 'expiring');
+    recommendations.push({
+      id: 'expiring',
+      priority: 'PREVENTIVE',
+      eyebrow: 'Prevención',
+      title: `${cards.expiring} certificaciones están dentro de su periodo de alerta.`,
+      description: `${people} ${people === 1 ? 'persona puede' : 'personas pueden'} revisarse antes del vencimiento. ${concentrationByTechnology(attention, 'expiring')}`.trim(),
+      target: 'TRACKING',
+      certificationStatus: 'EXPIRING',
+      actionLabel: 'Revisar próximas',
+    });
+  }
+
+  if (vendorQuarter.targetCode && cards.vendorPending > 0) {
+    recommendations.push({
+      id: 'vendor-quarter',
+      priority: cards.vendorExitRequired > 0 ? 'CRITICAL' : 'ATTENTION',
+      eyebrow: `Preparación ${vendorQuarter.targetCode}`,
+      title: `${cards.vendorPending} ${cards.vendorPending === 1 ? 'colaborador no está listo' : 'colaboradores no están listos'} para el siguiente corte.`,
+      description: vendorQuarter.daysToTargetStart == null
+        ? 'Revisa las certificaciones pendientes del universo actual.'
+        : `Quedan ${vendorQuarter.daysToTargetStart} días para el inicio del ${vendorQuarter.targetCode}.`,
+      target: 'TRACKING',
+      certificationStatus: null,
+      actionLabel: 'Gestionar preparación',
+    });
+  }
+
+  if (cards.pending > 0) {
+    recommendations.push({
+      id: 'pending',
+      priority: 'INFO',
+      eyebrow: 'Cobertura pendiente',
+      title: `${cards.pending} certificaciones todavía no tienen cobertura vigente.`,
+      description: concentrationByTechnology(attention, 'pending') || 'Consulta el seguimiento para identificar la siguiente acción de cada caso.',
+      target: 'TRACKING',
+      certificationStatus: 'PENDING',
+      actionLabel: 'Ver pendientes',
+    });
+  }
+
+  if (cards.dataQualityPending > 0) {
+    recommendations.push({
+      id: 'data-quality',
+      priority: 'INFO',
+      eyebrow: 'Calidad de datos',
+      title: `${cards.dataQualityPending} ${cards.dataQualityPending === 1 ? 'colaborador requiere' : 'colaboradores requieren'} completar información.`,
+      description: 'Completar los datos mejora la trazabilidad de seguimiento y comunicación.',
+      target: 'COLLABORATORS',
+      certificationStatus: null,
+      actionLabel: 'Ver colaboradores',
+    });
+  }
+
+  if (!recommendations.length) {
+    recommendations.push({
+      id: 'clear',
+      priority: 'INFO',
+      eyebrow: 'Estado actual',
+      title: 'No hay acciones prioritarias para el contexto actual.',
+      description: 'El resultado se deriva de los estados y reglas vigentes, sin umbrales inventados.',
+      target: 'METRICS',
+      certificationStatus: null,
+      actionLabel: 'Ver métricas',
+    });
+  }
+
+  return recommendations.slice(0, 6);
+}
+
 export class BbvaDashboardService {
-  async get(filters: DashboardFilters, _actorEmail: string): Promise<BbvaDashboardResponse> {
+  async get(filters: DashboardFilters, actorEmail: string, options: DashboardGetOptions = {}): Promise<BbvaDashboardResponse> {
+    const includeHistory = options.includeHistory ?? true;
+    const captureSnapshot = options.captureSnapshot ?? true;
     const [allCollaborators, allTalent, allCertifications, filterOptions] = await Promise.all([
       repository.collaborators(),
       repository.talent(),
@@ -44,13 +244,14 @@ export class BbvaDashboardService {
       repository.filterOptions(),
     ]);
 
-    const today = new Date();
+    const now = new Date();
+    const todayIso = bbvaBusinessDate(now);
     const fromDate = normalizeDate(filters.fromDate);
     const toDate = normalizeDate(filters.toDate);
     const search = String(filters.search ?? '').trim().toLocaleLowerCase('es-MX');
 
     const certStatusById = new Map<string, string>();
-    for (const cert of allCertifications) certStatusById.set(cert.id, certificationStatus(cert, today));
+    for (const cert of allCertifications) certStatusById.set(cert.id, certificationStatus(cert, todayIso));
 
     let collaborators = allCollaborators.filter((row) => {
       if (filters.technologyId && row.technologyId !== filters.technologyId) return false;
@@ -73,14 +274,7 @@ export class BbvaDashboardService {
     const collaboratorPersonIds = new Set(collaborators.map((row) => row.personId));
     const certifications = allCertifications.filter((row) => collaboratorPersonIds.has(row.personId) && row.applicable && certStatusById.get(row.id) !== 'NOT_APPLICABLE');
 
-    const counts = {
-      valid: 0,
-      expiring: 0,
-      expired: 0,
-      recertificationPending: 0,
-      pending: 0,
-      failed: 0,
-    };
+    const counts = { valid: 0, expiring: 0, expired: 0, recertificationPending: 0, pending: 0, failed: 0 };
     for (const cert of certifications) {
       const status = certStatusById.get(cert.id);
       if (status === 'VALID') counts.valid += 1;
@@ -121,7 +315,7 @@ export class BbvaDashboardService {
 
     const attention = collaborators.map((collaborator) => {
       const rows = personCerts.get(collaborator.personId) ?? [];
-      const result = { valid: 0, expiring: 0, expired: 0, pending: 0, recertificationPending: 0 };
+      const result = { valid: 0, expiring: 0, expired: 0, pending: 0, recertificationPending: 0, critical: 0 };
       for (const cert of rows) {
         const status = certStatusById.get(cert.id);
         if (status === 'VALID') result.valid += 1;
@@ -129,8 +323,12 @@ export class BbvaDashboardService {
         else if (status === 'EXPIRED') result.expired += 1;
         else if (status === 'RECERTIFICATION_PENDING') result.recertificationPending += 1;
         else result.pending += 1;
+        if (
+          isCriticalTwoAttemptExhausted(cert)
+          && isCriticalResolutionOpen(cert.criticalResolutionStatus)
+        ) result.critical += 1;
       }
-      if (result.expired + result.recertificationPending > 0) collaboratorFocusMap.set('Vencidas', (collaboratorFocusMap.get('Vencidas') ?? 0) + 1);
+      if (result.critical > 0 || result.expired + result.recertificationPending > 0) collaboratorFocusMap.set('Vencidas', (collaboratorFocusMap.get('Vencidas') ?? 0) + 1);
       else if (result.expiring > 0) collaboratorFocusMap.set('Próximas a vencer', (collaboratorFocusMap.get('Próximas a vencer') ?? 0) + 1);
       else if (result.pending > 0) collaboratorFocusMap.set('Pendientes', (collaboratorFocusMap.get('Pendientes') ?? 0) + 1);
       else collaboratorFocusMap.set('En regla', (collaboratorFocusMap.get('En regla') ?? 0) + 1);
@@ -143,8 +341,8 @@ export class BbvaDashboardService {
         ...result,
       };
     }).sort((a, b) => {
-      const scoreA = (a.expired + a.recertificationPending) * 100 + a.expiring * 10 + a.pending;
-      const scoreB = (b.expired + b.recertificationPending) * 100 + b.expiring * 10 + b.pending;
+      const scoreA = a.critical * 1000 + (a.expired + a.recertificationPending) * 100 + a.expiring * 10 + a.pending;
+      const scoreB = b.critical * 1000 + (b.expired + b.recertificationPending) * 100 + b.expiring * 10 + b.pending;
       return scoreB - scoreA || a.fullName.localeCompare(b.fullName, 'es-MX');
     });
 
@@ -157,19 +355,16 @@ export class BbvaDashboardService {
     ];
 
     const monthFormatter = new Intl.DateTimeFormat('es-MX', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+    const [businessYear, businessMonth] = todayIso.split('-').map(Number);
     const expirationByMonth = Array.from({ length: 12 }, (_, index) => {
-      const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + index, 1));
-      const next = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + index + 1, 1));
+      const start = new Date(Date.UTC(businessYear, businessMonth - 1 + index, 1));
+      const next = new Date(Date.UTC(businessYear, businessMonth + index, 1));
       const value = certifications.filter((cert) => {
         if (!cert.expirationDate) return false;
         const expiration = new Date(`${cert.expirationDate}T00:00:00Z`);
         return expiration >= start && expiration < next;
       }).length;
-      return {
-        month: start.toISOString().slice(0, 7),
-        label: monthFormatter.format(start).replace('.', ''),
-        value,
-      };
+      return { month: start.toISOString().slice(0, 7), label: monthFormatter.format(start).replace('.', ''), value };
     });
 
     const techMap = new Map<string, { technologyId: string | null; value: number }>();
@@ -189,17 +384,19 @@ export class BbvaDashboardService {
       deliveryManagerMap.set(label, (deliveryManagerMap.get(label) ?? 0) + 1);
     }
 
-
-    const quarter = vendorQuarterContext(today);
+    const quarter = vendorQuarterContext(now);
     const targetStart = quarter.targetQuarter?.startDate ?? null;
     const unresolvedByPerson = new Map<string, number>();
     const exhaustedByPerson = new Set<string>();
     for (const cert of certifications) {
       const status = certStatusById.get(cert.id);
-      const expiresBeforeTarget = Boolean(targetStart && cert.expirationDate && cert.expirationDate < targetStart);
-      const unresolved = !['VALID'].includes(status ?? '') || expiresBeforeTarget;
-      if (unresolved) unresolvedByPerson.set(cert.personId, (unresolvedByPerson.get(cert.personId) ?? 0) + 1);
-      if (cert.latestAttemptResult === 'FAILED' && cert.maxAttempts != null && cert.attemptCount >= cert.maxAttempts) exhaustedByPerson.add(cert.personId);
+      if (!isCertificationReadyForTarget(status, cert.expirationDate, targetStart)) {
+        unresolvedByPerson.set(cert.personId, (unresolvedByPerson.get(cert.personId) ?? 0) + 1);
+      }
+      if (
+        isCriticalTwoAttemptExhausted(cert)
+        && isCriticalResolutionOpen(cert.criticalResolutionStatus)
+      ) exhaustedByPerson.add(cert.personId);
     }
     const pendingCollaborators = [...collaboratorPersonIds].filter((personId) => (unresolvedByPerson.get(personId) ?? 0) > 0).length;
     const readyCollaborators = Math.max(0, collaborators.length - pendingCollaborators);
@@ -218,34 +415,48 @@ export class BbvaDashboardService {
     const typeLabel: Record<string, string> = { ACADEMY: 'Academia', PROSPECT: 'Prospectos', FORMER_COLLABORATOR: 'Excolaboradores', BBVA_EXIT: 'Bajas de BBVA' };
     for (const item of talent) talentMap.set(typeLabel[item.talentType] ?? item.talentType, (talentMap.get(typeLabel[item.talentType] ?? item.talentType) ?? 0) + 1);
 
+    const cards: DashboardMetricCards = {
+      collaboratorsActive: collaborators.length,
+      talentBankActive: talent.length,
+      certificationsApplicable: totalApplicable,
+      coveragePercent,
+      expiring: counts.expiring,
+      expired: counts.expired,
+      recertificationPending: counts.recertificationPending,
+      pending: counts.pending + counts.failed,
+      deliveryManagersRepresented: [...deliveryManagerMap.keys()].filter((item) => item !== 'Sin DM').length,
+      dataQualityPending,
+      vendorReadyPercent: vendorReadinessPercent,
+      vendorPending: pendingCollaborators,
+      vendorExitRequired: exhaustedByPerson.size,
+    };
+
+    const vendorQuarter = {
+      calendarName: quarter.calendarName,
+      currentCode: quarter.currentQuarter?.code ?? null,
+      targetCode: quarter.targetQuarter?.code ?? null,
+      targetStartDate: quarter.targetQuarter?.startDate ?? null,
+      targetEndDate: quarter.targetQuarter?.endDate ?? null,
+      daysToTargetStart: quarter.daysToTargetStart,
+      readyCollaborators,
+      pendingCollaborators,
+      exhaustedAttemptCollaborators: exhaustedByPerson.size,
+      readinessPercent: vendorReadinessPercent,
+    };
+
+    const globalContext = isGlobalContext(filters);
+    let history: DashboardHistory = { available: false, previousSnapshotDate: null, points: [], comparisons: {} };
+    if (globalContext && captureSnapshot) await repository.upsertMetricSnapshot(cards, actorEmail, todayIso);
+    if (globalContext && includeHistory) {
+      const points = await repository.metricHistory(90, todayIso);
+      history = buildHistory(cards, points, todayIso);
+    }
+
     return {
-      cards: {
-        collaboratorsActive: collaborators.length,
-        talentBankActive: talent.length,
-        certificationsApplicable: totalApplicable,
-        coveragePercent,
-        expiring: counts.expiring,
-        expired: counts.expired,
-        recertificationPending: counts.recertificationPending,
-        pending: counts.pending + counts.failed,
-        deliveryManagersRepresented: [...deliveryManagerMap.keys()].filter((item) => item !== 'Sin DM').length,
-        dataQualityPending,
-        vendorReadyPercent: vendorReadinessPercent,
-        vendorPending: pendingCollaborators,
-        vendorExitRequired: exhaustedByPerson.size,
-      },
-      vendorQuarter: {
-        calendarName: quarter.calendarName,
-        currentCode: quarter.currentQuarter?.code ?? null,
-        targetCode: quarter.targetQuarter?.code ?? null,
-        targetStartDate: quarter.targetQuarter?.startDate ?? null,
-        targetEndDate: quarter.targetQuarter?.endDate ?? null,
-        daysToTargetStart: quarter.daysToTargetStart,
-        readyCollaborators,
-        pendingCollaborators,
-        exhaustedAttemptCollaborators: exhaustedByPerson.size,
-        readinessPercent: vendorReadinessPercent,
-      },
+      cards,
+      vendorQuarter,
+      history,
+      recommendations: buildRecommendations(cards, attention, vendorQuarter),
       collaboratorFocus: [...collaboratorFocusMap.entries()].map(([label, value]) => ({ label, value })),
       certificationCoverage,
       expirationByMonth,

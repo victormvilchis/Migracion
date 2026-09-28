@@ -110,6 +110,27 @@ export class PersonLifecycleRepository {
       const reason = reasonResult.recordset[0] as { code: string; name: string; reasonGroup: string } | undefined;
       if (!reason) conflict('El motivo seleccionado no está disponible. Actualiza la pantalla e inténtalo nuevamente.');
 
+      const criticalResolutionResult = await new sql.Request(transaction)
+        .input('personId', sql.UniqueIdentifier, collaborator.personId)
+        .query(`
+          SELECT
+            SUM(CASE WHEN resolution.ResolutionStatus=N'PENDING_REVIEW' THEN 1 ELSE 0 END) AS pendingReview,
+            SUM(CASE WHEN resolution.ResolutionStatus=N'LOW_REQUESTED' THEN 1 ELSE 0 END) AS lowRequested
+          FROM bbva.CertificationCriticalResolution resolution
+          INNER JOIN bbva.PersonCertification pc ON pc.Id=resolution.PersonCertificationId
+          WHERE pc.PersonId=@personId
+            AND resolution.CycleNumber=pc.CurrentCycle
+            AND resolution.ResolutionStatus IN (N'PENDING_REVIEW',N'LOW_REQUESTED');
+        `);
+      const pendingCriticalReviews = Number(criticalResolutionResult.recordset[0]?.pendingReview ?? 0);
+      const requestedCriticalLows = Number(criticalResolutionResult.recordset[0]?.lowRequested ?? 0);
+      if (pendingCriticalReviews > 0) {
+        conflict('La persona tiene un caso crítico 2/2 sin resolver. Primero decide si corresponde solicitar baja o continuar como becario.');
+      }
+      if (requestedCriticalLows > 0 && reason.reasonGroup !== 'BBVA_EXIT') {
+        conflict('La persona tiene una solicitud de baja pendiente por agotamiento 2/2. Para completar el movimiento utiliza un motivo de salida BBVA.');
+      }
+
       const existingTalent = await new sql.Request(transaction)
         .input('personId', sql.UniqueIdentifier, collaborator.personId)
         .query(`
@@ -206,6 +227,31 @@ export class PersonLifecycleRepository {
             @reasonCode, @effectiveDate, @description, @notes, @actorEmail
           );
         `);
+
+      if (reason.reasonGroup === 'BBVA_EXIT') {
+        await new sql.Request(transaction)
+          .input('personId', sql.UniqueIdentifier, collaborator.personId)
+          .input('actorEmail', sql.NVarChar(255), actorEmail)
+          .query(`
+            UPDATE resolution
+            SET ResolutionStatus=N'LOW_CONFIRMED',ResolvedAt=SYSUTCDATETIME(),UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+            FROM bbva.CertificationCriticalResolution resolution
+            INNER JOIN bbva.PersonCertification pc ON pc.Id=resolution.PersonCertificationId
+            WHERE pc.PersonId=@personId
+              AND resolution.CycleNumber=pc.CurrentCycle
+              AND resolution.ResolutionStatus=N'LOW_REQUESTED';
+
+            INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
+            SELECT pc.Id,N'CRITICAL_LOW_CONFIRMED',N'La baja de BBVA fue confirmada mediante el ciclo de vida de la persona.',@actorEmail
+            FROM bbva.PersonCertification pc
+            INNER JOIN bbva.CertificationCriticalResolution resolution ON resolution.PersonCertificationId=pc.Id AND resolution.CycleNumber=pc.CurrentCycle
+            WHERE pc.PersonId=@personId AND resolution.ResolutionStatus=N'LOW_CONFIRMED'
+              AND NOT EXISTS (
+                SELECT 1 FROM bbva.PersonCertificationHistory h
+                WHERE h.PersonCertificationId=pc.Id AND h.EventType=N'CRITICAL_LOW_CONFIRMED'
+              );
+          `);
+      }
 
       await transaction.commit();
       return {

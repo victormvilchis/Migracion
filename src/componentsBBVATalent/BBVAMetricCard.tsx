@@ -23,6 +23,7 @@ interface BBVAMetricCardProps {
   icon: React.ReactNode;
   tone?: BBVAMetricTone;
   supportingText?: string;
+  trendText?: string;
   help?: BBVADataHelpContent;
   onAction?: () => void;
   actionLabel?: string;
@@ -37,6 +38,7 @@ export const BBVAMetricCard: React.FC<BBVAMetricCardProps> = ({
   icon,
   tone = 'blue',
   supportingText,
+  trendText,
   help,
   onAction,
   actionLabel = 'Ver detalle',
@@ -62,7 +64,7 @@ export const BBVAMetricCard: React.FC<BBVAMetricCardProps> = ({
       <div className={cn('font-semibold uppercase leading-3 tracking-[0.05em] text-slate-400', compact ? 'mt-1.5 text-[8px]' : 'mt-3 text-[9px]')}>{label}</div>
       <div className={cn('font-semibold leading-none tabular-nums text-slate-950 [.bbva-dark_&]:text-slate-100', compact ? 'mt-0.5 text-xl' : 'mt-1 text-2xl')}>{value}</div>
       <div className={cn('mt-auto flex items-end justify-between gap-2', compact ? 'min-h-[22px] pt-1' : 'min-h-[30px] pt-2')}>
-        <div className={cn('text-slate-500 [.bbva-dark_&]:text-slate-400', compact ? 'text-[8.5px] leading-[11px]' : 'text-[9.5px] leading-3')}>{supportingText ?? ''}</div>
+        <div className={cn('min-w-0 text-slate-500 [.bbva-dark_&]:text-slate-400', compact ? 'text-[8.5px] leading-[11px]' : 'text-[9.5px] leading-3')}><div>{supportingText ?? ''}</div>{trendText ? <div className="mt-0.5 font-semibold text-slate-600 [.bbva-dark_&]:text-slate-300">{trendText}</div> : null}</div>
         {onAction ? (
           <button
             type="button"

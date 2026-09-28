@@ -13,7 +13,7 @@ const importService = read('api/src/lib/bbvaCollaboratorImportService.ts');
 const dashboard = read('src/pagesBBVATalent/dashboard/BBVADashboardPage.tsx');
 
 assert.ok(tracking.indexOf('<table') < tracking.indexOf('Preparación Vendors'), 'Seguimiento debe conservar la tabla antes del panel Vendors/Q.');
-assert.match(tracking, /Baja \/ Becario/);
+assert.match(tracking, /CertificationCriticalResolutionDialog/);
 assert.match(tracking, /Críticos 2\/2/);
 assert.match(collaborators, /Mover a Banco de talento/);
 assert.doesNotMatch(collaborators, /\/manage`/);

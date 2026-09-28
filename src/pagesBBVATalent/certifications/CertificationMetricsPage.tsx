@@ -9,6 +9,7 @@ import { BBVADonutChart, type BBVADonutItem } from '../../componentsBBVATalent/B
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
 import { BBVAFilterSummary, type BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
 import { BBVAHorizontalBars } from '../../componentsBBVATalent/BBVAHorizontalBars';
+import { BBVAHistorySparkline } from '../../componentsBBVATalent/BBVAHistorySparkline';
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
 import { BBVAMetricsSkeleton } from '../../componentsBBVATalent/BBVAMetricsSkeleton';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
@@ -16,6 +17,7 @@ import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHea
 import { useBBVAListQueryState } from '../hooks/useBBVAListQueryState';
 import { useBbvaDashboard } from '../hooks/useDashboard';
 import { dashboardMetricDefinitions } from '../lib/dashboardMetricDefinitions';
+import type { DashboardMetricComparison } from '../types/dashboard';
 
 interface MetricsFilterState extends Record<string,string> {
   technologyId: string;
@@ -32,6 +34,8 @@ const initialFilters: MetricsFilterState = { technologyId:'', profileId:'', deli
 const certificationStatusLabels: Record<string,string> = { VALID:'Vigentes', EXPIRING:'Próximas a vencer', EXPIRED:'Vencidas', RECERTIFICATION_PENDING:'Recertificación pendiente', PENDING:'Pendientes', FAILED:'Reprobadas' };
 const talentTypeLabels: Record<string,string> = { ACADEMY:'Academia', PROSPECT:'Prospectos', FORMER_COLLABORATOR:'Excolaboradores', BBVA_EXIT:'Bajas de BBVA' };
 const certificationSliceStatus: Record<string,string> = { 'Vigentes':'VALID', 'Próximas a vencer':'EXPIRING', 'Vencidas':'EXPIRED', 'Recertificación pendiente':'RECERTIFICATION_PENDING', 'Pendientes':'PENDING' };
+
+function comparisonText(comparison?: DashboardMetricComparison){if(!comparison)return undefined;const sign=comparison.delta>0?'+':'';const unit=comparison.unit==='PERCENTAGE_POINTS'?' pp':'';return `${sign}${comparison.delta.toLocaleString('es-MX',{maximumFractionDigits:2})}${unit} vs ${comparison.previousSnapshotDate}`;}
 
 export const CertificationMetricsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -91,10 +95,10 @@ export const CertificationMetricsPage: React.FC = () => {
       {query.isLoading || !cards ? <BBVAMetricsSkeleton cards={8}/> : (
         <>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(165px,1fr))] items-stretch gap-2">
-            <BBVAMetricCard label="Colaboradores activos" value={cards.collaboratorsActive} supportingText="Universo actual" icon={<UsersRound className="h-4 w-4" />} help={dashboardMetricDefinitions.collaboratorsActive} onAction={() => navigate('/bbva/collaborators')} actionLabel="Ver colaboradores" />
-            <BBVAMetricCard label="Banco de talento" value={cards.talentBankActive} supportingText="Entradas activas" icon={<UserRoundCheck className="h-4 w-4" />} tone="violet" help={dashboardMetricDefinitions.talentBankActive} onAction={() => navigate('/bbva/talent-bank')} actionLabel="Ver banco" />
-            <BBVAMetricCard label="Certificaciones aplicables" value={cards.certificationsApplicable} supportingText="Base de cálculo actual" icon={<Award className="h-4 w-4" />} tone="emerald" help={dashboardMetricDefinitions.certificationsApplicable} />
-            <BBVAMetricCard label="Cobertura" value={`${cards.coveragePercent}%`} supportingText="Vigentes + próximas" icon={<ShieldCheck className="h-4 w-4" />} tone="emerald" help={dashboardMetricDefinitions.coveragePercent} />
+            <BBVAMetricCard label="Colaboradores activos" value={cards.collaboratorsActive} supportingText="Universo actual" trendText={comparisonText(data.history.comparisons.collaboratorsActive)} icon={<UsersRound className="h-4 w-4" />} help={dashboardMetricDefinitions.collaboratorsActive} onAction={() => navigate('/bbva/collaborators')} actionLabel="Ver colaboradores" />
+            <BBVAMetricCard label="Banco de talento" value={cards.talentBankActive} supportingText="Entradas activas" trendText={comparisonText(data.history.comparisons.talentBankActive)} icon={<UserRoundCheck className="h-4 w-4" />} tone="violet" help={dashboardMetricDefinitions.talentBankActive} onAction={() => navigate('/bbva/talent-bank')} actionLabel="Ver banco" />
+            <BBVAMetricCard label="Certificaciones aplicables" value={cards.certificationsApplicable} supportingText="Base de cálculo actual" trendText={comparisonText(data.history.comparisons.certificationsApplicable)} icon={<Award className="h-4 w-4" />} tone="emerald" help={dashboardMetricDefinitions.certificationsApplicable} />
+            <BBVAMetricCard label="Cobertura" value={`${cards.coveragePercent}%`} supportingText="Vigentes + próximas" trendText={comparisonText(data.history.comparisons.coveragePercent)} icon={<ShieldCheck className="h-4 w-4" />} tone="emerald" help={dashboardMetricDefinitions.coveragePercent} />
             <BBVAMetricCard label="Próximas a vencer" value={cards.expiring} icon={<AlertTriangle className="h-4 w-4" />} tone="amber" help={dashboardMetricDefinitions.expiring} active={filters.certificationStatus==='EXPIRING'} onAction={() => toggleCertificationStatus('EXPIRING')} actionLabel={filters.certificationStatus==='EXPIRING'?'Quitar filtro':'Filtrar'} />
             <BBVAMetricCard label="Vencidas" value={cards.expired} icon={<AlertTriangle className="h-4 w-4" />} tone="rose" help={dashboardMetricDefinitions.expired} active={filters.certificationStatus==='EXPIRED'} onAction={() => toggleCertificationStatus('EXPIRED')} actionLabel={filters.certificationStatus==='EXPIRED'?'Quitar filtro':'Filtrar'} />
             <BBVAMetricCard label="Recertificaciones" value={cards.recertificationPending} icon={<RefreshCw className="h-4 w-4" />} tone="orange" help={dashboardMetricDefinitions.recertificationPending} active={filters.certificationStatus==='RECERTIFICATION_PENDING'} onAction={() => toggleCertificationStatus('RECERTIFICATION_PENDING')} actionLabel={filters.certificationStatus==='RECERTIFICATION_PENDING'?'Quitar filtro':'Filtrar'} />
@@ -105,6 +109,10 @@ export const CertificationMetricsPage: React.FC = () => {
             <BBVAChartCard title="Foco por colaborador" description="Clasifica a cada colaborador por su estado operativo más relevante dentro del universo actual."><BBVADonutChart items={collaboratorFocusItems} center={cards.collaboratorsActive} caption="colaboradores" emptyTitle="Sin colaboradores en el contexto actual" emptyDescription="No existen colaboradores que cumplan los filtros seleccionados." /></BBVAChartCard>
             <BBVAChartCard title="Estado de certificaciones" description="Distribución de las certificaciones aplicables. Selecciona un estado para filtrar toda la vista."><BBVADonutChart items={certificationDonutItems} center={cards.certificationsApplicable} caption="aplicables" selectedKey={filters.certificationStatus} onSelect={(item)=>item.key&&toggleCertificationStatus(item.key)} emptyTitle="Sin certificaciones aplicables" emptyDescription="No existen certificaciones aplicables para los filtros actuales." /></BBVAChartCard>
           </div>
+
+          {data.history.points.length >= 2 ? <BBVAChartCard title="Evolución histórica de cobertura" description={`Snapshots globales diarios. Comparación disponible contra ${data.history.previousSnapshotDate ?? 'el periodo anterior'}.`}>
+            <BBVAHistorySparkline points={data.history.points.map((point)=>({label:point.snapshotDate,value:point.coveragePercent}))} suffix="%" ariaLabel={`Histórico de cobertura: ${data.history.points.map((point)=>`${point.snapshotDate} ${point.coveragePercent}%`).join(', ')}`} />
+          </BBVAChartCard> : !activeFilters.length ? <BBVAChartCard title="Evolución histórica de cobertura" description="El histórico KPI comenzó a capturarse. La comparación aparecerá cuando exista un snapshot de una fecha anterior."><BBVAEmptyState compact title="Histórico iniciado" description="Se necesita al menos un snapshot de un día anterior para mostrar una tendencia real." /></BBVAChartCard> : null}
 
           <div className="grid gap-3 xl:grid-cols-2">
             <BBVAChartCard title="Vencimientos programados · 12 meses" description="Distribución futura de fechas de vencimiento. No representa una tendencia histórica.">

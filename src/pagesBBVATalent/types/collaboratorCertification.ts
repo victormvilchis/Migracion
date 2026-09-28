@@ -10,6 +10,12 @@ export type CollaboratorCertificationStatus =
   | 'NOT_APPLICABLE';
 
 export type CertificationAttemptResult = 'PENDING' | 'APPROVED' | 'FAILED';
+export type CertificationCriticalResolutionStatus = 'PENDING_REVIEW' | 'LOW_REQUESTED' | 'INTERN' | 'LOW_CONFIRMED';
+
+export interface CertificationCriticalResolutionPayload {
+  resolution: 'LOW_REQUESTED' | 'INTERN';
+  notes?: string;
+}
 
 export const COLLABORATOR_CERTIFICATION_STATUS_LABELS: Record<CollaboratorCertificationStatus, string> = {
   PENDING: 'Pendiente',
@@ -50,6 +56,9 @@ export interface CollaboratorCertification {
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;
+  criticalResolutionStatus: CertificationCriticalResolutionStatus | null;
+  criticalResolutionNotes: string | null;
+  criticalResolutionAt: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -120,6 +129,9 @@ export interface CertificationTrackingItem {
   latestAttemptId: string | null;
   latestAttemptResult: CertificationAttemptResult | null;
   criticalActionRequired: boolean;
+  criticalResolutionStatus: CertificationCriticalResolutionStatus | null;
+  criticalResolutionNotes: string | null;
+  criticalResolutionAt: string | null;
 }
 
 export type CertificationCommunicationContext = 'APPROVED' | 'FIRST_FAILED' | 'INTERMEDIATE_FAILED' | 'LAST_FAILED' | 'LOW' | 'DEFAULT';

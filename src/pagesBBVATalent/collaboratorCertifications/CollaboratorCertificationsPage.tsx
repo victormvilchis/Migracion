@@ -7,6 +7,7 @@ import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHeader';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
+import { CertificationCriticalResolutionDialog } from '../../componentsBBVATalent/CertificationCriticalResolutionDialog';
 import { CertificationScheduleDialog } from '../../componentsBBVATalent/CertificationScheduleDialog';
 import { useCertificationCatalogOptions } from '../hooks/useCertificationCatalog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
@@ -16,6 +17,7 @@ import {
   useCollaboratorCertifications,
   useMarkCertificationNotApplicable,
   useRecertifyCollaboratorCertification,
+  useResolveCriticalCertification,
   useUpdateCollaboratorCertification,
 } from '../hooks/useCollaboratorCertifications';
 import { COLLABORATOR_CERTIFICATION_STATUS_LABELS, type CollaboratorCertification, type CollaboratorCertificationStatus } from '../types/collaboratorCertification';
@@ -33,12 +35,21 @@ function formatDate(value?: string | null) {
 }
 
 const CRITICAL_EXIT_TYPES = new Set(['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING']);
-function isCriticalExit(item: CollaboratorCertification) {
+function isCriticalTwoAttemptFailure(item: CollaboratorCertification) {
   return item.baseStatus === 'FAILED' && item.requiresAttempts && item.maxAttempts === 2 && item.attemptCount >= 2 && CRITICAL_EXIT_TYPES.has(item.certificationType);
+}
+function isCriticalDecisionPending(item: CollaboratorCertification) {
+  return isCriticalTwoAttemptFailure(item) && (!item.criticalResolutionStatus || item.criticalResolutionStatus === 'PENDING_REVIEW');
+}
+function isCriticalExitOpen(item: CollaboratorCertification) {
+  return isCriticalTwoAttemptFailure(item) && (!item.criticalResolutionStatus || item.criticalResolutionStatus === 'PENDING_REVIEW' || item.criticalResolutionStatus === 'LOW_REQUESTED');
 }
 
 function followUp(item: CollaboratorCertification) {
-  if (isCriticalExit(item)) return 'CRÍTICO · Solicitar baja / revisar becario';
+  if (item.criticalResolutionStatus === 'INTERN') return 'Resuelto como becario';
+  if (item.criticalResolutionStatus === 'LOW_CONFIRMED') return 'Baja BBVA confirmada';
+  if (item.criticalResolutionStatus === 'LOW_REQUESTED') return 'Baja solicitada · confirmar salida';
+  if (isCriticalDecisionPending(item)) return 'CRÍTICO · Resolver baja o becario';
   if (item.status === 'NOT_APPLICABLE') return 'Sin seguimiento';
   if (item.status === 'RECERTIFICATION_PENDING') return 'Recertificar';
   if (item.status === 'EXPIRED') return 'Vencida';
@@ -63,6 +74,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const recertifyMutation = useRecertifyCollaboratorCertification(id ?? '');
   const notApplicableMutation = useMarkCertificationNotApplicable(id ?? '');
   const updateMutation = useUpdateCollaboratorCertification(id ?? '');
+  const resolveCriticalMutation = useResolveCriticalCertification(id ?? '');
   const listMemory = useBBVAListMemory('collaborator-certifications', { search:'', status:'ALL' as 'ALL' | CollaboratorCertificationStatus, sort:'certificationName' as 'certificationName'|'status'|'approvedDate'|'followUp', direction:'asc' as 'asc'|'desc' });
   const { search, status, sort, direction } = listMemory.state;
   const [certificationId, setCertificationId] = useState('');
@@ -70,6 +82,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const [pendingRecertify, setPendingRecertify] = useState<CollaboratorCertification | null>(null);
   const [pendingNoApply, setPendingNoApply] = useState<CollaboratorCertification | null>(null);
   const [pendingSchedule, setPendingSchedule] = useState<CollaboratorCertification | null>(null);
+  const [pendingCritical, setPendingCritical] = useState<CollaboratorCertification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const collaborator = collaboratorQuery.data?.item;
   const items = query.data?.items ?? [];
@@ -87,10 +100,31 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   }, [visibleItems, search, status, sort, direction]);
   const changeSort=(field:'certificationName'|'status'|'approvedDate'|'followUp')=>listMemory.patch(sort===field?{direction:direction==='asc'?'desc':'asc'}:{sort:field,direction:'asc'});
 
+  const resolveCritical = async (resolution: 'LOW_REQUESTED' | 'INTERN', notes: string) => {
+    if (!pendingCritical) return;
+    try {
+      setError(null);
+      const item = pendingCritical;
+      await resolveCriticalMutation.mutateAsync({ recordId: item.id, payload: { resolution, notes } });
+      setPendingCritical(null);
+      if (resolution === 'LOW_REQUESTED') {
+        navigate(`/bbva/collaborators/${id}/move-to-talent`, {
+          state: {
+            criticalCertification: item.certificationName,
+            criticalMessage: 'La solicitud de baja quedó registrada por agotamiento 2/2. Completa el movimiento para confirmar la salida de BBVA.',
+            preferredReasonGroup: 'BBVA_EXIT',
+          },
+        });
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   const availableOptions = (optionsQuery.data?.items ?? []).filter((option) => !items.some((item) => item.certificationId === option.id && item.status !== 'NOT_APPLICABLE'));
   const selectedCatalogOption = availableOptions.find((option) => option.id === certificationId) ?? null;
   const needsLevel = selectedCatalogOption?.certificationType === 'TECHNOLOGICAL';
-  const criticalItems = visibleItems.filter(isCriticalExit);
+  const criticalItems = visibleItems.filter(isCriticalExitOpen);
   const attentionCount = (summary?.expiring ?? 0) + (summary?.expired ?? 0) + (summary?.failed ?? 0) + (summary?.pending ?? 0) + (summary?.recertificationPending ?? 0);
 
   const add = async () => {
@@ -145,19 +179,21 @@ export const CollaboratorCertificationsPage: React.FC = () => {
                 <tbody className="divide-y divide-slate-100">{filtered.map((item) => {
                   const approvedCycle = item.baseStatus === 'APPROVED';
                   const attemptLimitReached = Boolean(item.requiresAttempts && item.maxAttempts && item.attemptCount >= item.maxAttempts);
-                  const criticalExit = isCriticalExit(item);
-                  return <tr key={item.id} className={`transition ${criticalExit ? 'bg-rose-50/70 ring-1 ring-inset ring-rose-200 hover:bg-rose-50' : 'hover:bg-slate-50/70'}`}>
+                  const criticalDecision = isCriticalDecisionPending(item);
+                  const criticalOpen = isCriticalExitOpen(item);
+                  return <tr key={item.id} className={`transition ${criticalOpen ? 'bg-rose-50/70 ring-1 ring-inset ring-rose-200 hover:bg-rose-50' : 'hover:bg-slate-50/70'}`}>
                     <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{item.certificationName}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider].filter(Boolean).join(' · ') || 'General'}</div></td>
-                    <td className="px-3 py-2.5">{criticalExit ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[8.5px] font-bold uppercase text-white">Crítico</span> : <span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>}</td>
+                    <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[8.5px] font-bold uppercase text-white">Crítico</span> : <span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>}</td>
                     <td className="px-3 py-2.5"><div>{formatDate(item.approvedDate)}</div>{item.attemptCount > 0 ? <div className="mt-0.5 text-[9px] text-slate-400">{item.attemptCount} intento{item.attemptCount === 1 ? '' : 's'} en ciclo {item.currentCycle}</div> : null}</td>
                     <td className="px-3 py-2.5"><span className="text-[9.5px] font-medium text-slate-600">{followUp(item)}</span></td>
                     <td className="px-3 py-2.5 text-right"><BBVAActionMenu items={[
-                      ...(criticalExit ? [{ id: 'critical-exit', label: 'Solicitar baja / revisar becario', icon: ArrowRightLeft, tone: 'danger' as const, onClick: () => navigate(`/bbva/collaborators/${id}/move-to-talent`, { state: { criticalCertification: item.certificationName, criticalMessage: '2/2 intentos agotados. Revisar si corresponde solicitar baja o gestionar el caso como becario.' } }) }] : []),
+                      ...(criticalDecision ? [{ id: 'critical-resolve', label: 'Resolver baja / becario', icon: ArrowRightLeft, tone: 'danger' as const, onClick: () => setPendingCritical(item) }] : []),
+                      ...(item.criticalResolutionStatus === 'LOW_REQUESTED' ? [{ id: 'critical-low-continue', label: 'Continuar baja BBVA', icon: ArrowRightLeft, tone: 'danger' as const, onClick: () => navigate(`/bbva/collaborators/${id}/move-to-talent`, { state: { criticalCertification: item.certificationName, criticalMessage: 'Solicitud de baja registrada por agotamiento 2/2. Completa el movimiento para confirmar la salida de BBVA.', preferredReasonGroup: 'BBVA_EXIT' } }) }] : []),
                       { id: 'view', label: 'Ver detalle', icon: Eye, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },
                       { id: 'schedule', label: item.scheduledDate ? 'Reprogramar examen' : 'Programar examen', icon: CalendarClock, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle || attemptLimitReached, onClick: () => setPendingSchedule(item) },
                       { id: 'attempt', label: 'Registrar intento', icon: Award, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle || attemptLimitReached, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}/attempt`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },
                       { id: 'recertify', label: 'Iniciar recertificación', icon: RefreshCw, disabled: !item.recertificationEnabled || !approvedCycle, onClick: () => setPendingRecertify(item) },
-                      { id: 'not-applicable', label: 'Quitar certificación', icon: ShieldAlert, tone: 'danger', disabled: item.status === 'NOT_APPLICABLE', onClick: () => setPendingNoApply(item) },
+                      { id: 'not-applicable', label: criticalOpen ? 'Resolver 2/2 antes de quitar' : 'Quitar certificación', icon: ShieldAlert, tone: 'danger', disabled: item.status === 'NOT_APPLICABLE' || criticalOpen, onClick: () => setPendingNoApply(item) },
                     ]} /></td>
                   </tr>;
                 })}</tbody>
@@ -168,6 +204,14 @@ export const CollaboratorCertificationsPage: React.FC = () => {
         </div>
       </section>
 
+      <CertificationCriticalResolutionDialog
+        open={Boolean(pendingCritical)}
+        collaboratorName={collaborator?.fullName ?? ''}
+        certificationName={pendingCritical?.certificationName ?? ''}
+        busy={resolveCriticalMutation.isPending}
+        onCancel={() => setPendingCritical(null)}
+        onResolve={(resolution, notes) => void resolveCritical(resolution, notes)}
+      />
       <CertificationScheduleDialog
         open={Boolean(pendingSchedule)}
         certificationName={pendingSchedule?.certificationName ?? ''}

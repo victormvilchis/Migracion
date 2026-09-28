@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BBVAContextBar } from './BBVAContextBar';
 import { BBVASidebar } from './BBVASidebar';
+import { BBVAOperationFeedback } from './BBVAOperationFeedback';
 
 export type BBVAThemeMode = 'light' | 'dark';
 
@@ -30,6 +31,7 @@ export const BBVALayout: React.FC<BBVALayoutProps> = ({ children, themeMode = 'l
       data-bbva-theme={themeMode}
       data-bbva-theme-source="module-default"
     >
+      <BBVAOperationFeedback />
       <div className="flex min-h-[calc(100vh-4rem)] w-full bg-white text-slate-950 transition-colors duration-300 [.bbva-dark_&]:bg-[#07111f] [.bbva-dark_&]:text-slate-100">
         <div className="sticky top-16 hidden h-[calc(100vh-4rem)] shrink-0 lg:block">
           <BBVASidebar collapsed={collapsed} />

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRightLeft } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
@@ -31,7 +31,7 @@ export const CollaboratorMoveToTalentPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const criticalState = (location.state as { criticalCertification?: string; criticalMessage?: string } | null) ?? {};
+  const criticalState = (location.state as { criticalCertification?: string; criticalMessage?: string; preferredReasonGroup?: ReasonGroup } | null) ?? {};
   const collaboratorQuery = useCollaborator(id);
   const reasonsQuery = useLifecycleReasons();
   const moveMutation = useMoveCollaboratorToTalent();
@@ -43,6 +43,19 @@ export const CollaboratorMoveToTalentPage: React.FC = () => {
   const reasons = useMemo(() => reasonsQuery.data?.items ?? [], [reasonsQuery.data]);
   const groupedReasons = useMemo(() => reasons.filter((reason) => reason.reasonGroup === reasonGroup), [reasonGroup, reasons]);
   const availableGroups = useMemo(() => Array.from(new Set(reasons.map((reason) => reason.reasonGroup))), [reasons]);
+
+  useEffect(() => {
+    const preferred = criticalState.preferredReasonGroup;
+    if (!preferred || reasonGroup || !reasons.length || !reasons.some((reason) => reason.reasonGroup === preferred)) return;
+    const candidates = reasons.filter((reason) => reason.reasonGroup === preferred);
+    const auto = candidates.length === 1 ? candidates[0] : undefined;
+    setReasonGroup(preferred);
+    setValues((current) => ({
+      ...current,
+      reasonCode: auto?.code ?? current.reasonCode,
+      talentStage: auto?.defaultTalentStage ?? (preferred === 'AVAILABLE' ? 'AVAILABLE' : 'UNASSIGNED'),
+    }));
+  }, [criticalState.preferredReasonGroup, reasonGroup, reasons]);
 
   const selectGroup = (groupValue: string) => {
     const group = groupValue as ReasonGroup;

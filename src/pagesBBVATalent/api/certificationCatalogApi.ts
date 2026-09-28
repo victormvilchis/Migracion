@@ -1,3 +1,4 @@
+import { fetchApi } from '../../lib/api';
 import type {
   CertificationCatalogOption,
   CertificationCatalogPageResponse,
@@ -6,12 +7,6 @@ import type {
   CertificationCatalogStatus,
   CertificationType,
 } from '../types/certificationCatalog';
-
-async function parseJson(response: Response) {
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body?.error || 'No fue posible completar la operación del catálogo de certificaciones.');
-  return body;
-}
 
 export interface CertificationCatalogListQuery {
   search?: string;
@@ -32,29 +27,29 @@ export async function listCertificationCatalog(query: CertificationCatalogListQu
   params.set('size', String(query.size ?? 10));
   params.set('sort', query.sort ?? 'name');
   params.set('direction', query.direction ?? 'asc');
-  return parseJson(await fetch(`/api/bbva/certification-catalog?${params.toString()}`));
+  return fetchApi<CertificationCatalogPageResponse>(`/bbva/certification-catalog?${params.toString()}`);
 }
 
 export async function listCertificationCatalogOptions(): Promise<{ items: CertificationCatalogOption[] }> {
-  return parseJson(await fetch('/api/bbva/certification-catalog-options'));
+  return fetchApi<{ items: CertificationCatalogOption[] }>('/bbva/certification-catalog-options');
 }
 
 export async function getCertificationCatalogItem(id: string): Promise<{ item: CertificationCatalogRecord }> {
-  return parseJson(await fetch(`/api/bbva/certification-catalog/${id}`));
+  return fetchApi<{ item: CertificationCatalogRecord }>(`/bbva/certification-catalog/${id}`);
 }
 
 export async function createCertificationCatalogItem(payload: CertificationCatalogPayload): Promise<{ item: CertificationCatalogRecord }> {
-  return parseJson(await fetch('/api/bbva/certification-catalog', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
+  return fetchApi<{ item: CertificationCatalogRecord }>('/bbva/certification-catalog', { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function updateCertificationCatalogItem(id: string, payload: CertificationCatalogPayload): Promise<{ item: CertificationCatalogRecord }> {
-  return parseJson(await fetch(`/api/bbva/certification-catalog/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }));
+  return fetchApi<{ item: CertificationCatalogRecord }>(`/bbva/certification-catalog/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 export async function updateCertificationCatalogStatus(id: string, status: CertificationCatalogStatus): Promise<{ item: CertificationCatalogRecord }> {
-  return parseJson(await fetch(`/api/bbva/certification-catalog/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }));
+  return fetchApi<{ item: CertificationCatalogRecord }>(`/bbva/certification-catalog/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 }
 
 export async function deleteCertificationCatalogItem(id: string): Promise<{ deleted: boolean }> {
-  return parseJson(await fetch(`/api/bbva/certification-catalog/${id}`, { method: 'DELETE' }));
+  return fetchApi<{ deleted: boolean }>(`/bbva/certification-catalog/${id}`, { method: 'DELETE' });
 }

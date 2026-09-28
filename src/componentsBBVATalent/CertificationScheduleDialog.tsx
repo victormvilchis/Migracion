@@ -1,3 +1,4 @@
+import { bbvaBusinessDate } from '../lib/bbvaBusinessDate';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CalendarClock, X } from 'lucide-react';
@@ -12,7 +13,7 @@ interface Props {
   onConfirm: (date: string) => void;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => bbvaBusinessDate();
 
 export const CertificationScheduleDialog: React.FC<Props> = ({
   open,

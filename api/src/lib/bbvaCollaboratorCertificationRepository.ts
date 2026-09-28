@@ -1,5 +1,7 @@
 import sql from 'mssql';
 import { getDbConnection } from './db.js';
+import { BBVA_SQL_BUSINESS_DATE, bbvaBusinessDate } from './bbvaBusinessTime.js';
+import { isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import type {
   CertificationAttemptInput,
   CertificationHistoryRecord,
@@ -10,6 +12,7 @@ import type {
   CollaboratorCertificationRecord,
   CollaboratorCertificationSummary,
   CertificationTrackingRecord,
+  CertificationCriticalResolutionInput,
 } from './bbvaCollaboratorCertificationDomain.js';
 import type {
   ImportCertificationCatalogConfig,
@@ -22,9 +25,9 @@ import { importCertificationAttemptFingerprint, sameEffectiveImportCertification
 const STATUS_CASE = `
   CASE
     WHEN pc.Applicable=0 OR pc.BaseStatus=N'NOT_APPLICABLE' THEN N'NOT_APPLICABLE'
-    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < CONVERT(date,SYSUTCDATETIME()) AND cc.RecertificationEnabled=1 THEN N'RECERTIFICATION_PENDING'
-    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < CONVERT(date,SYSUTCDATETIME()) THEN N'EXPIRED'
-    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND cc.ExpiringSoonDays IS NOT NULL AND effectiveDates.EffectiveExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,CONVERT(date,SYSUTCDATETIME())) THEN N'EXPIRING'
+    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < ${BBVA_SQL_BUSINESS_DATE} AND cc.RecertificationEnabled=1 THEN N'RECERTIFICATION_PENDING'
+    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < ${BBVA_SQL_BUSINESS_DATE} THEN N'EXPIRED'
+    WHEN pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND cc.ExpiringSoonDays IS NOT NULL AND effectiveDates.EffectiveExpirationDate <= DATEADD(day,cc.ExpiringSoonDays,${BBVA_SQL_BUSINESS_DATE}) THEN N'EXPIRING'
     WHEN pc.BaseStatus=N'APPROVED' THEN N'VALID'
     WHEN pc.BaseStatus=N'FAILED' THEN N'FAILED'
     WHEN pc.BaseStatus=N'APPLIED' THEN N'APPLIED'
@@ -69,6 +72,9 @@ const BASE_SELECT = `
     cc.RecertificationEnabled AS recertificationEnabled,
     cc.RequiresAttempts AS requiresAttempts,
     cc.RequiresApplicationDate AS requiresApplicationDate,
+    criticalResolution.ResolutionStatus AS criticalResolutionStatus,
+    criticalResolution.Notes AS criticalResolutionNotes,
+    CONVERT(VARCHAR(33),criticalResolution.UpdatedAt,127) AS criticalResolutionAt,
     pc.Notes AS notes,
     CONVERT(VARCHAR(33),pc.CreatedAt,127) AS createdAt,
     CONVERT(VARCHAR(33),pc.UpdatedAt,127) AS updatedAt
@@ -76,6 +82,12 @@ const BASE_SELECT = `
   INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
   LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
   INNER JOIN bbva.Collaborator c ON c.PersonId=pc.PersonId
+  OUTER APPLY (
+    SELECT TOP 1 r.ResolutionStatus,r.Notes,r.UpdatedAt
+    FROM bbva.CertificationCriticalResolution r
+    WHERE r.PersonCertificationId=pc.Id AND r.CycleNumber=pc.CurrentCycle
+    ORDER BY r.UpdatedAt DESC,r.Id DESC
+  ) criticalResolution
   OUTER APPLY (
     SELECT MAX(a.ApplicationDate) AS LatestApprovedAttemptDate
     FROM bbva.PersonCertificationAttempt a
@@ -417,7 +429,7 @@ export class CollaboratorCertificationRepository {
     await transaction.begin();
     try {
       const catalog = await new sql.Request(transaction).input('certificationId', sql.UniqueIdentifier, current.item.certificationId).query(`
-        SELECT ValidityMonths,RequiresApplicationDate,RequiresAttempts,MaxAttempts
+        SELECT ValidityMonths,RequiresApplicationDate,RequiresAttempts,MaxAttempts,CertificationType
         FROM bbva.CertificationCatalog WHERE Id=@certificationId;
       `);
       const config = catalog.recordset[0] as any;
@@ -435,7 +447,7 @@ export class CollaboratorCertificationRepository {
         throw Object.assign(new Error(`La certificación ya alcanzó el máximo configurado de ${maxAttempts} intento${maxAttempts === 1 ? '' : 's'} para este ciclo.`), { statusCode: 409, code: 'MAX_ATTEMPTS_REACHED' });
       }
       const attemptNumber = attemptsUsed + 1;
-      const approvedDate = input.result === 'APPROVED' ? (input.applicationDate || new Date().toISOString().slice(0, 10)) : null;
+      const approvedDate = input.result === 'APPROVED' ? (input.applicationDate || bbvaBusinessDate()) : null;
 
       await new sql.Request(transaction)
         .input('recordId', sql.UniqueIdentifier, recordId)
@@ -481,8 +493,117 @@ export class CollaboratorCertificationRepository {
         .query(`INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
                 VALUES(@recordId,N'ATTEMPT',@description,@actorEmail);`);
 
+      const criticalTwoAttemptFailure = Boolean(config?.RequiresAttempts) && isCriticalTwoAttemptExhausted({
+        certificationType: String(config?.CertificationType ?? ''),
+        maxAttempts: config?.MaxAttempts === null || config?.MaxAttempts === undefined ? null : Number(config.MaxAttempts),
+        attemptCount: attemptNumber,
+        latestAttemptResult: input.result,
+      });
+      if (criticalTwoAttemptFailure) {
+        await new sql.Request(transaction)
+          .input('recordId', sql.UniqueIdentifier, recordId)
+          .input('cycle', sql.Int, current.item.currentCycle)
+          .input('actorEmail', sql.NVarChar(255), actorEmail)
+          .query(`
+            MERGE bbva.CertificationCriticalResolution AS target
+            USING (SELECT @recordId AS PersonCertificationId,@cycle AS CycleNumber) AS source
+            ON target.PersonCertificationId=source.PersonCertificationId AND target.CycleNumber=source.CycleNumber
+            WHEN NOT MATCHED THEN
+              INSERT(PersonCertificationId,CycleNumber,ResolutionStatus,CreatedByEmail,UpdatedByEmail)
+              VALUES(@recordId,@cycle,N'PENDING_REVIEW',@actorEmail,@actorEmail);
+
+            IF NOT EXISTS (
+              SELECT 1 FROM bbva.PersonCertificationHistory
+              WHERE PersonCertificationId=@recordId AND EventType=N'CRITICAL_REVIEW_REQUIRED'
+                AND Description=CONCAT(N'Ciclo ',@cycle,N': 2/2 intentos agotados; requiere resolver baja o becario.')
+            )
+              INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
+              VALUES(@recordId,N'CRITICAL_REVIEW_REQUIRED',CONCAT(N'Ciclo ',@cycle,N': 2/2 intentos agotados; requiere resolver baja o becario.'),@actorEmail);
+          `);
+      }
+
       await transaction.commit();
       return this.detail(collaboratorId, recordId);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
+  async resolveCritical(
+    collaboratorId: string,
+    recordId: string,
+    input: CertificationCriticalResolutionInput,
+    actorEmail: string,
+  ): Promise<CollaboratorCertificationRecord | null> {
+    const current = await this.detail(collaboratorId, recordId);
+    if (!current) return null;
+    const pool = await getDbConnection();
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const state = await new sql.Request(transaction)
+        .input('recordId', sql.UniqueIdentifier, recordId)
+        .input('cycle', sql.Int, current.item.currentCycle)
+        .query(`
+          SELECT cc.CertificationType AS certificationType,cc.RequiresAttempts AS requiresAttempts,cc.MaxAttempts AS maxAttempts,
+                 pc.BaseStatus AS baseStatus,
+                 (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt a WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=@cycle) AS attemptCount,
+                 latestAttempt.Result AS latestAttemptResult,
+                 resolution.ResolutionStatus AS currentResolutionStatus
+          FROM bbva.PersonCertification pc
+          INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+          OUTER APPLY (
+            SELECT TOP 1 a.Result FROM bbva.PersonCertificationAttempt a
+            WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=@cycle
+            ORDER BY a.AttemptNumber DESC,a.CreatedAt DESC,a.Id DESC
+          ) latestAttempt
+          OUTER APPLY (
+            SELECT TOP 1 r.ResolutionStatus FROM bbva.CertificationCriticalResolution r
+            WHERE r.PersonCertificationId=pc.Id AND r.CycleNumber=@cycle
+          ) resolution
+          WHERE pc.Id=@recordId;
+        `);
+      const row = state.recordset[0] as any;
+      const isCritical = Boolean(row)
+        && String(row.baseStatus) === 'FAILED'
+        && Boolean(row.requiresAttempts)
+        && isCriticalTwoAttemptExhausted({
+          certificationType: String(row.certificationType ?? ''),
+          maxAttempts: row.maxAttempts === null || row.maxAttempts === undefined ? null : Number(row.maxAttempts),
+          attemptCount: Number(row.attemptCount),
+          latestAttemptResult: String(row.latestAttemptResult ?? ''),
+        });
+      if (!isCritical) {
+        throw Object.assign(new Error('La certificación no se encuentra en un caso crítico 2/2 pendiente de resolución.'), { statusCode: 409, code: 'CRITICAL_RESOLUTION_NOT_APPLICABLE' });
+      }
+      if (String(row.currentResolutionStatus ?? 'PENDING_REVIEW') === 'LOW_CONFIRMED') {
+        throw Object.assign(new Error('La baja ya fue confirmada mediante el ciclo de vida de la persona.'), { statusCode: 409, code: 'CRITICAL_RESOLUTION_CLOSED' });
+      }
+
+      const resolvedAt = input.resolution === 'INTERN' ? new Date() : null;
+      await new sql.Request(transaction)
+        .input('recordId', sql.UniqueIdentifier, recordId)
+        .input('cycle', sql.Int, current.item.currentCycle)
+        .input('status', sql.NVarChar(24), input.resolution)
+        .input('notes', sql.NVarChar(1000), input.notes)
+        .input('resolvedAt', sql.DateTime2, resolvedAt)
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
+        .query(`
+          MERGE bbva.CertificationCriticalResolution AS target
+          USING (SELECT @recordId AS PersonCertificationId,@cycle AS CycleNumber) AS source
+          ON target.PersonCertificationId=source.PersonCertificationId AND target.CycleNumber=source.CycleNumber
+          WHEN MATCHED THEN UPDATE SET ResolutionStatus=@status,Notes=@notes,ResolvedAt=@resolvedAt,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+          WHEN NOT MATCHED THEN INSERT(PersonCertificationId,CycleNumber,ResolutionStatus,Notes,ResolvedAt,CreatedByEmail,UpdatedByEmail)
+            VALUES(@recordId,@cycle,@status,@notes,@resolvedAt,@actorEmail,@actorEmail);
+
+          INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
+          VALUES(@recordId,N'CRITICAL_RESOLUTION',
+            CASE @status WHEN N'LOW_REQUESTED' THEN CONCAT(N'Ciclo ',@cycle,N': se solicitó gestionar la baja.') ELSE CONCAT(N'Ciclo ',@cycle,N': se resolvió continuar como becario.') END,
+            @actorEmail);
+        `);
+      await transaction.commit();
+      return (await this.detail(collaboratorId, recordId))?.item ?? null;
     } catch (error) {
       await transaction.rollback();
       throw error;
@@ -555,12 +676,21 @@ export class CollaboratorCertificationRepository {
         cc.MaxAttempts AS maxAttempts,
         CAST(latestAttempt.Id AS NVARCHAR(36)) AS latestAttemptId,
         latestAttempt.Result AS latestAttemptResult,
-        CASE WHEN pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND latestAttempt.Result=N'FAILED' AND (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt ca WHERE ca.PersonCertificationId=pc.Id AND ca.CycleNumber=pc.CurrentCycle) >= 2 THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS criticalActionRequired
+        criticalResolution.ResolutionStatus AS criticalResolutionStatus,
+        criticalResolution.Notes AS criticalResolutionNotes,
+        CONVERT(VARCHAR(33),criticalResolution.UpdatedAt,127) AS criticalResolutionAt,
+        CASE WHEN pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND latestAttempt.Result=N'FAILED' AND (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt ca WHERE ca.PersonCertificationId=pc.Id AND ca.CycleNumber=pc.CurrentCycle) >= 2 AND ISNULL(criticalResolution.ResolutionStatus,N'PENDING_REVIEW')=N'PENDING_REVIEW' THEN CAST(1 AS BIT) ELSE CAST(0 AS BIT) END AS criticalActionRequired
       FROM bbva.PersonCertification pc
       INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
       INNER JOIN bbva.Person p ON p.Id=pc.PersonId
       INNER JOIN bbva.Collaborator c ON c.PersonId=p.Id AND c.Status=N'ACTIVE'
       LEFT JOIN bbva.CatalogTechnology tech ON tech.Id=cc.TechnologyId
+      OUTER APPLY (
+        SELECT TOP 1 r.ResolutionStatus,r.Notes,r.UpdatedAt
+        FROM bbva.CertificationCriticalResolution r
+        WHERE r.PersonCertificationId=pc.Id AND r.CycleNumber=pc.CurrentCycle
+        ORDER BY r.UpdatedAt DESC,r.Id DESC
+      ) criticalResolution
       OUTER APPLY (
         SELECT TOP 1 a.Id,a.Result
         FROM bbva.PersonCertificationAttempt a
@@ -579,7 +709,7 @@ export class CollaboratorCertificationRepository {
             THEN DATEADD(month,cc.ValidityMonths,(CASE WHEN latestApproval.LatestApprovedAttemptDate IS NOT NULL AND (pc.ApprovedDate IS NULL OR latestApproval.LatestApprovedAttemptDate > pc.ApprovedDate) THEN latestApproval.LatestApprovedAttemptDate ELSE pc.ApprovedDate END)) ELSE pc.ExpirationDate END AS EffectiveExpirationDate
       ) effectiveDates
       WHERE pc.Applicable=1 AND pc.BaseStatus<>N'NOT_APPLICABLE' AND cc.Status=N'ACTIVE'
-      ORDER BY CASE WHEN pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND latestAttempt.Result=N'FAILED' AND (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt ca WHERE ca.PersonCertificationId=pc.Id AND ca.CycleNumber=pc.CurrentCycle) >= 2 THEN 0 ELSE 1 END,
+      ORDER BY CASE WHEN pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND latestAttempt.Result=N'FAILED' AND (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt ca WHERE ca.PersonCertificationId=pc.Id AND ca.CycleNumber=pc.CurrentCycle) >= 2 AND ISNULL(criticalResolution.ResolutionStatus,N'PENDING_REVIEW')=N'PENDING_REVIEW' THEN 0 ELSE 1 END,
                CASE ${STATUS_CASE} WHEN N'EXPIRED' THEN 1 WHEN N'RECERTIFICATION_PENDING' THEN 1 WHEN N'EXPIRING' THEN 2 WHEN N'FAILED' THEN 3 WHEN N'SCHEDULED' THEN 4 WHEN N'PENDING' THEN 5 ELSE 6 END,
                effectiveDates.EffectiveExpirationDate ASC,pc.NextScheduledDate ASC,p.FirstName ASC,cc.Name ASC;
     `);

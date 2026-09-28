@@ -17,8 +17,8 @@ import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHea
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useBbvaDashboard } from '../hooks/useDashboard';
 import { dashboardMetricDefinitions } from '../lib/dashboardMetricDefinitions';
-import { buildDashboardInsights, buildDashboardOperationalPriorities } from '../lib/dashboardInsights';
-import type { DashboardFilters, DashboardResponse } from '../types/dashboard';
+import { buildDashboardOperationalPriorities } from '../lib/dashboardInsights';
+import type { DashboardFilters, DashboardMetricComparison, DashboardRecommendation, DashboardResponse } from '../types/dashboard';
 
 const initialFilters: DashboardFilters = { technologyId:'', profileId:'', certificationStatus:'', deliveryManager:'', talentType:'', fromDate:'', toDate:'', search:'' };
 const certificationStatusLabels: Record<string,string> = { VALID:'Vigentes', EXPIRING:'Próximas a vencer', EXPIRED:'Vencidas', RECERTIFICATION_PENDING:'Recertificación pendiente', PENDING:'Pendientes', FAILED:'Reprobadas' };
@@ -27,8 +27,10 @@ const certificationSliceStatus: Record<string,string> = { 'Vigentes':'VALID', 'P
 type AttentionRow = DashboardResponse['attention'][number];
 type AttentionSort = 'fullName'|'profile'|'technology'|'deliveryManager'|'alerts';
 
-function rowAlerts(row: AttentionRow){return row.expiring+row.expired+row.pending+row.recertificationPending;}
-function alertBreakdown(row: AttentionRow){return `Vencidas: ${row.expired} · Próximas: ${row.expiring} · Pendientes: ${row.pending} · Recertificación: ${row.recertificationPending}`;}
+function rowAlerts(row: AttentionRow){return row.critical+row.expiring+row.expired+row.pending+row.recertificationPending;}
+function alertBreakdown(row: AttentionRow){return `Críticos 2/2: ${row.critical} · Vencidas: ${row.expired} · Próximas: ${row.expiring} · Pendientes: ${row.pending} · Recertificación: ${row.recertificationPending}`;}
+function comparisonText(comparison?: DashboardMetricComparison){if(!comparison)return undefined;const delta=comparison.delta;const sign=delta>0?'+':'';const unit=comparison.unit==='PERCENTAGE_POINTS'?' pp':'';return `${sign}${delta.toLocaleString('es-MX',{maximumFractionDigits:2})}${unit} vs ${comparison.previousSnapshotDate}`;}
+const recommendationTone=(priority:DashboardRecommendation['priority'])=>priority==='CRITICAL'?'rose':priority==='ATTENTION'?'orange':priority==='PREVENTIVE'?'amber':'blue';
 
 export const BBVADashboardPage: React.FC = () => {
   const navigate=useNavigate();
@@ -47,7 +49,7 @@ export const BBVADashboardPage: React.FC = () => {
   },[data?.attention,direction,sort]);
   const attentionCount=attentionRows.length;
   const operationalPriorities=useMemo(()=>data?buildDashboardOperationalPriorities(data).filter((item)=>item.value>0):[],[data]);
-  const insights=useMemo(()=>data?buildDashboardInsights(data):[],[data]);
+  const recommendations=data?.recommendations??[];
   const attentionByDeliveryManager=useMemo(()=>{const counts=new Map<string,number>();for(const row of attentionRows){const label=row.deliveryManager?.trim()||'Sin DM';counts.set(label,(counts.get(label)??0)+1);}return [...counts.entries()].map(([label,value])=>({key:label,label,value})).sort((a,b)=>b.value-a.value||a.label.localeCompare(b.label,'es-MX'));},[attentionRows]);
   const maxTech=Math.max(1,...technologyDistribution.map((i)=>i.value)); const maxProfile=Math.max(1,...profileDistribution.map((i)=>i.value)); const maxAttentionDm=Math.max(1,...attentionByDeliveryManager.map((i)=>i.value));
   const update=(key:keyof DashboardFilters,value:string)=>patch({[key]:value} as Partial<DashboardFilters>);
@@ -66,6 +68,7 @@ export const BBVADashboardPage: React.FC = () => {
     return `/bbva/certifications/metrics${queryString?`?${queryString}`:''}`;
   };
 
+  const recommendationUrl=(item:DashboardRecommendation)=>item.target==='COLLABORATORS'?'/bbva/collaborators':item.target==='TALENT_BANK'?'/bbva/talent-bank':item.target==='METRICS'?metricsUrl(item.certificationStatus??undefined):item.id==='critical-two-attempts'?'/bbva/certifications/tracking?critical=OPEN':item.certificationStatus?`/bbva/certifications/tracking?certificationStatus=${encodeURIComponent(item.certificationStatus)}`:'/bbva/certifications/tracking';
   const activeFilters = useMemo<BBVAFilterSummaryItem[]>(() => {
     const items: BBVAFilterSummaryItem[] = [];
     if(filters.profileId){const label=data?.filters.profiles.find((item)=>item.id===filters.profileId)?.name??'Perfil';items.push({key:'profileId',label:`Perfil: ${label}`,onRemove:()=>update('profileId','')});}
@@ -96,20 +99,20 @@ export const BBVADashboardPage: React.FC = () => {
         <div className="mt-3 grid gap-2 sm:grid-cols-3"><div className="rounded-xl border border-emerald-100 bg-white/80 p-3"><div className="text-[9px] font-semibold uppercase text-slate-400">Listos para el Q</div><div className="mt-1 flex items-center gap-2 text-xl font-semibold text-emerald-700"><ShieldCheck className="h-4 w-4"/>{data.vendorQuarter.readyCollaborators}</div><div className="mt-1 text-[9.5px] text-slate-500">{data.vendorQuarter.readinessPercent}% del universo filtrado</div></div><div className="rounded-xl border border-amber-100 bg-white/80 p-3"><div className="text-[9px] font-semibold uppercase text-slate-400">Pendientes antes del Q</div><div className="mt-1 text-xl font-semibold text-amber-700">{data.vendorQuarter.pendingCollaborators}</div><div className="mt-1 text-[9.5px] text-slate-500">Con al menos una certificación por resolver</div></div><div className="rounded-xl border border-rose-100 bg-white/80 p-3"><div className="text-[9px] font-semibold uppercase text-slate-400">Salida a resolver</div><div className="mt-1 text-xl font-semibold text-rose-700">{data.vendorQuarter.exhaustedAttemptCollaborators}</div><div className="mt-1 text-[9.5px] text-slate-500">Con intentos agotados antes del corte</div></div></div>
       </section> : null}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(175px,1fr))] items-stretch gap-2">
-        <BBVAMetricCard label="Colaboradores activos" value={cards.collaboratorsActive} icon={<UsersRound className="h-4 w-4"/>} help={dashboardMetricDefinitions.collaboratorsActive} supportingText="Universo actual" onAction={()=>navigate('/bbva/collaborators')} actionLabel="Ver colaboradores"/>
-        <BBVAMetricCard label="Banco de talento" value={cards.talentBankActive} icon={<UserRoundCheck className="h-4 w-4"/>} tone="violet" help={dashboardMetricDefinitions.talentBankActive} supportingText="Entradas activas" onAction={()=>navigate('/bbva/talent-bank')} actionLabel="Ver banco"/>
-        <BBVAMetricCard label="Cobertura de certificaciones" value={`${cards.coveragePercent}%`} icon={<Award className="h-4 w-4"/>} tone="emerald" help={dashboardMetricDefinitions.coveragePercent} supportingText={`${cards.certificationsApplicable} aplicables`} onAction={()=>navigate(metricsUrl())} actionLabel="Ver métricas"/>
+        <BBVAMetricCard label="Colaboradores activos" value={cards.collaboratorsActive} icon={<UsersRound className="h-4 w-4"/>} help={dashboardMetricDefinitions.collaboratorsActive} supportingText="Universo actual" trendText={comparisonText(data.history.comparisons.collaboratorsActive)} onAction={()=>navigate('/bbva/collaborators')} actionLabel="Ver colaboradores"/>
+        <BBVAMetricCard label="Banco de talento" value={cards.talentBankActive} icon={<UserRoundCheck className="h-4 w-4"/>} tone="violet" help={dashboardMetricDefinitions.talentBankActive} supportingText="Entradas activas" trendText={comparisonText(data.history.comparisons.talentBankActive)} onAction={()=>navigate('/bbva/talent-bank')} actionLabel="Ver banco"/>
+        <BBVAMetricCard label="Cobertura de certificaciones" value={`${cards.coveragePercent}%`} icon={<Award className="h-4 w-4"/>} tone="emerald" help={dashboardMetricDefinitions.coveragePercent} supportingText={`${cards.certificationsApplicable} aplicables`} trendText={comparisonText(data.history.comparisons.coveragePercent)} onAction={()=>navigate(metricsUrl())} actionLabel="Ver métricas"/>
         <BBVAMetricCard label="Atención requerida" value={attentionCount} icon={<AlertCircle className="h-4 w-4"/>} tone={attentionCount?'amber':'emerald'} help={dashboardMetricDefinitions.attentionRequired} supportingText={attentionCount?'Personas con elementos por revisar':'Sin pendientes en este contexto'} onAction={()=>navigate('/bbva/certifications/tracking')} actionLabel="Ver seguimiento"/>
         <BBVAMetricCard label="Tecnologías representadas" value={representedTechnologies} icon={<Layers3 className="h-4 w-4"/>} tone="blue" help={dashboardMetricDefinitions.technologiesRepresented} supportingText="Con al menos una persona"/>
-        <BBVAMetricCard label="Datos por completar" value={cards.dataQualityPending} icon={<Briefcase className="h-4 w-4"/>} tone={cards.dataQualityPending?'amber':'emerald'} help={dashboardMetricDefinitions.dataQualityPending} supportingText={cards.dataQualityPending?'Requieren completar información':'Información completa en el universo actual'}/>
+        <BBVAMetricCard label="Datos por completar" value={cards.dataQualityPending} icon={<Briefcase className="h-4 w-4"/>} tone={cards.dataQualityPending?'amber':'emerald'} help={dashboardMetricDefinitions.dataQualityPending} supportingText={cards.dataQualityPending?'Requieren completar información':'Información completa en el universo actual'} trendText={comparisonText(data.history.comparisons.dataQualityPending)}/>
       </div>
 
       <div className="grid gap-3 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,1.4fr)]">
         <BBVAChartCard title="Prioridades operativas" description="Estados que requieren revisión según las reglas actuales de certificación. El orden no es un score de riesgo." action={<BBVAButton variant="table" size="sm" onClick={()=>navigate('/bbva/certifications/tracking')}>Abrir seguimiento</BBVAButton>}>
           {operationalPriorities.length?<BBVAOperationalPriorities items={operationalPriorities} onSelect={(status)=>navigate(metricsUrl(status))}/>:<BBVAEmptyState compact title="Sin prioridades activas" description="No existen certificaciones vencidas, próximas, pendientes o en recertificación para los filtros actuales."/>}
         </BBVAChartCard>
-        <BBVAChartCard title="Insights del contexto actual" description="Lecturas determinísticas construidas únicamente con la información ya disponible en el panel.">
-          <div className="grid gap-2 md:grid-cols-2">{insights.slice(0,4).map((insight)=><BBVAInsightCard key={insight.id} eyebrow={insight.eyebrow} title={insight.title} description={insight.description} tone={insight.tone} actionLabel={insight.actionLabel} onAction={insight.actionStatus?()=>navigate(metricsUrl(insight.actionStatus)):undefined}/>)}</div>
+        <BBVAChartCard title="Recomendaciones del contexto actual" description="Reglas determinísticas calculadas por backend con estados y datos vigentes; no se generan scores ni frases aleatorias.">
+          <div className="grid gap-2 md:grid-cols-2">{recommendations.slice(0,4).map((item)=><BBVAInsightCard key={item.id} eyebrow={item.eyebrow} title={item.title} description={item.description} tone={recommendationTone(item.priority)} actionLabel={item.actionLabel} onAction={()=>navigate(recommendationUrl(item))}/>)}</div>
         </BBVAChartCard>
       </div>
 

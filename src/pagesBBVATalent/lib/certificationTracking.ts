@@ -1,3 +1,4 @@
+import { bbvaBusinessDate } from '../../lib/bbvaBusinessDate';
 import type { CertificationTrackingItem, CollaboratorCertificationStatus } from '../types/collaboratorCertification';
 
 export type TrackingOperationalStatus = Extract<CollaboratorCertificationStatus, 'EXPIRED' | 'RECERTIFICATION_PENDING' | 'EXPIRING' | 'FAILED' | 'SCHEDULED' | 'PENDING' | 'APPLIED'>;
@@ -26,24 +27,25 @@ export interface TrackingInsight {
   actionLabel?: string;
 }
 
-const parseDate = (value?: string | null) => {
+const dateEpoch = (value?: string | null) => {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(year, month - 1, day, 12, 0, 0, 0);
-  return Number.isNaN(date.getTime()) ? null : date;
+  const epoch = Date.UTC(year, month - 1, day);
+  return Number.isNaN(epoch) ? null : epoch;
 };
 
 export const calendarDaysFromToday = (value?: string | null, now = new Date()) => {
-  const target = parseDate(value);
-  if (!target) return null;
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0, 0);
-  return Math.round((target.getTime() - today.getTime()) / 86_400_000);
+  const target = dateEpoch(value);
+  const today = dateEpoch(bbvaBusinessDate(now));
+  if (target === null || today === null) return null;
+  return Math.round((target - today) / 86_400_000);
 };
 
 export const CRITICAL_EXIT_CERTIFICATION_TYPES = new Set(['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING']);
 
 export const requiresCriticalExitReview = (item: CertificationTrackingItem) => item.criticalActionRequired === true
   || (item.criticalActionRequired === undefined
+    && !item.criticalResolutionStatus
     && item.requiresAttempts
     && item.maxAttempts === 2
     && item.attemptCount >= 2
@@ -51,8 +53,11 @@ export const requiresCriticalExitReview = (item: CertificationTrackingItem) => i
     && item.status === 'FAILED'
     && CRITICAL_EXIT_CERTIFICATION_TYPES.has(item.certificationType));
 
+export const hasOpenCriticalResolution = (item: CertificationTrackingItem) =>
+  requiresCriticalExitReview(item) || item.criticalResolutionStatus === 'LOW_REQUESTED';
+
 export const trackingPriority = (item: CertificationTrackingItem) => {
-  if (requiresCriticalExitReview(item)) return 0;
+  if (hasOpenCriticalResolution(item)) return 0;
   if (item.status === 'EXPIRED') return 1;
   if (item.status === 'RECERTIFICATION_PENDING') return 2;
   if (item.status === 'EXPIRING') return 3;
@@ -116,7 +121,7 @@ export const buildTrackingSummary = (items: CertificationTrackingItem[]): Tracki
   pending: items.filter((item) => item.status === 'PENDING').length,
   applied: items.filter((item) => item.status === 'APPLIED').length,
   limitReached: items.filter(hasAttemptLimitReached).length,
-  criticalExit: items.filter(requiresCriticalExitReview).length,
+  criticalExit: items.filter(hasOpenCriticalResolution).length,
 });
 
 const certificationConcentration = (items: CertificationTrackingItem[]) => {
@@ -149,7 +154,7 @@ export const buildTrackingInsights = (items: CertificationTrackingItem[], now = 
   const expiring = items.filter((item) => item.status === 'EXPIRING');
   const failed = items.filter((item) => item.status === 'FAILED');
   const limitReached = items.filter(hasAttemptLimitReached);
-  const criticalExit = items.filter(requiresCriticalExitReview);
+  const criticalExit = items.filter(hasOpenCriticalResolution);
 
   if (criticalExit.length) {
     insights.push({

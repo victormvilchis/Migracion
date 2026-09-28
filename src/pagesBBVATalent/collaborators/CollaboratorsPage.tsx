@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { Fragment, useMemo, useState } from 'react';
 import { ArrowRightLeft, Award, Eye, FileSpreadsheet, Pencil, Plus, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
@@ -25,7 +25,7 @@ function certificationStatus(item: Pick<Collaborator, 'certificationExpiring'|'c
   if (item.certificationApplicable > 0) return 'VALID';
   return 'NA';
 }
-const certificationLabels: Record<string, string> = { CRITICAL: 'Crítico · solicitar baja', VALID: 'En regla', EXPIRING: 'Cubierta · próxima a vencer', EXPIRED: 'Atención requerida', PENDING: 'Pendientes', NA: 'Sin aplicables' };
+const certificationLabels: Record<string, string> = { CRITICAL: 'Crítico · resolver 2/2', VALID: 'En regla', EXPIRING: 'Cubierta · próxima a vencer', EXPIRED: 'Atención requerida', PENDING: 'Pendientes', NA: 'Sin aplicables' };
 const certificationTone: Record<string, string> = { CRITICAL: 'bg-rose-100 text-rose-800 ring-1 ring-rose-200', VALID: 'bg-emerald-50 text-emerald-700', EXPIRING: 'bg-amber-50 text-amber-700', EXPIRED: 'bg-rose-50 text-rose-700', PENDING: 'bg-blue-50 text-blue-700', NA: 'bg-slate-100 text-slate-500' };
 type SortField = 'name'|'role'|'technology'|'dm'|'startDate'|'certifications'|'status';
 const defaults = { search:'', roleFilter:'ALL', technologyFilter:'ALL', statusFilter:'ALL', page:0, size:10, sort:'name' as SortField, direction:'asc' as 'asc'|'desc' };
@@ -40,6 +40,7 @@ export const CollaboratorsPage: React.FC = () => {
   const { search, roleFilter, technologyFilter, statusFilter, page, size, sort, direction } = memory.state;
   const message = (location.state as { message?: string } | null)?.message ?? null;
   const items = query.data?.items ?? [];
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('es-MX');
@@ -72,7 +73,7 @@ export const CollaboratorsPage: React.FC = () => {
       <div className="relative"><Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" /><input value={search} onChange={(e)=>memory.patch({search:e.target.value,page:0})} placeholder="Buscar por nombre, correo, IS o usuario" className="h-8 w-full rounded-md border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none focus:border-blue-500" /></div>
       <BBVASearchableSelect value={roleFilter} onChange={(v)=>memory.patch({roleFilter:v,page:0})} options={[{value:'ALL',label:'Todos los roles'},...(profilesQuery.data?.items??[]).map((o)=>({value:o.id,label:o.name}))]} ariaLabel="Filtrar por rol" />
       <BBVASearchableSelect value={technologyFilter} onChange={(v)=>memory.patch({technologyFilter:v,page:0})} options={[{value:'ALL',label:'Todas las tecnologías'},...(technologiesQuery.data?.items??[]).map((o)=>({value:o.id,label:o.name}))]} ariaLabel="Filtrar por tecnología" />
-      <BBVASearchableSelect value={statusFilter} onChange={(v)=>memory.patch({statusFilter:v,page:0})} options={[{value:'ALL',label:'Todos los estados'},{value:'CRITICAL',label:'Crítico · solicitar baja'},{value:'VALID',label:'En regla'},{value:'EXPIRING',label:'Cubierta · próxima a vencer'},{value:'EXPIRED',label:'Atención requerida'},{value:'PENDING',label:'Pendientes'},{value:'NA',label:'Sin aplicables'}]} ariaLabel="Filtrar por estado de certificación" />
+      <BBVASearchableSelect value={statusFilter} onChange={(v)=>memory.patch({statusFilter:v,page:0})} options={[{value:'ALL',label:'Todos los estados'},{value:'CRITICAL',label:'Crítico · resolver 2/2'},{value:'VALID',label:'En regla'},{value:'EXPIRING',label:'Cubierta · próxima a vencer'},{value:'EXPIRED',label:'Atención requerida'},{value:'PENDING',label:'Pendientes'},{value:'NA',label:'Sin aplicables'}]} ariaLabel="Filtrar por estado de certificación" />
     </div>
     {query.isLoading ? <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando colaboradores...</div> : query.error ? <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert> : <div className="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto overflow-y-visible"><table className="w-full min-w-[1120px] table-fixed text-left text-[10.5px]">
@@ -86,7 +87,13 @@ export const CollaboratorsPage: React.FC = () => {
           <th className="w-[10%] px-2 py-1.5"><BBVATableSortHeader label="Estado" active={sort==='status'} direction={direction} onClick={()=>changeSort('status')} /></th>
           <th className="w-[6%] px-2 py-1.5 text-right">Acciones</th>
         </tr></thead>
-        <tbody className="divide-y divide-slate-200">{paged.map((item)=>{const cert=certificationStatus(item);return <tr key={item.id} className="h-[42px] transition hover:bg-blue-50/35">
+        <tbody className="divide-y divide-slate-200">{paged.map((item)=>{const cert=certificationStatus(item);const isExpanded=expanded===item.id;return <Fragment key={item.id}>
+          <tr
+            className={`h-[42px] cursor-pointer transition hover:bg-blue-50/35 ${isExpanded ? 'bg-blue-50/45' : ''}`}
+            onClick={() => setExpanded(isExpanded ? null : item.id)}
+            aria-expanded={isExpanded}
+            title="Clic para ver contexto del colaborador"
+          >
             <td className="px-2 py-1.5"><div className="min-w-0"><div className="truncate font-semibold text-slate-900">{item.fullName}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></td>
             <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] text-slate-700">{roleDisplay(item.profile,item.technologyProfile)}</div></td>
             <td className="px-2 py-1.5 text-slate-700">{technologyDisplay(item.currentTechnology,item.expertise)}</td>
@@ -94,8 +101,19 @@ export const CollaboratorsPage: React.FC = () => {
             <td className="px-2 py-1.5 text-slate-600">{formatDate(item.bbvaStartDate)}</td>
             <td className="px-2 py-1.5"><div className="font-semibold text-slate-900">{item.certificationValid + item.certificationExpiring}/{item.certificationApplicable}</div><div className="text-[8.5px] text-slate-400">cubiertas / aplicables</div></td>
             <td className="px-2 py-1.5"><span className={`rounded-full px-2 py-1 text-[8.5px] font-semibold ${certificationTone[cert]}`}>{certificationLabels[cert]}</span></td>
-            <td className="px-2 py-1.5 text-right"><BBVAActionMenu items={[{id:'view',label:'Ver',icon:Eye,onClick:()=>navigate(`/bbva/collaborators/${item.id}`)},{id:'edit',label:'Editar',icon:Pencil,onClick:()=>navigate(`/bbva/collaborators/${item.id}/edit`)},{id:'certifications',label:'Certificaciones',icon:Award,onClick:()=>navigate(`/bbva/collaborators/${item.id}/certifications`)},{id:'move-to-talent',label:'Mover a Banco de talento',icon:ArrowRightLeft,onClick:()=>navigate(`/bbva/collaborators/${item.id}/move-to-talent`)}]} /></td>
-          </tr>;})}</tbody>
+            <td className="px-2 py-1.5 text-right" onClick={(event)=>event.stopPropagation()}><BBVAActionMenu items={[{id:'view',label:'Ver',icon:Eye,onClick:()=>navigate(`/bbva/collaborators/${item.id}`)},{id:'edit',label:'Editar',icon:Pencil,onClick:()=>navigate(`/bbva/collaborators/${item.id}/edit`)},{id:'certifications',label:'Certificaciones',icon:Award,onClick:()=>navigate(`/bbva/collaborators/${item.id}/certifications`)},{id:'move-to-talent',label:'Mover a Banco de talento',icon:ArrowRightLeft,onClick:()=>navigate(`/bbva/collaborators/${item.id}/move-to-talent`)}]} /></td>
+          </tr>
+          {isExpanded ? <tr className="bg-slate-50/75"><td colSpan={8} className="px-3 py-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">IS Softtek</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.softtekCode||'No disponible'}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Usuario BBVA / XM</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.bbvaUser||item.corporateUser||'No disponible'}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Correo BBVA</div><div className="mt-1 truncate text-[10px] font-semibold text-slate-700" title={item.bbvaEmail??''}>{item.bbvaEmail||'No disponible'}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Contratación Softtek</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{formatDate(item.softtekHireDate)}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Perfil tecnológico</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.technologyProfile||'No disponible'}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Nivel colaborador</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.expertise||'No disponible'}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Por atender</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{item.certificationPending + item.certificationExpired + item.certificationRecertificationPending + item.certificationCritical}</div></div>
+            <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Notas</div><div className="mt-1 line-clamp-2 text-[10px] font-medium text-slate-600" title={item.notes??''}>{item.notes||'Sin notas'}</div></div>
+          </div></td></tr> : null}
+        </Fragment>;})}</tbody>
       </table></div>
       {filtered.length===0?<div className="border-t border-slate-200 px-3 py-8 text-center text-xs text-slate-500">No hay registros que coincidan con los filtros.</div>:<BBVAPagination total={filtered.length} page={safePage} size={size} onPageChange={(v)=>memory.patch({page:v})} onSizeChange={(v)=>memory.patch({size:v,page:0})}/>}
     </div>}

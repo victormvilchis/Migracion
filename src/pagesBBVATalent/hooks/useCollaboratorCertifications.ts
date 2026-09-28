@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { collaboratorCertificationApi } from '../api/collaboratorCertificationApi';
-import type { CertificationAttemptResult } from '../types/collaboratorCertification';
+import type { CertificationAttemptResult, CertificationCriticalResolutionPayload } from '../types/collaboratorCertification';
 import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 
 export function useCollaboratorCertifications(collaboratorId?: string) {
@@ -36,6 +36,11 @@ export function useUpdateCollaboratorCertification(collaboratorId: string) {
 export function useAddCertificationAttempt(collaboratorId: string) {
   const invalidate = useInvalidate(collaboratorId);
   return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { applicationDate: string; result: CertificationAttemptResult; notes: string } }) => collaboratorCertificationApi.addAttempt(collaboratorId, recordId, payload), onSuccess: invalidate });
+}
+
+export function useResolveCriticalCertification(collaboratorId: string) {
+  const invalidate = useInvalidate(collaboratorId);
+  return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: CertificationCriticalResolutionPayload }) => collaboratorCertificationApi.resolveCritical(collaboratorId, recordId, payload), onSuccess: invalidate });
 }
 
 export function useRecertifyCollaboratorCertification(collaboratorId: string) {

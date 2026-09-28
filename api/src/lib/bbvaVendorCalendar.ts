@@ -1,3 +1,5 @@
+import { bbvaBusinessDate } from './bbvaBusinessTime.js';
+
 export interface VendorQuarterDefinition {
   code: string;
   year: number;
@@ -26,10 +28,6 @@ export const BBVA_VENDOR_QUARTERS: VendorQuarterDefinition[] = [
   { code: '2026Q4', year: 2026, quarter: 4, startDate: '2026-09-28', endDate: '2026-12-27' },
 ];
 
-function isoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
 function daysBetween(fromIso: string, toIso: string): number {
   const from = Date.parse(`${fromIso}T00:00:00Z`);
   const to = Date.parse(`${toIso}T00:00:00Z`);
@@ -37,7 +35,7 @@ function daysBetween(fromIso: string, toIso: string): number {
 }
 
 export function vendorQuarterContext(reference = new Date()): VendorQuarterContext {
-  const today = isoDate(reference);
+  const today = bbvaBusinessDate(reference);
   const currentQuarter = BBVA_VENDOR_QUARTERS.find((item) => today >= item.startDate && today <= item.endDate) ?? null;
   const nextQuarter = BBVA_VENDOR_QUARTERS.find((item) => item.startDate > today) ?? null;
   const targetQuarter = nextQuarter ?? currentQuarter;

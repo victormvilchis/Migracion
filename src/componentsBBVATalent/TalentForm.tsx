@@ -1,3 +1,4 @@
+import { bbvaBusinessDate } from '../lib/bbvaBusinessDate';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Download, Eye, UploadCloud } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -25,7 +26,7 @@ import { BBVASearchableSelect, type BBVASearchableSelectOption } from './BBVASea
 import { ISLookupField } from './ISLookupField';
 import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => bbvaBusinessDate();
 const defaultStage = (type: TalentType) => type === 'ACADEMY' ? 'ACADEMY' : 'REGISTERED';
 const fieldClass = 'h-9 w-full rounded-xl border border-slate-300 bg-white px-3 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-600 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100 [.bbva-dark_&]:disabled:bg-slate-950/60';
 const areaClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-[11px] text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-600 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100 [.bbva-dark_&]:disabled:bg-slate-950/60';

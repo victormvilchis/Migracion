@@ -76,6 +76,7 @@ export class CertificationCommunicationRepository {
                ISNULL(p.FirstName,N'') AS firstName,
                NULLIF(LTRIM(RTRIM(p.SofttekEmail)),N'') AS recipientEmail,
                a.CycleNumber AS currentCycle,cc.MaxAttempts AS maxAttempts,pc.BaseStatus AS baseStatus,
+               criticalResolution.ResolutionStatus AS criticalResolutionStatus,
                CAST(a.Id AS NVARCHAR(36)) AS attemptId,a.AttemptNumber AS attemptNumber,
                CONVERT(VARCHAR(10),a.ApplicationDate,23) AS attemptDate,a.Result AS result,a.Score10 AS score10
         FROM bbva.PersonCertification pc
@@ -84,6 +85,12 @@ export class CertificationCommunicationRepository {
         INNER JOIN bbva.Person p ON p.Id=pc.PersonId
         INNER JOIN bbva.PersonCertificationAttempt a ON a.PersonCertificationId=pc.Id
         LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
+        OUTER APPLY (
+          SELECT TOP 1 r.ResolutionStatus
+          FROM bbva.CertificationCriticalResolution r
+          WHERE r.PersonCertificationId=pc.Id AND r.CycleNumber=a.CycleNumber
+          ORDER BY r.UpdatedAt DESC,r.Id DESC
+        ) criticalResolution
         WHERE c.Id=@collaboratorId AND pc.Id=@recordId AND a.Id=@attemptId;
       `);
     const row = result.recordset[0] as any;

@@ -1,3 +1,4 @@
+import { bbvaBusinessDate } from '../lib/bbvaBusinessDate';
 import React, { useEffect, useState } from 'react';
 import { BBVAButton } from './BBVAButton';
 import { createPortal } from 'react-dom';
@@ -15,7 +16,7 @@ interface Props {
   onConfirm: (date: string) => void;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => bbvaBusinessDate();
 
 export const CertificationQuickApprovalDialog: React.FC<Props> = ({ open, collaboratorName, certificationName, attemptNumber, initialDate, busy = false, onCancel, onConfirm }) => {
   const [date, setDate] = useState(initialDate || today());

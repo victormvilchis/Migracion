@@ -1,3 +1,4 @@
+import { bbvaBusinessDate } from '../../lib/bbvaBusinessDate';
 import React, { useState } from 'react';
 import { ImagePlus, MoveLeft } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -27,7 +28,7 @@ export const CertificationAttemptPage: React.FC = () => {
   const mutation = useAddCertificationAttempt(id ?? '');
   const generateMutation = useGenerateCertificationCommunication(id ?? '');
   const prepareEmailMutation = usePrepareCertificationCommunicationEmail(id ?? '');
-  const [applicationDate, setApplicationDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [applicationDate, setApplicationDate] = useState(() => bbvaBusinessDate());
   const [result, setResult] = useState<CertificationAttemptResult>('PENDING');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);

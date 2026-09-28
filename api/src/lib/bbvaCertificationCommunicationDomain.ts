@@ -1,3 +1,5 @@
+import { isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
+
 export const CERTIFICATION_COMMUNICATION_CONTEXTS = [
   'APPROVED', 'FIRST_FAILED', 'INTERMEDIATE_FAILED', 'LAST_FAILED', 'LOW', 'DEFAULT',
 ] as const;
@@ -22,6 +24,7 @@ export interface CertificationCommunicationSource {
   attemptDate: string | null;
   result: 'PENDING' | 'APPROVED' | 'FAILED';
   score10: number | null;
+  criticalResolutionStatus: 'PENDING_REVIEW' | 'LOW_REQUESTED' | 'INTERN' | 'LOW_CONFIRMED' | null;
 }
 
 export interface CertificationPostcardTemplateRecord {
@@ -78,19 +81,18 @@ export interface CommunicationVariables {
   attemptDate: string;
 }
 
-export const CRITICAL_EXIT_CERTIFICATION_TYPES = new Set(['DEVELOPMENT_SECURITY', 'TECHNOLOGICAL', 'NORMATIVE_TESTING']);
-
-export function isCriticalTwoAttemptFailure(source: Pick<CertificationCommunicationSource, 'certificationType' | 'result' | 'attemptNumber' | 'maxAttempts'>): boolean {
-  return source.result === 'FAILED'
-    && CRITICAL_EXIT_CERTIFICATION_TYPES.has(source.certificationType)
-    && source.maxAttempts === 2
-    && source.attemptNumber >= 2;
-}
-
 export function resolveCommunicationContext(source: CertificationCommunicationSource): CertificationCommunicationContext {
   if (source.result === 'APPROVED') return 'APPROVED';
   if (source.result === 'FAILED') {
-    if (isCriticalTwoAttemptFailure(source)) return 'LOW';
+    const criticalExhausted = isCriticalTwoAttemptExhausted({
+      certificationType: source.certificationType,
+      maxAttempts: source.maxAttempts,
+      attemptCount: source.attemptNumber,
+      latestAttemptResult: source.result,
+    });
+    // 2/2 agotados exige una decisión de negocio. La postal de BAJA sólo aplica
+    // cuando el ciclo de vida confirmó la baja; antes de eso es resultado final.
+    if (criticalExhausted && source.criticalResolutionStatus === 'LOW_CONFIRMED') return 'LOW';
     if (source.attemptNumber === 1) return 'FIRST_FAILED';
     if (source.maxAttempts !== null && source.attemptNumber >= source.maxAttempts) return 'LAST_FAILED';
     return 'INTERMEDIATE_FAILED';

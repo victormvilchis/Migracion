@@ -2,6 +2,7 @@ import { CollaboratorRepository } from './bbvaCollaboratorRepository.js';
 import { TalentRepository } from './bbvaTalentRepository.js';
 import type { MoveCollaboratorToTalentInput } from './bbvaPersonLifecycleDomain.js';
 import { PersonLifecycleRepository } from './bbvaPersonLifecycleRepository.js';
+import { bbvaBusinessDate } from './bbvaBusinessTime.js';
 
 const collaboratorRepository = new CollaboratorRepository();
 const talentRepository = new TalentRepository();
@@ -65,7 +66,7 @@ export class PersonLifecycleService {
     if (collaborator.startDate && input.effectiveDate < collaborator.startDate) {
       throw Object.assign(new Error('La fecha efectiva no puede ser anterior a la fecha de alta del colaborador.'), { statusCode: 400 });
     }
-    const today = new Date().toISOString().slice(0, 10);
+    const today = bbvaBusinessDate();
     if (input.effectiveDate > today) {
       throw Object.assign(new Error('La fecha efectiva no puede estar en el futuro porque el movimiento se aplica inmediatamente.'), { statusCode: 400 });
     }

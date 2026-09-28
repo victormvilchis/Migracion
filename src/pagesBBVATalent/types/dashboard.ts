@@ -9,6 +9,57 @@ export interface DashboardFilters {
   search: string;
 }
 
+export type DashboardHistoricalMetricKey =
+  | 'collaboratorsActive'
+  | 'talentBankActive'
+  | 'certificationsApplicable'
+  | 'coveragePercent'
+  | 'expiring'
+  | 'expired'
+  | 'recertificationPending'
+  | 'pending'
+  | 'dataQualityPending'
+  | 'vendorReadyPercent'
+  | 'vendorPending'
+  | 'vendorExitRequired';
+
+export interface DashboardMetricComparison {
+  metric: DashboardHistoricalMetricKey;
+  current: number;
+  previous: number;
+  delta: number;
+  unit: 'COUNT' | 'PERCENTAGE_POINTS';
+  previousSnapshotDate: string;
+}
+
+export interface DashboardMetricSnapshotPoint {
+  snapshotDate: string;
+  collaboratorsActive: number;
+  talentBankActive: number;
+  certificationsApplicable: number;
+  coveragePercent: number;
+  expiring: number;
+  expired: number;
+  recertificationPending: number;
+  pending: number;
+  dataQualityPending: number;
+  vendorReadyPercent: number;
+  vendorPending: number;
+  vendorExitRequired: number;
+  capturedAt: string;
+}
+
+export interface DashboardRecommendation {
+  id: string;
+  priority: 'CRITICAL' | 'ATTENTION' | 'PREVENTIVE' | 'INFO';
+  eyebrow: string;
+  title: string;
+  description: string;
+  target: 'TRACKING' | 'METRICS' | 'COLLABORATORS' | 'TALENT_BANK';
+  certificationStatus: string | null;
+  actionLabel: string;
+}
+
 export interface DashboardResponse {
   cards: {
     collaboratorsActive: number;
@@ -37,6 +88,13 @@ export interface DashboardResponse {
     exhaustedAttemptCollaborators: number;
     readinessPercent: number;
   };
+  history: {
+    available: boolean;
+    previousSnapshotDate: string | null;
+    points: DashboardMetricSnapshotPoint[];
+    comparisons: Partial<Record<DashboardHistoricalMetricKey, DashboardMetricComparison>>;
+  };
+  recommendations: DashboardRecommendation[];
   collaboratorFocus: Array<{ label: string; value: number }>;
   certificationCoverage: Array<{ label: string; value: number }>;
   expirationByMonth: Array<{ month: string; label: string; value: number }>;
@@ -54,6 +112,7 @@ export interface DashboardResponse {
     expired: number;
     pending: number;
     recertificationPending: number;
+    critical: number;
   }>;
   filters: {
     technologies: Array<{ id: string; name: string }>;

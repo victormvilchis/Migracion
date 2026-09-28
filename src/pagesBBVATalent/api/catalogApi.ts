@@ -1,10 +1,5 @@
+import { fetchApi } from '../../lib/api';
 import type { CatalogOption, CatalogPageResponse, CatalogPayload, CatalogRecord, CatalogStatus, CatalogType } from '../types/catalog';
-
-async function parseJson(response: Response) {
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body?.error || 'No fue posible completar la operación del catálogo.');
-  return body;
-}
 
 export interface CatalogListQuery {
   search?: string;
@@ -23,36 +18,29 @@ export async function listCatalog(type: CatalogType, query: CatalogListQuery): P
   params.set('size', String(query.size ?? 10));
   params.set('sort', query.sort ?? 'name');
   params.set('direction', query.direction ?? 'asc');
-  const response = await fetch(`/api/bbva/catalogs/${type}?${params.toString()}`);
-  return parseJson(response) as Promise<CatalogPageResponse>;
+  return fetchApi<CatalogPageResponse>(`/bbva/catalogs/${type}?${params.toString()}`);
 }
 
 export async function getCatalogItem(type: CatalogType, id: string): Promise<{ item: CatalogRecord }> {
-  return parseJson(await fetch(`/api/bbva/catalogs/${type}/${id}`));
+  return fetchApi<{ item: CatalogRecord }>(`/bbva/catalogs/${type}/${id}`);
 }
 
 export async function listCatalogOptions(type: CatalogType): Promise<{ items: CatalogOption[] }> {
-  return parseJson(await fetch(`/api/bbva/catalog-options/${type}`));
+  return fetchApi<{ items: CatalogOption[] }>(`/bbva/catalog-options/${type}`);
 }
 
 export async function createCatalogItem(type: CatalogType, payload: CatalogPayload): Promise<{ item: CatalogRecord }> {
-  return parseJson(await fetch(`/api/bbva/catalogs/${type}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-  }));
+  return fetchApi<{ item: CatalogRecord }>(`/bbva/catalogs/${type}`, { method: 'POST', body: JSON.stringify(payload) });
 }
 
 export async function updateCatalogItem(type: CatalogType, id: string, payload: CatalogPayload): Promise<{ item: CatalogRecord }> {
-  return parseJson(await fetch(`/api/bbva/catalogs/${type}/${id}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
-  }));
+  return fetchApi<{ item: CatalogRecord }>(`/bbva/catalogs/${type}/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
 }
 
 export async function updateCatalogStatus(type: CatalogType, id: string, status: CatalogStatus): Promise<{ item: CatalogRecord }> {
-  return parseJson(await fetch(`/api/bbva/catalogs/${type}/${id}/status`, {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
-  }));
+  return fetchApi<{ item: CatalogRecord }>(`/bbva/catalogs/${type}/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
 }
 
 export async function deleteCatalogItem(type: CatalogType, id: string): Promise<{ deleted: boolean }> {
-  return parseJson(await fetch(`/api/bbva/catalogs/${type}/${id}`, { method: 'DELETE' }));
+  return fetchApi<{ deleted: boolean }>(`/bbva/catalogs/${type}/${id}`, { method: 'DELETE' });
 }

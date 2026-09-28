@@ -70,7 +70,7 @@ export class CertificationCommunicationService {
     if (!source) return null;
 
     const context = resolveCommunicationContext(source);
-    const standardKey = `ATTEMPT:${attemptId}:POSTCARD`;
+    const standardKey = `ATTEMPT:${attemptId}:POSTCARD:${context}`;
     if (!regenerate) {
       const existing = await repository.findByIdempotencyKey(standardKey);
       if (existing) {

@@ -14,6 +14,9 @@ export type CollaboratorCertificationStatus = (typeof COLLABORATOR_CERTIFICATION
 export const CERTIFICATION_ATTEMPT_RESULTS = ['PENDING', 'APPROVED', 'FAILED'] as const;
 export type CertificationAttemptResult = (typeof CERTIFICATION_ATTEMPT_RESULTS)[number];
 
+export const CERTIFICATION_CRITICAL_RESOLUTION_STATUSES = ['PENDING_REVIEW', 'LOW_REQUESTED', 'INTERN', 'LOW_CONFIRMED'] as const;
+export type CertificationCriticalResolutionStatus = (typeof CERTIFICATION_CRITICAL_RESOLUTION_STATUSES)[number];
+
 export interface CollaboratorCertificationRecord {
   id: string;
   collaboratorId: string;
@@ -49,6 +52,9 @@ export interface CollaboratorCertificationRecord {
   recertificationEnabled: boolean;
   requiresAttempts: boolean;
   requiresApplicationDate: boolean;
+  criticalResolutionStatus: CertificationCriticalResolutionStatus | null;
+  criticalResolutionNotes: string | null;
+  criticalResolutionAt: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -128,6 +134,14 @@ export interface CertificationTrackingRecord {
   latestAttemptId: string | null;
   latestAttemptResult: CertificationAttemptResult | null;
   criticalActionRequired: boolean;
+  criticalResolutionStatus: CertificationCriticalResolutionStatus | null;
+  criticalResolutionNotes: string | null;
+  criticalResolutionAt: string | null;
+}
+
+export interface CertificationCriticalResolutionInput {
+  resolution: 'LOW_REQUESTED' | 'INTERN';
+  notes: string | null;
 }
 
 export interface CertificationAttemptInput {

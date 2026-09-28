@@ -1,6 +1,8 @@
 import { CollaboratorCertificationRepository } from './bbvaCollaboratorCertificationRepository.js';
-import type { CertificationAttemptInput, CertificationUpdateInput } from './bbvaCollaboratorCertificationDomain.js';
+import type { CertificationAttemptInput, CertificationUpdateInput, CertificationCriticalResolutionInput } from './bbvaCollaboratorCertificationDomain.js';
+import { CRITICAL_TWO_ATTEMPT_TYPES, isCriticalResolutionOpen, isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import { vendorQuarterContext } from './bbvaVendorCalendar.js';
+import { bbvaBusinessDate } from './bbvaBusinessTime.js';
 
 const repository = new CollaboratorCertificationRepository();
 
@@ -20,6 +22,31 @@ function normalizeDate(value: unknown, field: string): string | null {
     throw Object.assign(new Error(`${field} debe tener formato YYYY-MM-DD.`), { statusCode: 400 });
   }
   return candidate;
+}
+
+function isCriticalTwoAttemptLimit(item: {
+  certificationType: string;
+  baseStatus: string;
+  requiresAttempts: boolean;
+  maxAttempts: number | null;
+  attemptCount: number;
+}): boolean {
+  return item.baseStatus === 'FAILED'
+    && item.requiresAttempts
+    && item.maxAttempts === 2
+    && item.attemptCount >= 2
+    && CRITICAL_TWO_ATTEMPT_TYPES.has(String(item.certificationType ?? '').toUpperCase());
+}
+
+function hasOpenCriticalTwoAttempt(item: {
+  certificationType: string;
+  baseStatus: string;
+  requiresAttempts: boolean;
+  maxAttempts: number | null;
+  attemptCount: number;
+  criticalResolutionStatus: string | null;
+}): boolean {
+  return isCriticalTwoAttemptLimit(item) && isCriticalResolutionOpen(item.criticalResolutionStatus);
 }
 
 export class CollaboratorCertificationService {
@@ -42,7 +69,14 @@ export class CollaboratorCertificationService {
   async tracking() {
     const items = await repository.tracking();
     const quarter = vendorQuarterContext();
-    const exhaustedAttempts = items.filter((item) => item.latestAttemptResult === 'FAILED' && item.maxAttempts != null && item.attemptCount >= item.maxAttempts).length;
+    const exhaustedAttempts = items.filter((item) =>
+      isCriticalTwoAttemptExhausted({
+        certificationType: item.certificationType,
+        maxAttempts: item.maxAttempts,
+        attemptCount: item.attemptCount,
+        latestAttemptResult: item.latestAttemptResult,
+      }) && isCriticalResolutionOpen(item.criticalResolutionStatus),
+    ).length;
     return {
       items,
       vendorQuarter: {
@@ -66,10 +100,15 @@ export class CollaboratorCertificationService {
   }
 
   async update(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string) {
+    const current = await repository.detail(collaboratorId, recordId);
+    if (!current) return null;
     const scheduledDate = normalizeDate(valueOf(payload, 'scheduledDate'), 'La fecha programada');
     if (scheduledDate) {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = bbvaBusinessDate();
       if (scheduledDate < today) throw Object.assign(new Error('La fecha programada no puede estar en el pasado.'), { statusCode: 400 });
+      if (isCriticalTwoAttemptLimit(current.item)) {
+        throw Object.assign(new Error('La certificación agotó sus 2/2 intentos. No se puede programar otra presentación en el mismo ciclo; resuelve baja o becario.'), { statusCode: 409, code: 'MAX_ATTEMPTS_REACHED' });
+      }
     }
     const input: CertificationUpdateInput = {
       scheduledDate,
@@ -98,11 +137,36 @@ export class CollaboratorCertificationService {
     return repository.addAttempt(collaboratorId, recordId, input, actorEmail);
   }
 
+  async resolveCritical(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string) {
+    const resolution = String(valueOf(payload, 'resolution') ?? '').trim().toUpperCase();
+    if (!['LOW_REQUESTED', 'INTERN'].includes(resolution)) {
+      throw Object.assign(new Error('Selecciona una resolución válida: solicitar baja o becario.'), { statusCode: 400 });
+    }
+    const current = await repository.detail(collaboratorId, recordId);
+    if (!current) return null;
+    if (current.item.criticalResolutionStatus === 'INTERN') {
+      throw Object.assign(new Error('El caso crítico ya fue resuelto como becario para este ciclo.'), { statusCode: 409, code: 'CRITICAL_RESOLUTION_CLOSED' });
+    }
+    if (current.item.criticalResolutionStatus === 'LOW_CONFIRMED') {
+      throw Object.assign(new Error('La baja de BBVA ya fue confirmada para este ciclo.'), { statusCode: 409, code: 'CRITICAL_RESOLUTION_CLOSED' });
+    }
+    const input: CertificationCriticalResolutionInput = {
+      resolution: resolution as CertificationCriticalResolutionInput['resolution'],
+      notes: cleanText(valueOf(payload, 'notes'), 1000),
+    };
+    return repository.resolveCritical(collaboratorId, recordId, input, actorEmail);
+  }
+
   recertify(collaboratorId: string, recordId: string, actorEmail: string) {
     return repository.recertify(collaboratorId, recordId, actorEmail);
   }
 
-  markNotApplicable(collaboratorId: string, recordId: string, actorEmail: string) {
+  async markNotApplicable(collaboratorId: string, recordId: string, actorEmail: string) {
+    const current = await repository.detail(collaboratorId, recordId);
+    if (!current) return null;
+    if (hasOpenCriticalTwoAttempt(current.item)) {
+      throw Object.assign(new Error('La certificación tiene un caso crítico 2/2 pendiente. Resuelve baja o becario antes de quitarla del seguimiento.'), { statusCode: 409, code: 'CRITICAL_RESOLUTION_REQUIRED' });
+    }
     return repository.markNotApplicable(collaboratorId, recordId, actorEmail);
   }
 }
