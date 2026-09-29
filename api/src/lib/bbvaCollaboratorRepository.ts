@@ -44,6 +44,8 @@ const COLLABORATOR_SELECT = `
     ISNULL(certStats.pendingCount,0) AS certificationPending,
     ISNULL(certStats.recertificationPendingCount,0) AS certificationRecertificationPending,
     ISNULL(certStats.criticalCount,0) AS certificationCritical,
+    ISNULL(certStats.technologicalApplicableCount,0) AS certificationTechnologicalApplicable,
+    ISNULL(certStats.technologicalCoveredCount,0) AS certificationTechnologicalCovered,
     CONVERT(VARCHAR(33), c.CreatedAt, 127) AS createdAt,
     CONVERT(VARCHAR(33), c.UpdatedAt, 127) AS updatedAt
   FROM bbva.Collaborator c
@@ -57,7 +59,9 @@ const COLLABORATOR_SELECT = `
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < ${BBVA_SQL_BUSINESS_DATE} AND cc.RecertificationEnabled=0 THEN 1 END) AS expiredCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus IN (N'PENDING',N'SCHEDULED',N'APPLIED',N'FAILED') THEN 1 END) AS pendingCount,
       COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND effectiveDates.EffectiveExpirationDate IS NOT NULL AND effectiveDates.EffectiveExpirationDate < ${BBVA_SQL_BUSINESS_DATE} AND cc.RecertificationEnabled=1 THEN 1 END) AS recertificationPendingCount,
-      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND ISNULL(attemptStats.failedAttemptCount,0) >= 2 AND ISNULL(criticalResolution.ResolutionStatus,N'PENDING_REVIEW') IN (N'PENDING_REVIEW',N'LOW_REQUESTED') THEN 1 END) AS criticalCount
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'FAILED' AND cc.RequiresAttempts=1 AND cc.MaxAttempts=2 AND cc.CertificationType IN (N'DEVELOPMENT_SECURITY',N'TECHNOLOGICAL',N'NORMATIVE_TESTING') AND ISNULL(attemptStats.failedAttemptCount,0) >= 2 AND ISNULL(criticalResolution.ResolutionStatus,N'PENDING_REVIEW') IN (N'PENDING_REVIEW',N'LOW_REQUESTED') THEN 1 END) AS criticalCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus<>N'NOT_APPLICABLE' AND cc.CertificationType=N'TECHNOLOGICAL' THEN 1 END) AS technologicalApplicableCount,
+      COUNT(CASE WHEN pc.Applicable=1 AND pc.BaseStatus=N'APPROVED' AND cc.CertificationType=N'TECHNOLOGICAL' AND (effectiveDates.EffectiveExpirationDate IS NULL OR effectiveDates.EffectiveExpirationDate >= ${BBVA_SQL_BUSINESS_DATE}) THEN 1 END) AS technologicalCoveredCount
     FROM bbva.PersonCertification pc
     INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
     OUTER APPLY (

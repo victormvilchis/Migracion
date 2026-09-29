@@ -36,9 +36,6 @@ const StructureCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/ca
 const EngineeringSpecialtyListPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyListPage').then((m) => ({ default: m.EngineeringSpecialtyListPage })));
 const EngineeringSpecialtyEditorPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyEditorPage').then((m) => ({ default: m.EngineeringSpecialtyEditorPage })));
 const EngineeringSpecialtyDetailPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyDetailPage').then((m) => ({ default: m.EngineeringSpecialtyDetailPage })));
-const SecondCertificationPlanPage = React.lazy(() => import('./pagesBBVATalent/certifications/SecondCertificationPlanPage').then((m) => ({ default: m.SecondCertificationPlanPage })));
-const SecondCertificationPlanEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/SecondCertificationPlanEditorPage').then((m) => ({ default: m.SecondCertificationPlanEditorPage })));
-const SecondCertificationPlanDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/SecondCertificationPlanDetailPage').then((m) => ({ default: m.SecondCertificationPlanDetailPage })));
 const BBVAReportsPage = React.lazy(() => import('./pagesBBVATalent/reports/BBVAReportsPage').then((m) => ({ default: m.BBVAReportsPage })));
 const AdminUsersPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUsersPage').then((m) => ({ default: m.AdminUsersPage })));
 const AdminUserEditorPage = React.lazy(() => import('./pagesBBVATalent/admin/AdminUserEditorPage').then((m) => ({ default: m.AdminUserEditorPage })));
@@ -111,10 +108,8 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
 
               <Route path="/bbva/certifications/tracking" element={modulePage(<CertificationTrackingPage />)} />
               <Route path="/bbva/certifications/metrics" element={modulePage(<CertificationMetricsPage />)} />
-              <Route path="/bbva/certifications/second-plans" element={modulePage(<SecondCertificationPlanPage />)} />
-              <Route path="/bbva/certifications/second-plans/new" element={modulePage(<SecondCertificationPlanEditorPage />)} />
-              <Route path="/bbva/certifications/second-plans/:id/edit" element={modulePage(<SecondCertificationPlanEditorPage />)} />
-              <Route path="/bbva/certifications/second-plans/:id" element={modulePage(<SecondCertificationPlanDetailPage />)} />
+              <Route path="/bbva/certifications/second-plans" element={<Navigate to="/bbva/collaborators" replace />} />
+              <Route path="/bbva/certifications/second-plans/*" element={<Navigate to="/bbva/collaborators" replace />} />
 
               <Route path="/bbva/reports/talent" element={modulePage(<BBVAReportsPage type="talent" />)} />
               <Route path="/bbva/reports/collaborators" element={modulePage(<BBVAReportsPage type="collaborators" />)} />

@@ -20,16 +20,21 @@ function roleDisplay(profile?: string | null, technologyProfile?: string | null)
 }
 function technologyDisplay(technology?: string | null, expertise?: string | null) { return technology ? (expertise ? `${technology} - ${expertise}` : technology) : 'No disponible'; }
 function formatDate(value?: string | null) { if (!value) return 'No disponible'; const date = new Date(`${value}T00:00:00`); return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }); }
-function certificationStatus(item: Pick<Collaborator, 'certificationExpiring'|'certificationExpired'|'certificationPending'|'certificationRecertificationPending'|'certificationCritical'|'certificationApplicable'>) {
+function hasDoubleTechnologyCertification(item: Pick<Collaborator, 'certificationTechnologicalCovered'>) { return item.certificationTechnologicalCovered >= 2; }
+function certificationStatus(item: Pick<Collaborator, 'certificationExpiring'|'certificationExpired'|'certificationPending'|'certificationRecertificationPending'|'certificationCritical'|'certificationApplicable'|'certificationTechnologicalApplicable'|'certificationTechnologicalCovered'>) {
   if (item.certificationCritical > 0) return 'CRITICAL';
   if (item.certificationExpired + item.certificationRecertificationPending > 0) return 'EXPIRED';
   if (item.certificationExpiring > 0) return 'EXPIRING';
   if (item.certificationPending > 0) return 'PENDING';
-  if (item.certificationApplicable > 0) return 'VALID';
+  if (item.certificationApplicable > 0) {
+    if (item.certificationTechnologicalApplicable > 0 && item.certificationTechnologicalCovered === 0) return 'PENDING';
+    if (item.certificationTechnologicalApplicable > 0 && hasDoubleTechnologyCertification(item)) return 'DOUBLE_TECH';
+    return 'VALID';
+  }
   return 'NA';
 }
-const certificationLabels: Record<string, string> = { CRITICAL: 'Crítico · resolver 2/2', VALID: 'En regla', EXPIRING: 'Cubierta · próxima a vencer', EXPIRED: 'Atención requerida', PENDING: 'Pendientes', NA: 'Sin aplicables' };
-const certificationTone: Record<string, string> = { CRITICAL: 'bg-rose-100 text-rose-800 ring-1 ring-rose-200', VALID: 'bg-emerald-50 text-emerald-700', EXPIRING: 'bg-amber-50 text-amber-700', EXPIRED: 'bg-rose-50 text-rose-700', PENDING: 'bg-blue-50 text-blue-700', NA: 'bg-slate-100 text-slate-500' };
+const certificationLabels: Record<string, string> = { CRITICAL: 'Crítico · resolver 2/2', VALID: 'En regla', DOUBLE_TECH: 'Doble certificación', EXPIRING: 'Cubierta · próxima a vencer', EXPIRED: 'Atención requerida', PENDING: 'Pendientes', NA: 'Sin aplicables' };
+const certificationTone: Record<string, string> = { CRITICAL: 'bg-rose-100 text-rose-800 ring-1 ring-rose-200', VALID: 'bg-emerald-50 text-emerald-700', DOUBLE_TECH: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200', EXPIRING: 'bg-amber-50 text-amber-700', EXPIRED: 'bg-rose-50 text-rose-700', PENDING: 'bg-blue-50 text-blue-700', NA: 'bg-slate-100 text-slate-500' };
 type SortField = 'name'|'role'|'technology'|'dm'|'startDate'|'certifications'|'status';
 const defaults = { search:'', roleFilter:'ALL', technologyFilter:'ALL', structure2Filter:'ALL', structure3Filter:'ALL', deliveryManagerFilter:'ALL', statusFilter:'ALL', page:0, size:10, sort:'name' as SortField, direction:'asc' as 'asc'|'desc' };
 const unique=(values:Array<string|null|undefined>)=>[...new Set(values.map((value)=>String(value??'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es-MX',{sensitivity:'base'}));
@@ -56,7 +61,9 @@ export const CollaboratorsPage: React.FC = () => {
       const role = roleDisplay(item.profile, item.technologyProfile);
       const cert = certificationStatus(item);
       const matchesSearch = !term || [item.fullName,item.softtekEmail,item.bbvaEmail,item.email,item.softtekCode,item.bbvaUser,item.corporateUser,item.deliveryManager,role,item.currentTechnology,item.expertise,item.bbvaStructureLevel2,item.bbvaStructureLevel3].filter(Boolean).some((value) => String(value).toLocaleLowerCase('es-MX').includes(term));
-      return matchesSearch && (roleFilter === 'ALL' || item.profileCatalogId === roleFilter) && (technologyFilter === 'ALL' || item.currentTechnologyCatalogId === technologyFilter) && (structure2Filter==='ALL'||item.bbvaStructureLevel2===structure2Filter) && (structure3Filter==='ALL'||item.bbvaStructureLevel3===structure3Filter) && (deliveryManagerFilter==='ALL'||item.deliveryManager===deliveryManagerFilter) && (statusFilter === 'ALL' || cert === statusFilter);
+      const normalizedStatusFilter = statusFilter === 'VALID_PLUS' ? 'DOUBLE_TECH' : statusFilter;
+      const matchesStatus = normalizedStatusFilter === 'ALL' || (normalizedStatusFilter === 'DOUBLE_TECH' ? hasDoubleTechnologyCertification(item) : cert === normalizedStatusFilter);
+      return matchesSearch && (roleFilter === 'ALL' || item.profileCatalogId === roleFilter) && (technologyFilter === 'ALL' || item.currentTechnologyCatalogId === technologyFilter) && (structure2Filter==='ALL'||item.bbvaStructureLevel2===structure2Filter) && (structure3Filter==='ALL'||item.bbvaStructureLevel3===structure3Filter) && (deliveryManagerFilter==='ALL'||item.deliveryManager===deliveryManagerFilter) && matchesStatus;
     });
     const value = (item: Collaborator) => sort === 'name' ? item.fullName : sort === 'role' ? roleDisplay(item.profile,item.technologyProfile) : sort === 'technology' ? technologyDisplay(item.currentTechnology,item.expertise) : sort === 'dm' ? item.deliveryManager : sort === 'startDate' ? item.bbvaStartDate ?? '' : sort === 'certifications' ? item.certificationValid + item.certificationExpiring : certificationStatus(item);
     return rows.sort((a,b) => {
@@ -81,7 +88,7 @@ export const CollaboratorsPage: React.FC = () => {
       <div className="relative xl:col-span-2"><Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" /><input value={search} onChange={(e)=>memory.patch({search:e.target.value,page:0})} placeholder="Buscar por nombre, correo, IS o usuario" className="h-9 w-full rounded-xl border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none focus:border-blue-500" /></div>
       <BBVASearchableSelect value={technologyFilter} onChange={(v)=>memory.patch({technologyFilter:v,page:0})} options={[{value:'ALL',label:'Todas las tecnologías'},...(technologiesQuery.data?.items??[]).map((o)=>({value:o.id,label:String(o.name).toUpperCase()}))]} ariaLabel="Filtrar por tecnología" />
       <BBVASearchableSelect value={deliveryManagerFilter} onChange={(v)=>memory.patch({deliveryManagerFilter:v,page:0})} options={[{value:'ALL',label:'Todos los DM'},...deliveryManagerOptions.map((value)=>({value,label:upperDisplay(value)}))]} ariaLabel="Filtrar por Delivery Manager" />
-      <BBVASearchableSelect value={statusFilter} onChange={(v)=>memory.patch({statusFilter:v,page:0})} options={[{value:'ALL',label:'Todos los estados'},{value:'CRITICAL',label:'Crítico · resolver 2/2'},{value:'VALID',label:'En regla'},{value:'EXPIRING',label:'Cubierta · próxima a vencer'},{value:'EXPIRED',label:'Atención requerida'},{value:'PENDING',label:'Pendientes'},{value:'NA',label:'Sin aplicables'}]} ariaLabel="Filtrar por estado de certificación" />
+      <BBVASearchableSelect value={statusFilter} onChange={(v)=>memory.patch({statusFilter:v,page:0})} options={[{value:'ALL',label:'Todos los estados'},{value:'CRITICAL',label:'Crítico · resolver 2/2'},{value:'VALID',label:'En regla'},{value:'DOUBLE_TECH',label:'Doble certificación'},{value:'EXPIRING',label:'Cubierta · próxima a vencer'},{value:'EXPIRED',label:'Atención requerida'},{value:'PENDING',label:'Pendientes'},{value:'NA',label:'Sin aplicables'}]} ariaLabel="Filtrar por estado de certificación" />
       <BBVASearchableSelect value={structureFilter} onChange={(v)=>{const next=decodeStructureFilter(v);memory.patch({structure2Filter:next.level2||'ALL',structure3Filter:next.level3||'ALL',page:0});}} options={structureOptions} ariaLabel="Filtrar por estructura BBVA" searchPlaceholder="Buscar nivel 2 o nivel 3" />
       <div className="hidden"><BBVASearchableSelect value={roleFilter} onChange={(v)=>memory.patch({roleFilter:v,page:0})} options={[{value:'ALL',label:'Todos los roles'},...(profilesQuery.data?.items??[]).map((o)=>({value:o.id,label:String(o.name).toUpperCase()}))]} ariaLabel="Filtrar por rol" /></div>
     </div>

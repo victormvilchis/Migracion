@@ -68,6 +68,8 @@ export interface Collaborator {
   certificationPending: number;
   certificationRecertificationPending: number;
   certificationCritical: number;
+  certificationTechnologicalApplicable: number;
+  certificationTechnologicalCovered: number;
   createdAt: string;
   updatedAt: string;
   /** Alias de compatibilidad durante la migración de identidad. */

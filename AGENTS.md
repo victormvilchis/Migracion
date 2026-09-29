@@ -660,3 +660,15 @@ BFS remains its own product, architecture and source of truth.
 - La limpieza técnica no debe cambiar diseño, navegación, filtros, búsqueda, paginación ni comportamiento visible. Si una limpieza requiere un cambio UX, se entrega por separado.
 - `test-bbva-dead-code-v27b.mjs` protege la ausencia de los símbolos huérfanos retirados y la permanencia de los contratos backend relacionados.
 
+### V28 — segunda certificación tecnológica como estado derivado
+
+- El estado derivado visible para 2 o más certificaciones tecnológicas vigentes se denomina `Doble certificación`; no usar `En regla + certificación adicional`.
+- El filtro `Doble certificación` es un criterio independiente: debe encontrar a toda persona con 2+ certificaciones tecnológicas vigentes aunque su estado operativo principal sea Pendiente, Atención requerida, próxima a vencer o Crítico. El badge principal conserva la prioridad operativa para no ocultar alertas.
+
+- La segunda certificación tecnológica no es un módulo ni un plan paralelo: se deriva exclusivamente de `PersonCertification` + `CertificationCatalog`.
+- Para Colaboradores, una certificación tecnológica cuenta como cubierta cuando es aplicable, de tipo `TECHNOLOGICAL`, está aprobada y su vigencia efectiva no ha vencido; una próxima a vencer sigue siendo una certificación cubierta.
+- Si al colaborador le aplica certificación tecnológica, una tecnológica cubierta satisface el mínimo. Dos o más tecnológicas cubiertas habilitan el estado `En regla + certificación adicional`, únicamente cuando no existe un estado de mayor prioridad (crítico, vencido/recertificación, próximo a vencer o pendiente).
+- Si no le aplica certificación tecnológica, este criterio no penaliza su estado.
+- No reintroducir rutas, navegación, hooks, API ni backend de `SecondCertificationPlan`; las rutas históricas redirigen a Colaboradores por retrocompatibilidad.
+- `SecondTechnologyCertificationPlan` permanece solo en la migración histórica V26 para reproducibilidad del esquema; no es fuente de verdad funcional.
+

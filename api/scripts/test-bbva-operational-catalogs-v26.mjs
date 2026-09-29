@@ -80,12 +80,15 @@ const specialtyFunction = read('api/src/functions/bbvaEngineeringSpecialties.ts'
 assert.match(specialtyFunction, /CATALOG_READ/);
 assert.match(specialtyFunction, /CATALOG_WRITE/);
 
-const secondService = read('api/src/lib/bbvaSecondCertificationPlanService.ts');
-assert.match(secondService, /certificación debe ser tecnológica y estar activa/);
-assert.match(secondService, /certificación tecnológica primaria aplicable/);
-const secondPage = read('src/pagesBBVATalent/certifications/SecondCertificationPlanPage.tsx');
-assert.match(secondPage, /SEGUNDAS CERTIFICACIONES TECNOLÓGICAS/);
-assert.match(secondPage, /BBVAPagination/);
+// La tabla histórica de V26 se conserva por reproducibilidad de esquema, pero el módulo runtime fue retirado.
+assert.match(migration, /SecondTechnologyCertificationPlan/);
+assert.equal(fs.existsSync(path.join(root, 'src/pagesBBVATalent/certifications/SecondCertificationPlanPage.tsx')), false);
+assert.equal(fs.existsSync(path.join(root, 'api/src/functions/bbvaSecondCertificationPlans.ts')), false);
+const collaboratorRepo = read('api/src/lib/bbvaCollaboratorRepository.ts');
+assert.match(collaboratorRepo, /technologicalApplicableCount/);
+assert.match(collaboratorRepo, /technologicalCoveredCount/);
+const collaboratorPage = read('src/pagesBBVATalent/collaborators/CollaboratorsPage.tsx');
+assert.match(collaboratorPage, /Doble certificación/);
 
 const attemptPage = read('src/pagesBBVATalent/collaboratorCertifications/CertificationAttemptPage.tsx');
 assert.match(attemptPage, /Editar intento/);
@@ -109,5 +112,5 @@ console.log('- filtros DM/estructura + periodo actual: OK');
 console.log('- seguimiento compacto arriba + paginación: OK');
 console.log('- estructuras jerárquicas con Ver/Editar separados: OK');
 console.log('- gremios/especialidades desde 78 especialidades fuente, sin POOL ni Responsable ASO: OK');
-console.log('- plan de segundas certificaciones tecnológicas: OK');
+console.log('- segunda certificación tecnológica integrada como estado en Colaboradores: OK');
 console.log('- edición auditada de intentos y recálculo crítico: OK');

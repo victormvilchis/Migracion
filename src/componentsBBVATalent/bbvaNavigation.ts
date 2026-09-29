@@ -81,13 +81,6 @@ export const bbvaNavigation: BBVANavGroup[] = [
         description: 'Cumplimiento, estado y tendencias en una sola vista.',
         status: 'ready',
       },
-      {
-        id: 'certifications-second-plans',
-        label: 'Segundas certificaciones',
-        path: '/bbva/certifications/second-plans',
-        description: 'Plan de segunda certificación tecnológica por colaborador.',
-        status: 'ready',
-      },
     ],
   },
   {

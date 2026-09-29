@@ -71,6 +71,8 @@ export interface CollaboratorRecord {
   certificationPending: number;
   certificationRecertificationPending: number;
   certificationCritical: number;
+  certificationTechnologicalApplicable: number;
+  certificationTechnologicalCovered: number;
   createdAt: string;
   updatedAt: string;
 }
