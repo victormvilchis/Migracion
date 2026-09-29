@@ -47,3 +47,12 @@ azurite-data/
 
 # Local compiled artifacts
 .output/
+
+# BaseBFS local backups / extracted delivery bundles
+.basebfs-backups/
+__MACOSX/
+._*
+/basebfs-*/
+/basebfs-*.zip
+backup-*.txt
+postcheck-*.txt

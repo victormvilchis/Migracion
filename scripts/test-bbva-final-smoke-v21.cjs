@@ -32,4 +32,4 @@ for (const relative of tests) {
   const run = spawnSync(process.execPath, [path.join(root, relative)], { cwd: root, stdio: 'inherit' });
   if (run.status !== 0) process.exit(run.status || 1);
 }
-console.log('\nSmoke/regresión BBVA V26: OK');
+console.log('\nSmoke/regresión BBVA V27A: OK');
