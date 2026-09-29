@@ -107,7 +107,7 @@ export const BBVASearchableSelect: React.FC<Props> = ({
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => { if (open) { setOpen(false); return; } updatePosition(); setOpen(true); }}
         className={cn(buttonClass, open && 'border-blue-400 ring-2 ring-blue-500/15', disabled && 'cursor-not-allowed opacity-60')}
       >
         <span className={cn('min-w-0 flex-1 truncate', !selectedOption && 'text-slate-400 [.bbva-dark_&]:text-slate-500')}>

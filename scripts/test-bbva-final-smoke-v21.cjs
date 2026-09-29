@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const tests = [
+  'api/scripts/test-bbva-operational-polish-v31.2.mjs',
   'api/scripts/test-bbva-guild-specialty-visual-v31.1.mjs',
   'api/scripts/test-bbva-guild-specialty-explorer-v31.mjs',
   'api/scripts/test-bbva-operational-ux-v30.4.mjs',
@@ -45,4 +46,4 @@ for (const relative of tests) {
   const run = spawnSync(process.execPath, [path.join(root, relative)], { cwd: root, stdio: 'inherit' });
   if (run.status !== 0) process.exit(run.status || 1);
 }
-console.log('\nSmoke/regresión BBVA V31.1: OK');
+console.log('\nSmoke/regresión BBVA V31.2: OK');

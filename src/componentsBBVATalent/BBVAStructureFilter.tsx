@@ -80,7 +80,7 @@ export const BBVAStructureFilter: React.FC<Props> = ({ items, level2 = '', level
   const choose = (next: { level2: string; level3: string }) => { onChange(next); setOpen(false); };
 
   return <div className={cn('relative min-w-0', className)}>
-    <button ref={buttonRef} type="button" aria-label={ariaLabel} aria-haspopup="listbox" aria-expanded={open} onClick={()=>setOpen((current)=>!current)} className={cn('flex h-9 w-full items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-left text-[11px] text-slate-900 outline-none transition hover:border-blue-300 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500/25', open && 'border-blue-400 ring-2 ring-blue-500/15')}>
+    <button ref={buttonRef} type="button" aria-label={ariaLabel} aria-haspopup="listbox" aria-expanded={open} onClick={()=>{if(open){setOpen(false);return;}updatePosition();setOpen(true);}} className={cn('flex h-9 w-full items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-left text-[11px] text-slate-900 outline-none transition hover:border-blue-300 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500/25', open && 'border-blue-400 ring-2 ring-blue-500/15')}>
       <span className={cn('min-w-0 flex-1 truncate', !level2 && 'text-slate-500')}>{label}</span>
       {(level2 || level3) ? <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[8px] font-bold text-blue-700">1</span> : null}
       <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-slate-400 transition', open && 'rotate-180 text-blue-500')}/>

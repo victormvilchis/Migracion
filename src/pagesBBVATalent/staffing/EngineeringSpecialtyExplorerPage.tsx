@@ -73,7 +73,7 @@ export const EngineeringSpecialtyExplorerPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const rawHierarchy = query.data?.hierarchy ?? [];
-  const level2Options = useMemo(() => rawHierarchy.map((item) => ({ value: item.id, label: item.name.toUpperCase() })), [rawHierarchy]);
+  const level2Options = useMemo(() => [...rawHierarchy].sort((a,b)=>b.collaboratorCount-a.collaboratorCount || b.specialtyCount-a.specialtyCount || a.name.localeCompare(b.name,'es-MX',{sensitivity:'base'})).map((item) => ({ value: item.id, label: item.name.toUpperCase(), description: `${item.collaboratorCount} colaboradores` })), [rawHierarchy]);
 
   const filteredHierarchy = useMemo(() => {
     const term = normalize(search.trim());
@@ -96,11 +96,13 @@ export const EngineeringSpecialtyExplorerPage: React.FC = () => {
             if (term && !parentMatch && !childMatch && !specialties.length) return null;
             return { ...child, specialties };
           })
-          .filter((item): item is EngineeringExplorerLevel3Node => Boolean(item));
+          .filter((item): item is EngineeringExplorerLevel3Node => Boolean(item))
+          .sort((a,b)=>b.collaboratorCount-a.collaboratorCount || b.specialties.length-a.specialties.length || a.name.localeCompare(b.name,'es-MX',{sensitivity:'base'}));
         if ((term || staffer) && !parentMatch && !level3.length) return null;
         return { ...parent, level3, specialtyCount: level3.reduce((sum, child) => sum + child.specialties.length, 0), collaboratorCount: level3.reduce((sum, child) => sum + child.collaboratorCount, 0) };
       })
-      .filter((item): item is EngineeringExplorerLevel2Node => Boolean(item));
+      .filter((item): item is EngineeringExplorerLevel2Node => Boolean(item))
+      .sort((a,b)=>b.collaboratorCount-a.collaboratorCount || b.specialtyCount-a.specialtyCount || a.name.localeCompare(b.name,'es-MX',{sensitivity:'base'}));
   }, [level2Id, rawHierarchy, search, staffer, status]);
 
   const flatLevel3 = useMemo(() => filteredHierarchy.flatMap((parent) => parent.level3.map((child) => ({ parent, child }))), [filteredHierarchy]);
@@ -166,7 +168,7 @@ export const EngineeringSpecialtyExplorerPage: React.FC = () => {
 
   const heatCells = query.data.heatmap.filter((cell) => (!level2Id || cell.level2Id === level2Id) && (!search || normalize(`${cell.level2Name} ${cell.level3Name}`).includes(normalize(search))));
   const heatMax = Math.max(1, ...heatCells.map((item) => item.collaboratorCount));
-  const heatGroups = filteredHierarchy.map((parent) => ({ parent, cells: heatCells.filter((item) => item.level2Id === parent.id) })).filter((group) => group.cells.length);
+  const heatGroups = filteredHierarchy.map((parent) => ({ parent, cells: heatCells.filter((item) => item.level2Id === parent.id).sort((a,b)=>b.collaboratorCount-a.collaboratorCount || b.specialtyCount-a.specialtyCount || a.level3Name.localeCompare(b.level3Name,'es-MX',{sensitivity:'base'})) })).filter((group) => group.cells.length).sort((a,b)=>b.parent.collaboratorCount-a.parent.collaboratorCount || b.parent.specialtyCount-a.parent.specialtyCount || a.parent.name.localeCompare(b.parent.name,'es-MX',{sensitivity:'base'}));
 
   const selectedType = selectedSpecialty ? 'ESPECIALIDAD' : selected?.kind === 'level3' ? 'NIVEL 3 · GREMIO' : 'NIVEL 2';
   const selectedName = selectedSpecialty?.name ?? selectedLevel3?.name ?? selectedLevel2?.name ?? '—';

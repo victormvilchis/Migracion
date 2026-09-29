@@ -58,7 +58,7 @@ assert.match(tracking,/actions=\{<>.*Actualizar/s);
 assert.doesNotMatch(reports,/Snapshots del periodo|Una fila por día capturado/);
 assert.doesNotMatch(metrics,/Certificaciones que vencen en/);
 assert.doesNotMatch(tracking,/>Certificaciones por atender</);
-assert.match(collaboratorCerts,/<BBVAFilterBar>[\s\S]*?<section className="overflow-visible rounded-xl border/);
+assert.match(collaboratorCerts,/<BBVAFilterBar(?:\s+actions=\{[\s\S]*?\})?>[\s\S]*?<section className="overflow-visible rounded-xl border/);
 
 // Toda página BBVA con tabla incorpora la paginación corporativa.
 const pageRoot=path.join(root,'src/pagesBBVATalent');

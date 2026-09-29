@@ -25,7 +25,7 @@ assert.doesNotMatch(collaborators, /label="Certificaciones"/);
 assert.doesNotMatch(collaborators, /cubiertas \/ aplicables/);
 assert.match(collaborators, /label="Estado"/);
 assert.match(collaborators, /id:'certifications',label:'Certificaciones'/); // sigue disponible como acción.
-assert.match(collaborators, /colSpan=\{8\}/);
+assert.match(collaborators, /colSpan=\{7\}/);
 
 // Headers de tablas sin repetir el módulo ni conteos que ya muestra la paginación.
 assert.doesNotMatch(tracking, />Certificaciones por atender</);

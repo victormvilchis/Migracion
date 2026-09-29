@@ -749,3 +749,12 @@ BFS remains its own product, architecture and source of truth.
 - `Mapa de calor` es una cuadrícula compacta: cada fila contextualiza un Nivel 2 y cada celda representa un Nivel 3. La intensidad se expresa con fondos claros y bordes BBVA, nunca con tarjetas azul oscuro o texto blanco como escala principal.
 - El mapa de calor conserva navegación al nodo jerárquico al hacer click, pero no se presenta como una colección de cards independientes.
 - Jerarquía, Mapa de calor e Insights usan un selector segmentado claro, integrado con el resto de la plataforma.
+
+
+### V31.2 — prioridad visual y ergonomía operativa
+
+- En Gremios y Especialidades, las estructuras Nivel 2 y Nivel 3 se ordenan por defecto de mayor a menor número de colaboradores activos. Los empates se resuelven por número de especialidades y después por nombre. El mapa de calor conserva el mismo criterio para que los nodos con mayor población queden primero.
+- La tabla principal de Colaboradores no separa `Rol` y `Tecnología actual` en columnas anchas. Se presenta una sola columna `Perfil / tecnología`, con perfil/rol como dato principal y tecnología + nivel como contexto secundario.
+- Los selects con dropdown portaleado calculan su posición antes de abrirse. No renderizar un portal inicialmente en `(0,0)` ni permitir un destello perceptible en el borde izquierdo de la pantalla. Esta regla aplica a `BBVASearchableSelect`, `BBVAMultiSelect` y `BBVAStructureFilter`.
+- En Certificaciones del colaborador, la acción `Agregar certificación` vive en la misma barra compacta de filtros/acciones de la tabla. El selector indica explícitamente que sirve para agregar y el botón usa el texto completo `Agregar certificación`.
+- Los tres KPIs de Certificaciones del colaborador tienen mayor jerarquía tipográfica que los controles: etiquetas legibles, valor principal de 26px y contexto secundario reforzado.

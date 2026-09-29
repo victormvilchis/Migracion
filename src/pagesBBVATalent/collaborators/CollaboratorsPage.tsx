@@ -95,12 +95,11 @@ export const CollaboratorsPage: React.FC = () => {
     </div>
     {(search||selectedTechnologies.length||deliveryManagerFilter!=='ALL'||statusFilter!=='ALL'||structure2Filter!=='ALL'||structure3Filter!=='ALL')?<div className="flex justify-end"><button type="button" onClick={()=>memory.reset()} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">Limpiar filtros</button></div>:null}
     {query.isLoading ? <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando colaboradores...</div> : query.error ? <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert> : <div className="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto overflow-y-visible"><table className="w-full min-w-[1180px] table-fixed text-left text-[10.5px]">
+      <div className="overflow-x-auto overflow-y-visible"><table className="w-full min-w-[1020px] table-fixed text-left text-[10.5px]">
         <thead className="border-b border-slate-200 bg-slate-50/90 text-[9px] font-semibold uppercase tracking-[.035em] text-slate-600"><tr>
-          <th className="w-[27%] px-2 py-1.5"><BBVATableSortHeader label="Colaborador" active={sort==='name'} direction={direction} onClick={()=>changeSort('name')} /></th>
-          <th className="w-[23%] px-2 py-1.5"><BBVATableSortHeader label="Rol" active={sort==='role'} direction={direction} onClick={()=>changeSort('role')} /></th>
-          <th className="w-[13%] px-2 py-1.5"><BBVATableSortHeader label="Tecnología actual" active={sort==='technology'} direction={direction} onClick={()=>changeSort('technology')} /></th>
-          <th className="w-[13%] px-2 py-1.5">Estructura BBVA</th>
+          <th className="w-[25%] px-2 py-1.5"><BBVATableSortHeader label="Colaborador" active={sort==='name'} direction={direction} onClick={()=>changeSort('name')} /></th>
+          <th className="w-[27%] px-2 py-1.5"><BBVATableSortHeader label="Perfil / tecnología" active={sort==='role'||sort==='technology'} direction={direction} onClick={()=>changeSort(sort==='role'?'technology':'role')} /></th>
+          <th className="w-[16%] px-2 py-1.5">Estructura BBVA</th>
           <th className="w-[12%] px-2 py-1.5"><BBVATableSortHeader label="DM" active={sort==='dm'} direction={direction} onClick={()=>changeSort('dm')} /></th>
           <th className="w-[9%] px-2 py-1.5"><BBVATableSortHeader label="Alta BBVA" active={sort==='startDate'} direction={direction} onClick={()=>changeSort('startDate')} /></th>
           <th className="w-[10%] px-2 py-1.5"><BBVATableSortHeader label="Estado" active={sort==='status'} direction={direction} onClick={()=>changeSort('status')} /></th>
@@ -114,14 +113,13 @@ export const CollaboratorsPage: React.FC = () => {
             title="Clic para ver contexto del colaborador"
           >
             <td className="px-2 py-1.5"><div className="min-w-0"><div className="truncate font-semibold text-slate-900">{displayPersonName(item.fullName)}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></td>
-            <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] text-slate-700">{displayRoleName(roleDisplay(item.profile,item.technologyProfile))}</div></td>
-            <td className="px-2 py-1.5 text-slate-700">{upperDisplay(technologyDisplay(item.currentTechnology,item.expertise))}</td>
+            <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] font-medium text-slate-700">{displayRoleName(roleDisplay(item.profile,item.technologyProfile))}</div><div className="mt-1 truncate text-[9px] font-semibold text-blue-700">{upperDisplay(technologyDisplay(item.currentTechnology,item.expertise))}</div></td>
             <td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{displayStructure(item.bbvaStructureLevel2)}</div><div className="truncate text-[9px] text-slate-400">{displayStructure(item.bbvaStructureLevel3)}</div></td><td className="truncate px-2 py-1.5 text-slate-600" title={item.deliveryManager??''}>{displayPersonName(item.deliveryManager)}</td>
             <td className="px-2 py-1.5 text-slate-600">{formatDate(item.bbvaStartDate)}</td>
             <td className="px-2 py-1.5"><span className={`rounded-full px-2 py-1 text-[8.5px] font-semibold ${certificationTone[cert]}`}>{certificationLabels[cert]}</span></td>
             <td className="px-2 py-1.5 text-right" onClick={(event)=>event.stopPropagation()}><BBVAActionMenu items={[{id:'view',label:'Ver',icon:Eye,onClick:()=>navigate(`/bbva/collaborators/${item.id}`)},{id:'edit',label:'Editar',icon:Pencil,onClick:()=>navigate(`/bbva/collaborators/${item.id}/edit`)},{id:'certifications',label:'Certificaciones',icon:Award,onClick:()=>navigate(`/bbva/collaborators/${item.id}/certifications`)},{id:'move-to-talent',label:'Mover a Banco de talento',icon:ArrowRightLeft,onClick:()=>navigate(`/bbva/collaborators/${item.id}/move-to-talent`)}]} /></td>
           </tr>
-          {isExpanded ? <tr className="bg-slate-50/75"><td colSpan={8} className="px-3 py-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-10">
+          {isExpanded ? <tr className="bg-slate-50/75"><td colSpan={7} className="px-3 py-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-10">
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">IS Softtek</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{upperIdentity(item.softtekCode)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Usuario BBVA / XM</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{upperIdentity(item.bbvaUser||item.corporateUser)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Correo BBVA</div><div className="mt-1 truncate text-[10px] font-semibold text-slate-700" title={item.bbvaEmail??''}>{item.bbvaEmail||'No disponible'}</div></div>
