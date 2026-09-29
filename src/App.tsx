@@ -8,6 +8,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { SampleCrudPage } from './pages/SampleCrudPage';
 import { SampleAiPage } from './pages/SampleAiPage';
 import { subscribeBbvaDataChange } from './pagesBBVATalent/lib/bbvaDataSync';
+import { BBVAFilterPersistenceBoundary } from './pagesBBVATalent/hooks/BBVAFilterPersistenceScope';
 
 const BBVADashboardPage = React.lazy(() => import('./pagesBBVATalent/dashboard/BBVADashboardPage').then((m) => ({ default: m.BBVADashboardPage })));
 const CollaboratorCertificationsPage = React.lazy(() => import('./pagesBBVATalent/collaboratorCertifications/CollaboratorCertificationsPage').then((m) => ({ default: m.CollaboratorCertificationsPage })));
@@ -83,8 +84,9 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
 
       {isBbvaRoute ? (
         <BBVALayout>
-          <div key={userKey} className="w-full min-w-0">
-            <Routes>
+          <BBVAFilterPersistenceBoundary pathname={location.pathname}>
+            <div key={userKey} className="w-full min-w-0">
+              <Routes>
               <Route path="/bbva/dashboard" element={modulePage(<BBVADashboardPage />)} />
               <Route path="/bbva/talent-bank" element={modulePage(<TalentPage />)} />
               <Route path="/bbva/talent-bank/new" element={modulePage(<TalentEditorPage />)} />
@@ -162,23 +164,26 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/admin/catalogs/certifications/:id" element={modulePage(<CertificationCatalogDetailPage mode="view" />)} />
 
               <Route path="/bbva/*" element={modulePage(<BBVAPlaceholderPage />)} />
-            </Routes>
-          </div>
+              </Routes>
+            </div>
+          </BBVAFilterPersistenceBoundary>
         </BBVALayout>
       ) : (
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
           <main className="flex-1 overflow-y-auto bg-[#f8fafc] p-4 sm:p-8">
-            <div key={userKey} className="mx-auto max-w-7xl">
-              <Routes>
+            <BBVAFilterPersistenceBoundary pathname={location.pathname}>
+              <div key={userKey} className="mx-auto max-w-7xl">
+                <Routes>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/crud" element={<SampleCrudPage />} />
                 <Route path="/ai" element={<SampleAiPage />} />
                 <Route path="/talent/*" element={<Navigate to="/bbva/talent-bank" replace />} />
                 <Route path="/collaborators/*" element={<Navigate to="/bbva/collaborators" replace />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </div>
+                </Routes>
+              </div>
+            </BBVAFilterPersistenceBoundary>
           </main>
         </div>
       )}

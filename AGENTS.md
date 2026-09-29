@@ -667,8 +667,17 @@ BFS remains its own product, architecture and source of truth.
 
 - La segunda certificación tecnológica no es un módulo ni un plan paralelo: se deriva exclusivamente de `PersonCertification` + `CertificationCatalog`.
 - Para Colaboradores, una certificación tecnológica cuenta como cubierta cuando es aplicable, de tipo `TECHNOLOGICAL`, está aprobada y su vigencia efectiva no ha vencido; una próxima a vencer sigue siendo una certificación cubierta.
-- Si al colaborador le aplica certificación tecnológica, una tecnológica cubierta satisface el mínimo. Dos o más tecnológicas cubiertas habilitan el estado `En regla + certificación adicional`, únicamente cuando no existe un estado de mayor prioridad (crítico, vencido/recertificación, próximo a vencer o pendiente).
+- Si al colaborador le aplica certificación tecnológica, una tecnológica cubierta satisface el mínimo. Dos o más tecnológicas cubiertas habilitan el estado derivado `Doble certificación`; el badge operativo principal puede seguir mostrando un estado de mayor prioridad (crítico, vencido/recertificación, próximo a vencer o pendiente).
 - Si no le aplica certificación tecnológica, este criterio no penaliza su estado.
 - No reintroducir rutas, navegación, hooks, API ni backend de `SecondCertificationPlan`; las rutas históricas redirigen a Colaboradores por retrocompatibilidad.
 - `SecondTechnologyCertificationPlan` permanece solo en la migración histórica V26 para reproducibilidad del esquema; no es fuente de verdad funcional.
 
+### V29 — persistencia de filtros por visita de módulo
+
+- Los filtros persistentes de BBVA se conservan únicamente mientras el usuario permanece dentro del mismo módulo funcional, incluyendo sus vistas de lista, detalle, alta, edición y acciones relacionadas.
+- Al navegar a otro módulo, la visita anterior se cierra. Si el usuario regresa después al módulo anterior, todos sus filtros, búsqueda, ordenamiento y paginación persistentes deben iniciar en sus valores default.
+- Navegar entre vistas internas del mismo módulo NO reinicia filtros; por ejemplo, Colaboradores → Ver/Editar/Certificaciones → Regresar conserva el contexto de Colaboradores.
+- Recargar la página dentro del mismo módulo puede conservar el contexto durante la misma sesión del navegador; cambiar de módulo siempre prevalece y provoca una nueva visita.
+- La regla aplica tanto a estado persistido en `sessionStorage` como a filtros representados por query params. Volver mediante historial del navegador desde otro módulo no debe restaurar filtros de una visita anterior.
+- El alcance se determina desde la navegación oficial (`bbvaNavigation`), no por prefijos hardcodeados independientes en cada página. Los módulos nuevos heredan este comportamiento al registrarse en la navegación y usar los hooks estándar de listas/filtros.
+- No usar `localStorage` para filtros operativos BBVA. `localStorage` queda reservado a preferencias duraderas de interfaz que no son filtros, como el estado colapsado del sidebar.
