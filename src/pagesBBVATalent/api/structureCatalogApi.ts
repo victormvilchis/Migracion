@@ -7,5 +7,4 @@ export const structureCatalogApi={
  create:(payload:StructurePayload)=>fetchApi<{item:StructureRecord}>('/bbva/structures',{method:'POST',body:JSON.stringify(payload)}),
  update:(id:string,payload:StructurePayload)=>fetchApi<{item:StructureRecord}>(`/bbva/structures/${id}`,{method:'PUT',body:JSON.stringify(payload)}),
  status:(id:string,status:StructureStatus)=>fetchApi<{item:StructureRecord}>(`/bbva/structures/${id}/status`,{method:'PATCH',body:JSON.stringify({status})}),
- delete:(id:string)=>fetchApi<{deleted:boolean}>(`/bbva/structures/${id}`,{method:'DELETE'}),
 };

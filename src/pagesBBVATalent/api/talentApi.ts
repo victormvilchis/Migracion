@@ -3,10 +3,8 @@ import type {
   Talent,
   TalentCvDownload,
   TalentCvPayload,
-  TalentHistoryItem,
   TalentPayload,
   TalentConversionPayload,
-  TalentStage,
 } from '../types/talent';
 
 export interface TalentListResponse {
@@ -27,17 +25,10 @@ export const talentApi = {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
-  updateStage: (id: string, stage: TalentStage) =>
-    fetchApi<{ item: Talent; storage: string }>(`/bbva/talent-bank/${id}/stage`, {
-      method: 'PATCH',
-      body: JSON.stringify({ stage }),
-    }),
   convert: (id: string, payload: TalentConversionPayload) =>
     fetchApi<{ collaboratorId: string; message: string; warning?: string | null }>(`/bbva/talent-bank/${id}/convert`, { method: 'POST', body: JSON.stringify(payload) }),
   remove: (id: string) =>
     fetchApi<{ deleted: boolean }>(`/bbva/talent-bank/${id}`, { method: 'DELETE' }),
-  history: (id: string) =>
-    fetchApi<{ items: TalentHistoryItem[] }>(`/bbva/talent-bank/${id}/history`),
   getCv: (id: string) =>
     fetchApi<{ document: TalentCvDownload }>(`/bbva/talent-bank/${id}/cv`),
   saveCv: (id: string, payload: TalentCvPayload) =>

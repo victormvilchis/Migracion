@@ -8,7 +8,6 @@ const attemptRepo=read('api/src/lib/bbvaCollaboratorCertificationRepository.ts')
 const collaboratorRepo=read('api/src/lib/bbvaCollaboratorRepository.ts');
 const talentRepo=read('api/src/lib/bbvaTalentRepository.ts');
 const tracking=read('src/pagesBBVATalent/certifications/CertificationTrackingPage.tsx');
-const quarter=read('src/componentsBBVATalent/BBVAQuarterSelector.tsx');
 const structures=read('src/pagesBBVATalent/catalogs/StructureCatalogPage.tsx');
 const form=read('src/componentsBBVATalent/CollaboratorForm.tsx');
 const migration=read('api/scripts/migrate-bbva-structures-v24.sql');
@@ -43,9 +42,10 @@ assert.match(tracking,/>Periodo<\/th>/);
 assert.doesNotMatch(tracking,/Estructura BBVA/);
 assert.doesNotMatch(tracking,/>Postal<\/BBVAButton>/);
 
-// Selector Q simplificado a un único control con calendario configurado.
-assert.match(quarter,/Buscar periodo/);
-assert.doesNotMatch(quarter,/yearQuarters\.map/);
+// Periodo integrado al filtro activo de Seguimiento; no existe un selector Q independiente.
+assert.match(tracking,/searchPlaceholder="Buscar periodo"/);
+assert.match(tracking,/ariaLabel="Periodo de vencimiento"/);
+assert.doesNotMatch(tracking,/BBVAQuarterSelector/);
 
 // Estructuras: un módulo jerárquico y formulario conectado al catálogo.
 assert.match(migration,/CREATE TABLE bbva\.StructureCatalog/);

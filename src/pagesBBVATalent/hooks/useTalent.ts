@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { talentApi } from '../api/talentApi';
-import type { TalentConversionPayload, TalentCvPayload, TalentPayload, TalentStage } from '../types/talent';
+import type { TalentConversionPayload, TalentCvPayload, TalentPayload } from '../types/talent';
 import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 
 export function useTalentList() {
@@ -15,13 +15,6 @@ export function useTalent(id?: string) {
   });
 }
 
-export function useTalentHistory(id?: string) {
-  return useQuery({
-    queryKey: ['talent', id, 'history'],
-    queryFn: () => talentApi.history(id as string),
-    enabled: Boolean(id),
-  });
-}
 
 export function useCreateTalent() {
   const queryClient = useQueryClient();
@@ -43,18 +36,6 @@ export function useUpdateTalent() {
   });
 }
 
-export function useUpdateTalentStage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, stage }: { id: string; stage: TalentStage }) => talentApi.updateStage(id, stage),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['talent'] });
-      queryClient.invalidateQueries({ queryKey: ['talent', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['talent', variables.id, 'history'] });
-      publishBbvaDataChange(['talent','collaborators','dashboard']);
-    },
-  });
-}
 
 export function useConvertTalent() {
   const queryClient = useQueryClient();
@@ -83,7 +64,6 @@ export function useSaveTalentCv() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['talent'] });
       queryClient.invalidateQueries({ queryKey: ['talent', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['talent', variables.id, 'history'] });
       publishBbvaDataChange(['talent','collaborators','dashboard']);
     },
   });

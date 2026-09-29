@@ -35,7 +35,6 @@ export const TALENT_STAGE_LABELS: Record<TalentStage, string> = {
   CONVERTED: 'Convertido',
 };
 
-export const ACADEMY_PROFILES = ['TR', 'JR', 'STD', 'SR'] as const;
 export const EXPERTISE_LEVELS = ['TR', 'JR', 'STD', 'SR'] as const;
 
 export interface TalentCvMetadata {
@@ -134,13 +133,6 @@ export interface TalentConversionPayload {
   expectedUpdatedAt: string;
 }
 
-export interface TalentHistoryItem {
-  id: string;
-  eventType: string;
-  description: string;
-  createdAt: string;
-  createdByEmail: string;
-}
 
 export interface TalentCvPayload {
   fileName: string;

@@ -1,8 +1,5 @@
 import { bbvaBusinessDate } from '../../lib/bbvaBusinessDate';
-import type { CertificationTrackingItem, CollaboratorCertificationStatus } from '../types/collaboratorCertification';
-
-export type TrackingOperationalStatus = Extract<CollaboratorCertificationStatus, 'EXPIRED' | 'RECERTIFICATION_PENDING' | 'EXPIRING' | 'FAILED' | 'SCHEDULED' | 'PENDING' | 'APPLIED'>;
-export type TrackingInsightTone = 'rose' | 'orange' | 'amber' | 'blue' | 'emerald' | 'slate';
+import type { CertificationTrackingItem } from '../types/collaboratorCertification';
 
 export interface TrackingSummary {
   total: number;
@@ -15,16 +12,6 @@ export interface TrackingSummary {
   applied: number;
   limitReached: number;
   criticalExit: number;
-}
-
-export interface TrackingInsight {
-  id: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  tone: TrackingInsightTone;
-  status?: TrackingOperationalStatus;
-  actionLabel?: string;
 }
 
 const dateEpoch = (value?: string | null) => {
@@ -113,119 +100,3 @@ export const buildTrackingSummary = (items: CertificationTrackingItem[]): Tracki
   limitReached: items.filter(hasAttemptLimitReached).length,
   criticalExit: items.filter(hasOpenCriticalResolution).length,
 });
-
-const certificationConcentration = (items: CertificationTrackingItem[]) => {
-  if (!items.length) return null;
-  const counts = new Map<string, number>();
-  for (const item of items) counts.set(item.certificationName, (counts.get(item.certificationName) ?? 0) + 1);
-  const [label, value] = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es-MX'))[0];
-  return { label, value, total: items.length };
-};
-
-const concentrationDescription = (items: CertificationTrackingItem[]) => {
-  const concentration = certificationConcentration(items);
-  if (!concentration || concentration.total < 2 || concentration.value < 2) return null;
-  if (concentration.value === concentration.total) return `Todos los casos corresponden a ${concentration.label}.`;
-  const percentage = (concentration.value / concentration.total) * 100;
-  return `${concentration.label} concentra ${concentration.value} de ${concentration.total} casos (${percentage.toLocaleString('es-MX', { maximumFractionDigits: 1 })}%).`;
-};
-
-const nearestExpiration = (items: CertificationTrackingItem[], now = new Date()) => {
-  return items
-    .map((item) => ({ item, days: calendarDaysFromToday(item.expirationDate, now) }))
-    .filter((entry): entry is { item: CertificationTrackingItem; days: number } => entry.days !== null && entry.days >= 0)
-    .sort((a, b) => a.days - b.days || a.item.certificationName.localeCompare(b.item.certificationName, 'es-MX'))[0] ?? null;
-};
-
-export const buildTrackingInsights = (items: CertificationTrackingItem[], now = new Date()): TrackingInsight[] => {
-  const insights: TrackingInsight[] = [];
-  const expired = items.filter((item) => item.status === 'EXPIRED');
-  const recertification = items.filter((item) => item.status === 'RECERTIFICATION_PENDING');
-  const expiring = items.filter((item) => item.status === 'EXPIRING');
-  const failed = items.filter((item) => item.status === 'FAILED');
-  const limitReached = items.filter(hasAttemptLimitReached);
-  const criticalExit = items.filter(hasOpenCriticalResolution);
-
-  if (criticalExit.length) {
-    insights.push({
-      id: 'critical-exit',
-      eyebrow: 'Crítico',
-      title: `${criticalExit.length} ${criticalExit.length === 1 ? 'persona agotó' : 'personas agotaron'} los 2 intentos configurados.`,
-      description: 'Desarrollo Seguro, Tecnológica o Normativa: revisar de inmediato si corresponde solicitar baja o gestionar el caso como becario.',
-      tone: 'rose',
-      status: 'FAILED',
-      actionLabel: 'Revisar críticos',
-    });
-  }
-
-  if (expired.length) {
-    insights.push({
-      id: 'expired',
-      eyebrow: 'Atención inmediata',
-      title: `${expired.length} ${expired.length === 1 ? 'certificación está vencida' : 'certificaciones están vencidas'}.`,
-      description: concentrationDescription(expired) ?? 'Revisa la vigencia y la acción disponible para cada colaborador.',
-      tone: 'rose',
-      status: 'EXPIRED',
-      actionLabel: 'Ver vencidas',
-    });
-  }
-
-  if (recertification.length) {
-    insights.push({
-      id: 'recertification',
-      eyebrow: 'Recertificación',
-      title: `${recertification.length} ${recertification.length === 1 ? 'certificación requiere' : 'certificaciones requieren'} un nuevo ciclo.`,
-      description: concentrationDescription(recertification) ?? 'El estado proviene de las reglas vigentes de recertificación.',
-      tone: 'orange',
-      status: 'RECERTIFICATION_PENDING',
-      actionLabel: 'Ver recertificación',
-    });
-  }
-
-  if (expiring.length) {
-    const nearest = nearestExpiration(expiring, now);
-    insights.push({
-      id: 'expiring',
-      eyebrow: 'Prevención',
-      title: `${expiring.length} ${expiring.length === 1 ? 'certificación está' : 'certificaciones están'} próximas a vencer.`,
-      description: nearest ? `${nearest.item.certificationName} de ${nearest.item.collaboratorName}: ${expirationContext(nearest.item, now).toLocaleLowerCase('es-MX')}.` : (concentrationDescription(expiring) ?? 'Revisa las fechas de vencimiento para anticipar la recertificación.'),
-      tone: 'amber',
-      status: 'EXPIRING',
-      actionLabel: 'Ver próximas',
-    });
-  }
-
-  if (limitReached.length) {
-    insights.push({
-      id: 'attempt-limit',
-      eyebrow: 'Intentos',
-      title: `${limitReached.length} ${limitReached.length === 1 ? 'registro alcanzó' : 'registros alcanzaron'} el máximo configurado de intentos.`,
-      description: 'El límite mostrado corresponde a la configuración real de cada certificación; no se calcula un máximo global.',
-      tone: 'slate',
-      status: failed.length ? 'FAILED' : undefined,
-      actionLabel: failed.length ? 'Revisar reprobadas' : undefined,
-    });
-  } else if (failed.length) {
-    insights.push({
-      id: 'failed',
-      eyebrow: 'Intentos',
-      title: `${failed.length} ${failed.length === 1 ? 'certificación tiene' : 'certificaciones tienen'} un resultado no aprobado en el ciclo actual.`,
-      description: 'Consulta los intentos disponibles antes de registrar el siguiente resultado.',
-      tone: 'blue',
-      status: 'FAILED',
-      actionLabel: 'Ver reprobadas',
-    });
-  }
-
-  if (!insights.length) {
-    insights.push({
-      id: 'clear',
-      eyebrow: 'Seguimiento',
-      title: 'No hay elementos prioritarios en el contexto actual.',
-      description: 'El resultado corresponde únicamente a los registros que requieren seguimiento y a los filtros activos.',
-      tone: 'emerald',
-    });
-  }
-
-  return insights.slice(0, 4);
-};

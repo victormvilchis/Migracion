@@ -1,7 +1,8 @@
 import React from 'react';
 import { ArrowRight, AlertCircle, CheckCircle2, Clock3, RefreshCw, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
-import type { DashboardInsightTone } from '../pagesBBVATalent/lib/dashboardInsights';
+
+export type DashboardInsightTone = 'rose' | 'orange' | 'amber' | 'blue' | 'emerald' | 'slate';
 
 interface BBVAInsightCardProps {
   eyebrow: string;

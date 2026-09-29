@@ -652,3 +652,11 @@ BFS remains its own product, architecture and source of truth.
 - El KPI `Críticos 2/2` y su drill-down deben compartir el mismo predicado de backend: ciclo `FAILED`, tipo crítico, 2/2 agotados, último intento `FAILED` y resolución abierta.
 - La permanencia en Banco de talento se calcula para todo registro activo desde el último hito real de entrada al Banco (`COLLABORATOR_TO_TALENT` o `ENTERED_TALENT_BANK`), con fallback a `EntryDate`; más de 60 días se marca urgente.
 - En Banco de talento, la tabla principal muestra CV y el contexto expandido no duplica ese mismo dato.
+### V27B — limpieza interna conservadora BBVA
+
+- No conservar exports, hooks, helpers o wrappers frontend sin consumidores demostrables dentro del repositorio.
+- La eliminación de un wrapper frontend NO implica eliminar el endpoint backend: los contratos HTTP se preservan mientras sigan formando parte del dominio o puedan ser consumidos externamente.
+- Los componentes sin ruta/import runtime pueden eliminarse sólo después de verificar que ninguna prueba funcional dependa de su implementación obsoleta; las pruebas deben validar el comportamiento actual.
+- La limpieza técnica no debe cambiar diseño, navegación, filtros, búsqueda, paginación ni comportamiento visible. Si una limpieza requiere un cambio UX, se entrega por separado.
+- `test-bbva-dead-code-v27b.mjs` protege la ausencia de los símbolos huérfanos retirados y la permanencia de los contratos backend relacionados.
+

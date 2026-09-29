@@ -18,10 +18,6 @@ export function displayEmail(value: string | null | undefined, fallback = 'No di
   return text || fallback;
 }
 
-export function sentenceCaseList(values: Array<string | null | undefined>, separator = ' · '): string {
-  const items = values.map((value) => sentenceCaseData(value, '')).filter(Boolean);
-  return items.length ? items.join(separator) : 'No disponible';
-}
 
 export function upperDisplay(value: string | null | undefined, fallback = 'No disponible'): string {
   const text = String(value ?? '').trim().replace(/\s+/g, ' ');

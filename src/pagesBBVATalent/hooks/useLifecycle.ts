@@ -7,13 +7,6 @@ export function useLifecycleReasons() {
   return useQuery({ queryKey: ['bbva-lifecycle-reasons'], queryFn: lifecycleApi.reasons });
 }
 
-export function useCollaboratorLifecycle(id?: string) {
-  return useQuery({
-    queryKey: ['collaborators', id, 'lifecycle'],
-    queryFn: () => lifecycleApi.collaboratorTimeline(id as string),
-    enabled: Boolean(id),
-  });
-}
 
 export function useTalentLifecycle(id?: string) {
   return useQuery({

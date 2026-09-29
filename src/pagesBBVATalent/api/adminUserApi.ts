@@ -10,7 +10,6 @@ export const createAdminUser=(payload:AdminUserPayload)=>fetchApi<{item:AdminUse
 export const updateAdminUser=(id:string,payload:AdminUserPayload)=>fetchApi<{item:AdminUser}>(`/bbva/admin/users/${id}`,{method:'PUT',body:JSON.stringify(payload)});
 export const updateAdminUserStatus=(id:string,status:AdminStatus)=>fetchApi<{item:AdminUser}>(`/bbva/admin/users/${id}/status`,{method:'PATCH',body:JSON.stringify({status})});
 export const deleteAdminUser=(id:string)=>fetchApi<{deleted:boolean}>(`/bbva/admin/users/${id}`,{method:'DELETE'});
-export const reassignAdminUserDeliveryManager=(id:string,targetUserId:string)=>fetchApi<{reassigned:number;target:AdminUserOption}>(`/bbva/admin/users/${id}/reassign-delivery-manager`,{method:'POST',body:JSON.stringify({targetUserId})});
 export const listDeliveryManagerOptions=()=>fetchApi<{items:AdminUserOption[]}>('/bbva/admin/user-options/delivery-managers');
 
 export const listAdminRoles=(query:AdminListQuery)=>fetchApi<AdminPage<AdminRole>>(`/bbva/admin/roles?${qs(query)}`);
