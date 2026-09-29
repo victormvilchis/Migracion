@@ -768,3 +768,12 @@ BFS remains its own product, architecture and source of truth.
 - En Métricas no duplicar `Vencen en periodo` con `Personas con vencimiento`. Se conserva el KPI de vencimientos y el segundo espacio se usa para `Pendientes de certificación`.
 - La importación debe detectar personas que ya existen en Banco de talento aunque aparezcan nuevamente en el tablero. El estado operativo nunca se reactiva por default ni por acciones masivas de datos. Se presenta una decisión explícita `Mantener en Banco de talento / estado actual` o `Reactivar como colaborador`.
 - Si una persona permanece en Banco de talento, la importación puede actualizar datos maestros aceptados de `Person` sin activar `Collaborator` ni cerrar la entrada activa de Talent Bank. Las decisiones de ciclo de vida no se reutilizan automáticamente entre importaciones.
+
+### V31.4 — claridad operativa, filtros y ayudas contextuales
+
+- Todo dropdown portaleado (`BBVASearchableSelect`, `BBVAMultiSelect`, `BBVAStructureFilter`) se posiciona con la altura real del panel ya renderizado. Si abre hacia arriba, su borde inferior queda cercano al control que lo originó; no usar `maxHeight` teórico para calcular la distancia vertical ni permitir listas flotando lejos del campo.
+- `BBVAFilterBar` ocupa el ancho completo disponible. Cuando existe un campo de búsqueda, éste absorbe el espacio sobrante antes de dejar huecos visuales; los filtros restantes conservan ancho compacto y las acciones permanecen al extremo derecho. Es el estándar para módulos actuales y futuros.
+- Todo KPI construido con `BBVAMetricCard` muestra siempre ayuda contextual mediante el icono de información, aun cuando el módulo no proporcione una definición específica. La ayuda explica qué mide, cómo se calcula, cómo interpretarlo y qué filtros/contexto afectan el valor.
+- Las visualizaciones y paneles analíticos (`BBVAChartCard`, `BBVAInsightCard`) también incluyen ayuda contextual. Insights continúan siendo determinísticos y deben explicar de qué datos/reglas dependen.
+- En tablas de Colaboradores, `Perfil / tecnología` usa abreviación exclusivamente visual para reducir ancho (`ANALISTA PROGRAMADOR` se omite, `DATA ENGINEER` puede mostrarse como `DATA ENG.`, `ESPECIAL` como `ESP.`, `DESARROLLADOR` como `DEV`). El valor persistido no se altera y el texto completo permanece disponible como tooltip/title.
+- La cabecera local `BBVA Workspace` del sidebar y la barra de breadcrumb/contexto usan la misma altura de 40px para que la esquina y las líneas divisorias queden alineadas.

@@ -40,3 +40,23 @@ export function displayStructure(value: string | null | undefined, fallback = 'N
 export function displayCertificationName(value: string | null | undefined, fallback = 'No disponible'): string {
   return upperDisplay(value, fallback);
 }
+
+
+/** Versión compacta exclusivamente visual para celdas de tabla; no modifica datos persistidos. */
+export function compactRoleDisplayForTable(profile: string | null | undefined, technologyProfile?: string | null): string {
+  let role = upperDisplay(profile, '').replace(/^ANALISTA PROGRAMADOR\s+/u, '');
+  role = role
+    .replace(/\bDATA ENGINEER\b/gu, 'DATA ENG.')
+    .replace(/\bESPECIAL\b/gu, 'ESP.')
+    .replace(/\bCOMMODITY\b/gu, 'COM.');
+  let family = upperDisplay(technologyProfile, '')
+    .replace(/\bDESARROLLADOR\b/gu, 'DEV')
+    .replace(/\bESPECIALIZADA\b/gu, 'ESP.');
+  return [role, family].filter(Boolean).join(' · ') || 'NO DISPONIBLE';
+}
+
+export function compactTechnologyDisplayForTable(technology: string | null | undefined, expertise?: string | null): string {
+  const name = upperDisplay(technology, '');
+  const level = upperDisplay(expertise, '');
+  return [name, level].filter(Boolean).join(' · ') || 'NO DISPONIBLE';
+}

@@ -3,6 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { BBVACard } from './BBVACard';
 import { BBVADataHelp, type BBVADataHelpContent } from './BBVADataHelp';
+import { defaultMetricHelp } from './bbvaMetricHelp';
 
 export type BBVAMetricTone = 'blue' | 'emerald' | 'amber' | 'rose' | 'orange' | 'violet' | 'slate';
 export type BBVAMetricDensity = 'default' | 'compact';
@@ -47,6 +48,7 @@ export const BBVAMetricCard: React.FC<BBVAMetricCardProps> = ({
   className,
 }) => {
   const compact = density === 'compact';
+  const resolvedHelp = { ...defaultMetricHelp(label, supportingText, trendText), ...(help ?? {}) };
 
   return (
     <BBVACard
@@ -59,7 +61,7 @@ export const BBVAMetricCard: React.FC<BBVAMetricCardProps> = ({
     >
       <div className="flex items-start justify-between gap-2">
         <span className={cn('inline-flex shrink-0 items-center justify-center border', compact ? 'h-7 w-7 rounded-lg' : 'h-9 w-9 rounded-xl', tones[tone])}>{icon}</span>
-        {help ? <BBVADataHelp label={label} content={help} /> : <span className="h-6 w-6" aria-hidden="true" />}
+        <BBVADataHelp label={label} content={resolvedHelp} />
       </div>
       <div className={cn('font-semibold uppercase leading-3 tracking-[0.05em] text-slate-400', compact ? 'mt-1.5 text-[8px]' : 'mt-3 text-[9px]')}>{label}</div>
       <div className={cn('font-semibold leading-none tabular-nums text-slate-950 [.bbva-dark_&]:text-slate-100', compact ? 'mt-0.5 text-xl' : 'mt-1 text-2xl')}>{value}</div>

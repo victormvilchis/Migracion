@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -52,20 +52,34 @@ export const BBVASearchableSelect: React.FC<Props> = ({
     return options.filter((option) => `${option.label} ${option.description ?? ''}`.toLocaleUpperCase('es-MX').includes(normalized));
   }, [options, query]);
 
-  const updatePosition = () => {
+  const updatePosition = (measuredHeight?: number) => {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
     const viewportPadding = 8;
     const desiredHeight = 320;
+    const estimatedHeight = Math.min(desiredHeight, 50 + Math.max(1, Math.min(filteredOptions.length, 7)) * 38);
+    const panelHeight = measuredHeight && measuredHeight > 0 ? measuredHeight : estimatedHeight;
     const below = window.innerHeight - rect.bottom - viewportPadding;
     const above = rect.top - viewportPadding;
-    const opensUp = below < 220 && above > below;
-    const maxHeight = Math.max(160, Math.min(desiredHeight, (opensUp ? above : below) - 6));
+    const opensUp = below < Math.min(panelHeight, 220) && above > below;
+    const availableHeight = Math.max(160, (opensUp ? above : below) - 6);
+    const maxHeight = Math.max(160, Math.min(desiredHeight, availableHeight));
+    const visiblePanelHeight = Math.min(panelHeight, maxHeight);
     const width = Math.max(rect.width, 240);
     const left = Math.min(Math.max(viewportPadding, rect.left), Math.max(viewportPadding, window.innerWidth - width - viewportPadding));
-    const top = opensUp ? Math.max(viewportPadding, rect.top - maxHeight - 6) : rect.bottom + 6;
-    setPosition({ left, top, width, maxHeight, opensUp });
+    const top = opensUp ? Math.max(viewportPadding, rect.top - visiblePanelHeight - 6) : rect.bottom + 6;
+    setPosition((current) => {
+      const next = { left, top, width, maxHeight, opensUp };
+      return Math.abs(current.left - next.left) < 0.5 && Math.abs(current.top - next.top) < 0.5 && Math.abs(current.width - next.width) < 0.5 && Math.abs(current.maxHeight - next.maxHeight) < 0.5 && current.opensUp === next.opensUp ? current : next;
+    });
   };
+
+
+  useLayoutEffect(() => {
+    if (!open || !panelRef.current) return;
+    const height = panelRef.current.getBoundingClientRect().height;
+    if (height > 0) updatePosition(height);
+  }, [open, filteredOptions.length]);
 
   useEffect(() => {
     if (!open) {

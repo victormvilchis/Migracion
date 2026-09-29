@@ -55,7 +55,7 @@ export const BBVASidebar: React.FC<BBVASidebarProps> = ({ collapsed = false, mob
     >
       <div
         className={cn(
-          'flex h-11 items-center border-b border-slate-200 [.bbva-dark_&]:border-white/10',
+          'flex h-10 items-center border-b border-slate-200 [.bbva-dark_&]:border-white/10',
           collapsed && !mobile ? 'justify-center px-2' : 'justify-between px-3'
         )}
       >

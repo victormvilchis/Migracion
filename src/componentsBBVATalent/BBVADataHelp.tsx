@@ -6,6 +6,7 @@ export interface BBVADataHelpContent {
   what: string;
   calculation?: string;
   interpretation?: string;
+  scope?: string;
 }
 
 interface BBVADataHelpProps {
@@ -107,6 +108,12 @@ export const BBVADataHelp: React.FC<BBVADataHelpProps> = ({ label, content }) =>
             <div>
               <dt className="font-semibold uppercase tracking-[0.04em] text-slate-400">Cómo interpretarlo</dt>
               <dd className="mt-0.5 text-slate-600 [.bbva-dark_&]:text-slate-300">{content.interpretation}</dd>
+            </div>
+          ) : null}
+          {content.scope ? (
+            <div>
+              <dt className="font-semibold uppercase tracking-[0.04em] text-slate-400">Qué afecta el valor</dt>
+              <dd className="mt-0.5 text-slate-600 [.bbva-dark_&]:text-slate-300">{content.scope}</dd>
             </div>
           ) : null}
         </dl>

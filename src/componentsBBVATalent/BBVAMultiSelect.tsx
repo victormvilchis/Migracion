@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown, X } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -47,19 +47,32 @@ export const BBVAMultiSelect: React.FC<Props> = ({
     return `${values.length} ${selectedLabel}`;
   }, [options, placeholder, selectedLabel, values]);
 
-  const updatePosition = () => {
+  const updatePosition = (measuredHeight?: number) => {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
     const pad = 8;
+    const desiredHeight = 360;
+    const estimatedHeight = Math.min(desiredHeight, 52 + Math.max(1, Math.min(filteredOptions.length, 7)) * 38);
+    const panelHeight = measuredHeight && measuredHeight > 0 ? measuredHeight : estimatedHeight;
     const below = window.innerHeight - rect.bottom - pad;
     const above = rect.top - pad;
-    const opensUp = below < 240 && above > below;
-    const maxHeight = Math.max(180, Math.min(360, (opensUp ? above : below) - 6));
+    const opensUp = below < Math.min(panelHeight, 240) && above > below;
+    const maxHeight = Math.max(180, Math.min(desiredHeight, (opensUp ? above : below) - 6));
+    const visiblePanelHeight = Math.min(panelHeight, maxHeight);
     const width = Math.max(rect.width, 290);
     const left = Math.min(Math.max(pad, rect.left), Math.max(pad, window.innerWidth - width - pad));
-    const top = opensUp ? Math.max(pad, rect.top - maxHeight - 6) : rect.bottom + 6;
-    setPosition({ left, top, width, maxHeight, opensUp });
+    const top = opensUp ? Math.max(pad, rect.top - visiblePanelHeight - 6) : rect.bottom + 6;
+    setPosition((current) => {
+      const next = { left, top, width, maxHeight, opensUp };
+      return Math.abs(current.left-next.left)<0.5 && Math.abs(current.top-next.top)<0.5 && Math.abs(current.width-next.width)<0.5 && Math.abs(current.maxHeight-next.maxHeight)<0.5 && current.opensUp===next.opensUp ? current : next;
+    });
   };
+
+  useLayoutEffect(() => {
+    if (!open || !panelRef.current) return;
+    const height = panelRef.current.getBoundingClientRect().height;
+    if (height > 0) updatePosition(height);
+  }, [open, filteredOptions.length]);
 
   useEffect(() => {
     if (!open) { setQuery(''); return; }

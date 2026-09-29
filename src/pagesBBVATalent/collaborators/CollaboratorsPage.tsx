@@ -12,7 +12,7 @@ import { useCatalogOptions } from '../hooks/useCatalog';
 import { useStructureOptions } from '../hooks/useStructureCatalog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useCollaborators } from '../hooks/useCollaborators';
-import { displayPersonName, displayRoleName, displayStructure, sentenceCaseData, upperDisplay, upperIdentity } from '../lib/bbvaDisplayFormat';
+import { compactRoleDisplayForTable, compactTechnologyDisplayForTable, displayPersonName, displayRoleName, displayStructure, sentenceCaseData, upperDisplay, upperIdentity } from '../lib/bbvaDisplayFormat';
 import { decodeMultiValue, encodeMultiValue } from '../lib/multiValueFilter';
 import type { Collaborator } from '../types/collaborator';
 
@@ -113,7 +113,7 @@ export const CollaboratorsPage: React.FC = () => {
             title="Clic para ver contexto del colaborador"
           >
             <td className="px-2 py-1.5"><div className="min-w-0"><div className="truncate font-semibold text-slate-900">{displayPersonName(item.fullName)}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></td>
-            <td className="px-2 py-1.5"><div className="line-clamp-2 leading-[1.15] font-medium text-slate-700">{displayRoleName(roleDisplay(item.profile,item.technologyProfile))}</div><div className="mt-1 truncate text-[9px] font-semibold text-blue-700">{upperDisplay(technologyDisplay(item.currentTechnology,item.expertise))}</div></td>
+            <td className="px-2 py-1.5" title={`${displayRoleName(roleDisplay(item.profile,item.technologyProfile))} · ${upperDisplay(technologyDisplay(item.currentTechnology,item.expertise))}`}><div className="truncate leading-[1.15] font-semibold text-slate-700">{compactRoleDisplayForTable(item.profile,item.technologyProfile)}</div><div className="mt-1 truncate text-[9px] font-semibold text-blue-700">{compactTechnologyDisplayForTable(item.currentTechnology,item.expertise)}</div></td>
             <td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{displayStructure(item.bbvaStructureLevel2)}</div><div className="truncate text-[9px] text-slate-400">{displayStructure(item.bbvaStructureLevel3)}</div></td><td className="truncate px-2 py-1.5 text-slate-600" title={item.deliveryManager??''}>{displayPersonName(item.deliveryManager)}</td>
             <td className="px-2 py-1.5 text-slate-600">{formatDate(item.bbvaStartDate)}</td>
             <td className="px-2 py-1.5"><span className={`rounded-full px-2 py-1 text-[8.5px] font-semibold ${certificationTone[cert]}`}>{certificationLabels[cert]}</span></td>

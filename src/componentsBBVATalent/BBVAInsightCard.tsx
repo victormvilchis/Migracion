@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, AlertCircle, CheckCircle2, Clock3, RefreshCw, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { BBVADataHelp, type BBVADataHelpContent } from './BBVADataHelp';
 
 export type DashboardInsightTone = 'rose' | 'orange' | 'amber' | 'blue' | 'emerald' | 'slate';
 
@@ -11,6 +12,7 @@ interface BBVAInsightCardProps {
   tone?: DashboardInsightTone;
   actionLabel?: string;
   onAction?: () => void;
+  help?: BBVADataHelpContent;
 }
 
 const tones: Record<DashboardInsightTone, { shell: string; icon: string; Icon: React.ComponentType<{ className?: string }> }> = {
@@ -46,7 +48,7 @@ const tones: Record<DashboardInsightTone, { shell: string; icon: string; Icon: R
   },
 };
 
-export const BBVAInsightCard: React.FC<BBVAInsightCardProps> = ({ eyebrow, title, description, tone = 'blue', actionLabel, onAction }) => {
+export const BBVAInsightCard: React.FC<BBVAInsightCardProps> = ({ eyebrow, title, description, tone = 'blue', actionLabel, onAction, help }) => {
   const config = tones[tone];
   const Icon = config.Icon;
   return (
@@ -55,10 +57,11 @@ export const BBVAInsightCard: React.FC<BBVAInsightCardProps> = ({ eyebrow, title
         <span className={cn('inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', config.icon)}>
           <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="text-[8.5px] font-semibold uppercase tracking-[0.06em] text-slate-500 [.bbva-dark_&]:text-slate-400">{eyebrow}</div>
           <h3 className="mt-1 text-[11px] font-semibold leading-4 text-slate-950 [.bbva-dark_&]:text-slate-100">{title}</h3>
         </div>
+        <BBVADataHelp label={title} content={help ?? { what: description, calculation: 'Insight determinístico construido con los datos y reglas de negocio del contexto actual; no usa frases ni scores aleatorios.', interpretation: 'El mensaje señala una condición relevante para seguimiento. Usa la acción asociada para revisar los registros que explican el insight.', scope: 'Cambia cuando cambian los filtros, el periodo, las certificaciones o el universo operativo que alimenta el panel.' }} />
       </div>
       <p className="mt-3 text-[9.5px] leading-4 text-slate-600 [.bbva-dark_&]:text-slate-300">{description}</p>
       {onAction && actionLabel ? (
