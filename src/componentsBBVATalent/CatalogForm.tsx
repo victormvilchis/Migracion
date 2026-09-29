@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import type { CatalogConfig, CatalogPayload, CatalogRecord } from '../pagesBBVATalent/types/catalog';
 import { BBVAFormActions, type BBVAFormMode, isBBVAFormReadOnly } from './BBVACrudForm';
 import { BBVASearchableSelect } from './BBVASearchableSelect';
+import { BBVARequiredMark } from './BBVARequiredMark';
 
 interface CatalogFormProps {
   config: CatalogConfig;
@@ -52,7 +53,7 @@ export const CatalogForm: React.FC<CatalogFormProps> = ({ config, selected, savi
 
       <fieldset disabled={readOnly || saving} className="grid gap-3 md:grid-cols-2">
         <label className={config.supportsSeniority ? '' : 'md:col-span-2'}>
-          <span className={labelClass}>Nombre <span className="text-rose-500">*</span></span>
+          <span className={labelClass}>Nombre <BBVARequiredMark/></span>
           <input className={inputClass} value={name} onChange={(event) => setName(event.target.value)} maxLength={180} placeholder={config.namePlaceholder} autoFocus={!readOnly} />
         </label>
         {config.supportsSeniority && (

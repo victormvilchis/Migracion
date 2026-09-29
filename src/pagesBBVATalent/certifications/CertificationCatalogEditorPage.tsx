@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
+import { BBVACatalogHeader } from '../../componentsBBVATalent/BBVACatalogHeader';
 import { CertificationCatalogForm } from '../../componentsBBVATalent/CertificationCatalogForm';
 import { useCertificationCatalogItem, useCreateCertificationCatalogItem, useUpdateCertificationCatalogItem } from '../hooks/useCertificationCatalog';
 import type { CertificationCatalogPayload } from '../types/certificationCatalog';
@@ -33,5 +34,5 @@ export const CertificationCatalogEditorPage: React.FC = () => {
   if (editing && (query.error || !selected)) return <BBVAAlert tone="error">{(query.error as Error)?.message || 'Certificación no encontrada.'}</BBVAAlert>;
   if (editing && selected?.status === 'INACTIVE') return <div className="space-y-3 animate-fade-in"><BBVAButton variant="secondary" icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate(route)}>Regresar</BBVAButton><BBVAAlert tone="info">Esta certificación está inactiva. Actívala desde el listado para poder modificar su configuración.</BBVAAlert></div>;
 
-  return <div className="space-y-3 animate-fade-in"><BBVAButton variant="secondary" icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate(route)}>Regresar</BBVAButton>{error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}<CertificationCatalogForm selected={selected} saving={saving} onSubmit={(payload) => void submit(payload)} onCancel={() => navigate(route)} /></div>;
+  return <div className="space-y-3 animate-fade-in"><BBVAButton variant="secondary" icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate(route)}>Regresar</BBVAButton><BBVACatalogHeader title={editing?'EDITAR CERTIFICACIÓN':'NUEVA CERTIFICACIÓN'} description="CERTIFICACIONES" />{error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}<CertificationCatalogForm selected={selected} saving={saving} onSubmit={(payload) => void submit(payload)} onCancel={() => navigate(route)} /></div>;
 };

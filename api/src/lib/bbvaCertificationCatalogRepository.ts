@@ -70,7 +70,7 @@ const BASE_SELECT = `
     c.RequirementGroup AS requirementGroup,
     c.RequirementGroupMinimum AS requirementGroupMinimum,
     c.Status AS status,
-    (SELECT STRING_AGG(l.LevelCode, N',') WITHIN GROUP (ORDER BY l.LevelCode)
+    (SELECT STRING_AGG(l.LevelCode, N',') WITHIN GROUP (ORDER BY CASE l.LevelCode WHEN N'JR' THEN 1 WHEN N'STD' THEN 2 WHEN N'SR' THEN 3 WHEN N'GENERIC' THEN 4 ELSE 99 END, l.LevelCode)
       FROM bbva.CertificationAllowedLevel l WHERE l.CertificationId=c.Id) AS allowedLevelsCsv,
     (SELECT COUNT(1) FROM bbva.PersonCertification pc WHERE pc.CertificationId=c.Id) AS usageCount,
     CONVERT(VARCHAR(33), c.CreatedAt, 127) AS createdAt,
@@ -145,7 +145,7 @@ export class BbvaCertificationCatalogRepository {
              CAST(c.TechnologyId AS NVARCHAR(36)) AS technologyId, t.Name AS technologyName,
              c.ValidityMonths AS validityMonths, c.InitialCompletionDays AS initialCompletionDays, c.ExpiringSoonDays AS expiringSoonDays,
              c.RecertificationEnabled AS recertificationEnabled, c.DefaultMandatory AS defaultMandatory, c.TracksScore AS tracksScore,
-             (SELECT STRING_AGG(l.LevelCode,N',') WITHIN GROUP (ORDER BY l.LevelCode) FROM bbva.CertificationAllowedLevel l WHERE l.CertificationId=c.Id) AS allowedLevelsCsv
+             (SELECT STRING_AGG(l.LevelCode,N',') WITHIN GROUP (ORDER BY CASE l.LevelCode WHEN N'JR' THEN 1 WHEN N'STD' THEN 2 WHEN N'SR' THEN 3 WHEN N'GENERIC' THEN 4 ELSE 99 END, l.LevelCode) FROM bbva.CertificationAllowedLevel l WHERE l.CertificationId=c.Id) AS allowedLevelsCsv
       FROM bbva.CertificationCatalog c
       LEFT JOIN bbva.CatalogTechnology t ON t.Id=c.TechnologyId
       WHERE c.Status=N'ACTIVE'

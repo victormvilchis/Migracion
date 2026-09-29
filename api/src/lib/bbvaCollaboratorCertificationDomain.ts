@@ -34,6 +34,7 @@ export interface CollaboratorCertificationRecord {
   importedCertificationStatus: string | null;
   importedExamStatus: string | null;
   lastScore10: number | null;
+  tracksScore: boolean;
   importedAttemptNumber: number | null;
   lastDataSource: 'MANUAL' | 'IMPORT' | 'AUTO' | null;
   lastImportFingerprint: string | null;
@@ -142,6 +143,7 @@ export interface CertificationTrackingRecord {
   requiresAttempts: boolean;
   latestAttemptId: string | null;
   latestAttemptResult: CertificationAttemptResult | null;
+  tracksScore: boolean;
   criticalActionRequired: boolean;
   criticalResolutionStatus: CertificationCriticalResolutionStatus | null;
   criticalResolutionNotes: string | null;
@@ -156,6 +158,7 @@ export interface CertificationCriticalResolutionInput {
 export interface CertificationAttemptInput {
   applicationDate: string | null;
   result: CertificationAttemptResult;
+  score10: number | null;
   notes: string | null;
 }
 

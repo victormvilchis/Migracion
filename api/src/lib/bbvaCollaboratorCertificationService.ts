@@ -49,6 +49,14 @@ function hasOpenCriticalTwoAttempt(item: {
   return isCriticalTwoAttemptLimit(item) && isCriticalResolutionOpen(item.criticalResolutionStatus);
 }
 
+function normalizeScore10(value: unknown, tracksScore: boolean): number | null {
+  if (value === undefined || value === null || String(value).trim() === '') return null;
+  if (!tracksScore) throw Object.assign(new Error('Esta certificación no maneja calificación.'), { statusCode: 400 });
+  const score = Number(value);
+  if (!Number.isFinite(score) || score < 0 || score > 10) throw Object.assign(new Error('La calificación debe estar entre 0 y 10.'), { statusCode: 400 });
+  return Math.round(score * 100) / 100;
+}
+
 export class CollaboratorCertificationService {
   async synchronize(collaboratorId: string, actorEmail: string) {
     return repository.synchronize(collaboratorId, actorEmail);
@@ -136,6 +144,7 @@ export class CollaboratorCertificationService {
     const input: CertificationAttemptInput = {
       applicationDate,
       result: result as CertificationAttemptInput['result'],
+      score10: normalizeScore10(valueOf(payload, 'score10'), current.item.tracksScore),
       notes: cleanText(valueOf(payload, 'notes'), 1000),
     };
     return repository.addAttempt(collaboratorId, recordId, input, actorEmail);
@@ -155,6 +164,7 @@ export class CollaboratorCertificationService {
       attemptNumber,
       applicationDate: normalizeDate(valueOf(payload, 'applicationDate') ?? target.applicationDate, 'La fecha de aplicación'),
       result: result as CertificationAttemptUpdateInput['result'],
+      score10: normalizeScore10(valueOf(payload, 'score10') ?? target.score10, current.item.tracksScore),
       notes: cleanText(valueOf(payload, 'notes') ?? target.notes, 1000),
     };
     return repository.updateAttempt(collaboratorId, recordId, attemptId, input, actorEmail);

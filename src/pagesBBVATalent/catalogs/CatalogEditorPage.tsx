@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
+import { BBVACatalogHeader } from '../../componentsBBVATalent/BBVACatalogHeader';
 import { CatalogForm } from '../../componentsBBVATalent/CatalogForm';
 import { useCatalogItem, useCreateCatalogItem, useUpdateCatalogItem } from '../hooks/useCatalog';
 import { catalogConfigs, type CatalogPayload, type CatalogType } from '../types/catalog';
@@ -35,6 +36,7 @@ export const CatalogEditorPage: React.FC<{ type: CatalogType }> = ({ type }) => 
   return (
     <div className="space-y-3 animate-fade-in">
       <BBVAButton variant="secondary" icon={<ArrowLeft className="h-3.5 w-3.5" />} onClick={() => navigate(config.route)}>Regresar</BBVAButton>
+      <BBVACatalogHeader title={`${editing ? 'EDITAR' : (config.singularArticle === 'la' ? 'NUEVA' : 'NUEVO')} ${config.singular.toUpperCase()}`} description={config.plural.toUpperCase()} />
       {error && <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert>}
       <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75 [.bbva-dark_&]:shadow-none">
         <CatalogForm config={config} selected={selected} saving={saving} onSubmit={(payload) => void submit(payload)} onCancel={() => navigate(config.route)} />

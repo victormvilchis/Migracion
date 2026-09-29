@@ -6,9 +6,11 @@ import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVAChartCard } from '../../componentsBBVATalent/BBVAChartCard';
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
+import { BBVAFilterBar } from '../../componentsBBVATalent/BBVAFilterBar';
 import { BBVAHistoricalMetricPanel } from '../../componentsBBVATalent/BBVAHistoricalMetricPanel';
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
 import { BBVAMetricsSkeleton } from '../../componentsBBVATalent/BBVAMetricsSkeleton';
+import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { useBbvaDashboard } from '../hooks/useDashboard';
 import { comparisonText } from '../lib/dashboardHistory';
@@ -72,6 +74,8 @@ export const BBVAReportsPage: React.FC<Props> = ({ type }) => {
   const [comparisonDays,setComparisonDays]=useState('7');
   const [activityDays,setActivityDays]=useState('30');
   const [metric,setMetric]=useState<DashboardHistoricalMetricKey>(config.defaultMetric);
+  const [snapshotPage,setSnapshotPage]=useState(0);
+  const [snapshotSize,setSnapshotSize]=useState(10);
   React.useEffect(() => setMetric(config.defaultMetric), [config.defaultMetric]);
 
   const filters = useMemo<DashboardFilters>(() => ({
@@ -81,19 +85,17 @@ export const BBVAReportsPage: React.FC<Props> = ({ type }) => {
   const query=useBbvaDashboard(filters);
   const data=query.data;
   const activity=useMemo(()=>(data?.activity??[]).filter((item)=>config.activityCategories.includes(item.category)),[config.activityCategories,data?.activity]);
+  const snapshotRows=useMemo(()=>[...(data?.history.points??[])].reverse(),[data?.history.points]);
+  const safeSnapshotPage=Math.min(snapshotPage,Math.max(0,Math.ceil(snapshotRows.length/snapshotSize)-1));
+  const pagedSnapshotRows=snapshotRows.slice(safeSnapshotPage*snapshotSize,safeSnapshotPage*snapshotSize+snapshotSize);
 
   if(query.error)return <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert>;
   return <div className="space-y-3 animate-fade-in">
-    <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/50">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div><div className="text-[9px] font-semibold uppercase tracking-[.06em] text-blue-600 [.bbva-dark_&]:text-cyan-300">Reportes BBVA</div><h1 className="mt-0.5 text-base font-semibold text-slate-950 [.bbva-dark_&]:text-slate-100">{config.title}</h1><p className="mt-0.5 text-[10px] text-slate-500 [.bbva-dark_&]:text-slate-400">{config.description}</p></div>
-        <div className="grid min-w-[560px] max-w-full grid-cols-3 gap-2">
-          <BBVASearchableSelect value={historyDays} onChange={setHistoryDays} options={[{value:'30',label:'Histórico · 30 días'},{value:'90',label:'Histórico · 90 días'},{value:'180',label:'Histórico · 180 días'},{value:'365',label:'Histórico · 365 días'}]} ariaLabel="Ventana histórica"/>
-          <BBVASearchableSelect value={comparisonDays} onChange={setComparisonDays} options={[{value:'1',label:'Comparar · 1 día'},{value:'7',label:'Comparar · 7 días'},{value:'30',label:'Comparar · 30 días'},{value:'90',label:'Comparar · 90 días'}]} ariaLabel="Periodo de comparación"/>
-          <BBVASearchableSelect value={activityDays} onChange={setActivityDays} options={[{value:'7',label:'Actividad · 7 días'},{value:'30',label:'Actividad · 30 días'},{value:'90',label:'Actividad · 90 días'}]} ariaLabel="Periodo de actividad"/>
-        </div>
-      </div>
-    </section>
+    <BBVAFilterBar className="justify-end">
+      <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={historyDays} onChange={setHistoryDays} options={[{value:'30',label:'Histórico · 30 días'},{value:'90',label:'Histórico · 90 días'},{value:'180',label:'Histórico · 180 días'},{value:'365',label:'Histórico · 365 días'}]} ariaLabel="Ventana histórica"/></div>
+      <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={comparisonDays} onChange={setComparisonDays} options={[{value:'1',label:'Comparar · 1 día'},{value:'7',label:'Comparar · 7 días'},{value:'30',label:'Comparar · 30 días'},{value:'90',label:'Comparar · 90 días'}]} ariaLabel="Periodo de comparación"/></div>
+      <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={activityDays} onChange={setActivityDays} options={[{value:'7',label:'Actividad · 7 días'},{value:'30',label:'Actividad · 30 días'},{value:'90',label:'Actividad · 90 días'}]} ariaLabel="Periodo de actividad"/></div>
+    </BBVAFilterBar>
 
     {query.isLoading||!data?<BBVAMetricsSkeleton cards={4}/>:<>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-2">
@@ -111,9 +113,9 @@ export const BBVAReportsPage: React.FC<Props> = ({ type }) => {
         </BBVAChartCard>
       </div>
 
+      <div className="flex justify-end"><BBVAButton variant="secondary" size="sm" icon={<Download className="h-3.5 w-3.5"/>} onClick={()=>exportHistory(data.history.points,type)} disabled={!data.history.points.length}>Exportar CSV</BBVAButton></div>
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 [.bbva-dark_&]:border-slate-800"><div><h2 className="text-sm font-semibold text-slate-950 [.bbva-dark_&]:text-slate-100">Snapshots del periodo</h2><p className="mt-0.5 text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">Una fila por día capturado. No se genera backfill ficticio.</p></div><BBVAButton variant="secondary" size="sm" icon={<Download className="h-3.5 w-3.5"/>} onClick={()=>exportHistory(data.history.points,type)} disabled={!data.history.points.length}>Exportar CSV</BBVAButton></div>
-        {data.history.points.length?<div className="overflow-x-auto"><table className="w-full min-w-[940px] text-left text-[10px]"><thead className="bg-slate-50 text-[8.5px] font-semibold uppercase text-slate-500 [.bbva-dark_&]:bg-slate-950/40"><tr><th className="px-3 py-2">Fecha</th><th className="px-3 py-2 text-right">Colaboradores</th><th className="px-3 py-2 text-right">Banco</th><th className="px-3 py-2 text-right">Cobertura</th><th className="px-3 py-2 text-right">Próximas</th><th className="px-3 py-2 text-right">Vencidas</th><th className="px-3 py-2 text-right">Pendientes</th><th className="px-3 py-2 text-right">Vendors</th><th className="px-3 py-2 text-right">Críticos 2/2</th></tr></thead><tbody className="divide-y divide-slate-100 [.bbva-dark_&]:divide-slate-800">{[...data.history.points].reverse().map((point)=><tr key={point.snapshotDate}><td className="px-3 py-2 font-semibold text-slate-800 [.bbva-dark_&]:text-slate-100">{point.snapshotDate}</td><td className="px-3 py-2 text-right tabular-nums">{point.collaboratorsActive}</td><td className="px-3 py-2 text-right tabular-nums">{point.talentBankActive}</td><td className="px-3 py-2 text-right tabular-nums">{point.coveragePercent}%</td><td className="px-3 py-2 text-right tabular-nums">{point.expiring}</td><td className="px-3 py-2 text-right tabular-nums">{point.expired}</td><td className="px-3 py-2 text-right tabular-nums">{point.pending}</td><td className="px-3 py-2 text-right tabular-nums">{point.vendorReadyPercent}%</td><td className="px-3 py-2 text-right tabular-nums">{point.vendorExitRequired}</td></tr>)}</tbody></table></div>:<BBVAEmptyState title="Todavía no hay snapshots suficientes" description="El histórico se irá construyendo con capturas diarias reales; no se inventan periodos anteriores."/>}
+        {snapshotRows.length?<><div className="overflow-x-auto"><table className="w-full min-w-[940px] text-left text-[10px]"><thead className="bg-slate-50 text-[8.5px] font-semibold uppercase text-slate-500 [.bbva-dark_&]:bg-slate-950/40"><tr><th className="px-3 py-2">Fecha</th><th className="px-3 py-2 text-right">Colaboradores</th><th className="px-3 py-2 text-right">Banco</th><th className="px-3 py-2 text-right">Cobertura</th><th className="px-3 py-2 text-right">Próximas</th><th className="px-3 py-2 text-right">Vencidas</th><th className="px-3 py-2 text-right">Pendientes</th><th className="px-3 py-2 text-right">Vendors</th><th className="px-3 py-2 text-right">Críticos 2/2</th></tr></thead><tbody className="divide-y divide-slate-100 [.bbva-dark_&]:divide-slate-800">{pagedSnapshotRows.map((point)=><tr key={point.snapshotDate}><td className="px-3 py-2 font-semibold text-slate-800 [.bbva-dark_&]:text-slate-100">{point.snapshotDate}</td><td className="px-3 py-2 text-right tabular-nums">{point.collaboratorsActive}</td><td className="px-3 py-2 text-right tabular-nums">{point.talentBankActive}</td><td className="px-3 py-2 text-right tabular-nums">{point.coveragePercent}%</td><td className="px-3 py-2 text-right tabular-nums">{point.expiring}</td><td className="px-3 py-2 text-right tabular-nums">{point.expired}</td><td className="px-3 py-2 text-right tabular-nums">{point.pending}</td><td className="px-3 py-2 text-right tabular-nums">{point.vendorReadyPercent}%</td><td className="px-3 py-2 text-right tabular-nums">{point.vendorExitRequired}</td></tr>)}</tbody></table></div><BBVAPagination total={snapshotRows.length} page={safeSnapshotPage} size={snapshotSize} onPageChange={setSnapshotPage} onSizeChange={(next)=>{setSnapshotSize(next);setSnapshotPage(0);}}/></>:<BBVAEmptyState title="Todavía no hay snapshots suficientes" description="El histórico se irá construyendo con capturas diarias reales; no se inventan periodos anteriores."/>}
       </section>
     </>}
   </div>;

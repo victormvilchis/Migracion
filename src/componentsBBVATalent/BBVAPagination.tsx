@@ -28,9 +28,20 @@ export const BBVAPagination: React.FC<BBVAPaginationProps> = ({ total, page, siz
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => onPageChange(0)} disabled={currentPage === 0} className={buttonBase} aria-label="Primera página"><ChevronsLeft className="h-3.5 w-3.5" /></button>
           <button type="button" onClick={() => onPageChange(Math.max(currentPage - 1, 0))} disabled={currentPage === 0} className={buttonBase} aria-label="Página anterior"><ChevronLeft className="h-3.5 w-3.5" /></button>
-          {pagesToRender.map((index) => (
-            <button key={index} type="button" onClick={() => onPageChange(index)} className={`${buttonBase} ${index === currentPage ? 'border-blue-500 bg-blue-50 text-blue-700 [.bbva-dark_&]:bg-blue-500/10 [.bbva-dark_&]:text-blue-200' : ''}`}>{index + 1}</button>
-          ))}
+          {pagesToRender.map((index) => {
+            const active = index === currentPage;
+            return (
+              <button
+                key={index}
+                type="button"
+                onClick={() => onPageChange(index)}
+                className={`${buttonBase} ${active ? '!border-blue-600 !bg-blue-600 !text-white shadow-sm ring-2 ring-blue-100 hover:!bg-blue-700 [.bbva-dark_&]:!border-blue-400 [.bbva-dark_&]:!bg-blue-500 [.bbva-dark_&]:!text-white [.bbva-dark_&]:ring-blue-500/20' : ''}`}
+                aria-current={active ? 'page' : undefined}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
           <button type="button" onClick={() => onPageChange(Math.min(currentPage + 1, totalPages - 1))} disabled={currentPage >= totalPages - 1} className={buttonBase} aria-label="Página siguiente"><ChevronRight className="h-3.5 w-3.5" /></button>
           <button type="button" onClick={() => onPageChange(totalPages - 1)} disabled={currentPage >= totalPages - 1} className={buttonBase} aria-label="Última página"><ChevronsRight className="h-3.5 w-3.5" /></button>
         </div>

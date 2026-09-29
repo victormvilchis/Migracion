@@ -63,58 +63,27 @@
 }
 
 
-/* BBVA V23: movimiento sutil para que la información se sienta viva sin distraer. */
-@keyframes bbva-live-enter {
-  from { opacity: 0; transform: translateY(7px); }
+/* Movimiento reservado exclusivamente para insights y recomendaciones analíticas. */
+@keyframes bbva-insight-enter {
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes bbva-live-breathe {
+@keyframes bbva-insight-breathe {
   0%, 100% { transform: translateY(0); box-shadow: 0 4px 14px rgba(15, 23, 42, 0.035); }
   50% { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(37, 99, 235, 0.085); }
 }
 
-@keyframes bbva-live-dot-pulse {
-  0%, 100% { transform: scale(.82); opacity: .65; box-shadow: 0 0 0 0 rgba(16,185,129,.32); }
-  50% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+.bbva-insight-live {
+  animation: bbva-insight-enter 320ms ease-out both, bbva-insight-breathe 6s ease-in-out 700ms infinite;
 }
 
-@keyframes bbva-quarter-flow {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 180% 50%; }
-}
+.bbva-insight-live:nth-child(2n) { animation-delay: 60ms, 1.2s; }
+.bbva-insight-live:nth-child(3n) { animation-delay: 120ms, 1.8s; }
 
-.bbva-live-card {
-  animation: bbva-live-enter 320ms ease-out both, bbva-live-breathe 6s ease-in-out 650ms infinite;
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-}
-
-.bbva-live-card:nth-child(2n) { animation-delay: 60ms, 1.2s; }
-.bbva-live-card:nth-child(3n) { animation-delay: 120ms, 1.8s; }
-.bbva-live-card:nth-child(5n) { animation-delay: 180ms, 2.4s; }
-
-.bbva-live-dot { animation: bbva-live-dot-pulse 1.8s ease-in-out infinite; }
-.bbva-quarter-progress { background-size: 180% 100%; animation: bbva-quarter-flow 2.6s linear infinite; transition: width 700ms ease-out; }
-
-.bbva-live-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-}
-
-.bbva-live-panel {
-  animation: bbva-live-enter 380ms ease-out both;
-  transition: box-shadow 220ms ease, border-color 220ms ease;
-}
-
-.bbva-live-panel:hover {
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.055);
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .bbva-live-card,
-  .bbva-live-panel,
-  .bbva-live-dot,
-  .bbva-quarter-progress {
+  .bbva-insight-live {
     animation: none !important;
     transition: none !important;
     transform: none !important;

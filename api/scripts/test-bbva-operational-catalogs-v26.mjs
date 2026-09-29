@@ -13,7 +13,7 @@ assert.doesNotMatch(talentPage, /item\.cv\.fileName/);
 assert.match(talentPage, /Entrada a Talent Bank/);
 assert.match(talentPage, /Alta BBVA/);
 assert.match(talentPage, /Contratación Softtek/);
-assert.match(talentPage, /decodeStructureFilter/);
+assert.match(talentPage, /BBVAStructureFilter/);
 assert.match(talentPage, /Limpiar filtros/);
 
 const talentRepo = read('api/src/lib/bbvaTalentRepository.ts');
@@ -24,7 +24,7 @@ assert.doesNotMatch(talentRepo, /entryCount\s*>?=\s*3/);
 const collaborators = read('src/pagesBBVATalent/collaborators/CollaboratorsPage.tsx');
 assert.match(collaborators, /deliveryManagerFilter/);
 assert.match(collaborators, /Todos los DM/);
-assert.match(collaborators, /decodeStructureFilter/);
+assert.match(collaborators, /BBVAStructureFilter/);
 assert.match(collaborators, /Limpiar filtros/);
 
 const periodOptions = read('src/pagesBBVATalent/lib/periodOptions.ts');
@@ -32,20 +32,23 @@ assert.match(periodOptions, /filter\(\(item\)=>item\.year===year\)/);
 assert.match(periodOptions, /Periodo \$\{item\.quarter\}/);
 
 const tracking = read('src/pagesBBVATalent/certifications/CertificationTrackingPage.tsx');
-assert.ok(tracking.indexOf('Resumen operativo de seguimiento') < tracking.indexOf('Certificaciones por atender'));
+assert.match(tracking, /Resumen operativo de seguimiento/);
+assert.doesNotMatch(tracking, />Certificaciones por atender</);
+assert.doesNotMatch(tracking, /registros en el contexto actual/);
 assert.match(tracking, /density="compact"/);
 assert.match(tracking, /BBVAPagination/);
 assert.match(tracking, /ariaLabel="Periodo de vencimiento"/);
 assert.match(tracking, /Limpiar filtros/);
 
 const metrics = read('src/pagesBBVATalent/certifications/CertificationMetricsPage.tsx');
-assert.match(metrics, /Métricas por periodo/);
+assert.doesNotMatch(metrics, />Métricas por periodo</);
+assert.doesNotMatch(metrics, /Vigencia, cobertura y vencimientos responden al periodo seleccionado/);
 assert.match(metrics, /BBVAPagination/);
 assert.match(metrics, /ariaLabel="Periodo"/);
 
 const dashboard = read('src/pagesBBVATalent/dashboard/BBVADashboardPage.tsx');
 assert.match(dashboard, /ariaLabel="Periodo"/);
-assert.match(dashboard, /Limpiar filtros/);
+assert.match(dashboard, />Limpiar<\/BBVAButton>/);
 
 const structurePage = read('src/pagesBBVATalent/catalogs/StructureCatalogPage.tsx');
 assert.match(structurePage, /Jerarquía Nivel 2 → Nivel 3/);

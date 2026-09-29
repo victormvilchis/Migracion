@@ -3,6 +3,8 @@ import { Eye, Pencil, Plus, Power, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
+import { BBVACatalogHeader } from '../../componentsBBVATalent/BBVACatalogHeader';
+import { BBVAFilterBar } from '../../componentsBBVATalent/BBVAFilterBar';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
@@ -38,28 +40,16 @@ export const EngineeringSpecialtyListPage: React.FC = () => {
 
   return (
     <div className="space-y-3 animate-fade-in">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold">GREMIOS Y ESPECIALIDADES</h1>
-          <p className="text-[10px] text-slate-500">Jerarquía N3 → Gremio → Especialidad. Staffer y responsables quedan asociados a la especialidad.</p>
-        </div>
-        <BBVAButton
-          variant="primary"
-          icon={<Plus className="h-3.5 w-3.5" />}
-          onClick={() => navigate('/bbva/admin/catalogs/engineering-specialties/new')}
-        >
-          Agregar especialidad
-        </BBVAButton>
-      </div>
+      <BBVACatalogHeader title="GREMIOS Y ESPECIALIDADES" description="Jerarquía N3 → Gremio → Especialidad. Staffer y responsables quedan asociados a la especialidad." action={<BBVAButton variant="primary" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => navigate('/bbva/admin/catalogs/engineering-specialties/new')}>Agregar especialidad</BBVAButton>} />
 
-      <section className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-3 lg:grid-cols-[1fr_180px]">
+      <BBVAFilterBar>
         <input
           value={search}
           onChange={(event) => { setSearch(event.target.value); setPage(0); }}
           placeholder="Buscar N3, gremio, especialidad o staffer"
-          className="h-9 rounded-xl border border-slate-300 px-3 text-[11px]"
+          className="h-9 w-full rounded-xl border border-slate-300 px-3 text-[11px] sm:w-[340px]"
         />
-        <BBVASearchableSelect
+        <div className="w-full sm:w-[180px]"><BBVASearchableSelect
           value={status}
           onChange={(value) => { setStatus(value as EngineeringSpecialtyStatus | 'ALL'); setPage(0); }}
           options={[
@@ -67,8 +57,8 @@ export const EngineeringSpecialtyListPage: React.FC = () => {
             { value: 'INACTIVE', label: 'INACTIVOS' },
             { value: 'ALL', label: 'TODOS' },
           ]}
-        />
-      </section>
+        /></div>
+      </BBVAFilterBar>
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">

@@ -12,7 +12,7 @@ const communicationService = read('api/src/lib/bbvaCertificationCommunicationSer
 const importService = read('api/src/lib/bbvaCollaboratorImportService.ts');
 const dashboard = read('src/pagesBBVATalent/dashboard/BBVADashboardPage.tsx');
 
-assert.ok(tracking.indexOf('<table') < tracking.indexOf('Preparación Vendors'), 'Seguimiento debe conservar la tabla antes del panel Vendors/Q.');
+assert.doesNotMatch(tracking, /Preparación Vendors|PREPARACIÓN VENDORS/, 'Seguimiento no debe duplicar el corte Vendors en una tarjeta independiente.');
 assert.match(tracking, /CertificationCriticalResolutionDialog/);
 assert.match(tracking, /Críticos 2\/2/);
 assert.match(collaborators, /Mover a Banco de talento/);
@@ -26,6 +26,8 @@ assert.match(communicationService, /correo Softtek registrado/);
 assert.match(importService, /'FECHA DE ALTA'/);
 assert.match(importService, /'FECHA ALTA -SAP'/);
 assert.match(importService, /'CORREO CORPORATIVO'/);
-assert.match(dashboard, /Preparación Vendors/);
+assert.doesNotMatch(dashboard, /Preparación Vendors/);
+assert.match(dashboard, /vendorReadyPercent/);
+assert.match(dashboard, /vendorExitRequired/);
 assert.match(dashboard, /exhaustedAttemptCollaborators/);
 console.log('OK: integración V10 Vendors/Q + Critical UX + nivel tecnológico.');

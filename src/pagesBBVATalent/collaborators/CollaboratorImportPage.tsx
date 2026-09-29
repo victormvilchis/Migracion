@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
+import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { ISLookupField } from '../../componentsBBVATalent/ISLookupField';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { parseFirstExcelSheet, parseTabularFile } from '../lib/xlsxFirstSheet';
@@ -190,6 +191,8 @@ export const CollaboratorImportPage: React.FC = () => {
   const [applyErrors, setApplyErrors] = useState<ImportApplyResult['errors']>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [lowPage, setLowPage] = useState(0);
+  const [lowSize, setLowSize] = useState(10);
 
   const decisionsForPreview = (result: ImportPreviewResponse) => Object.fromEntries([
     ...result.changedItems.flatMap((item) => item.changes.map((change) => [change.resolutionKey, change.decision] as const)),
@@ -198,7 +201,7 @@ export const CollaboratorImportPage: React.FC = () => {
   ]);
 
   const resetPreview = () => {
-    setPreview(null); setRows([]); setSheetName(''); setIgnoredRows(0); setEmails({}); setSofttekCodes({}); setDeliveryManagers({}); setEnrichmentSummary(null); setDecisions({}); setLowDecisions({}); setSuccess(null); setDecisionNotice(null); setApplyErrors([]);
+    setPreview(null); setRows([]); setSheetName(''); setIgnoredRows(0); setEmails({}); setSofttekCodes({}); setDeliveryManagers({}); setEnrichmentSummary(null); setDecisions({}); setLowDecisions({}); setSuccess(null); setDecisionNotice(null); setApplyErrors([]); setLowPage(0);
   };
   const chooseFile = (next: File | null) => { setFile(next); resetPreview(); setError(null); };
   const clearMainFile = () => { setFile(null); setSupplementFile(null); resetPreview(); setError(null); if (inputRef.current) inputRef.current.value = ''; if (supplementInputRef.current) supplementInputRef.current.value = ''; };
@@ -248,6 +251,8 @@ export const CollaboratorImportPage: React.FC = () => {
   const previewWarnings = useMemo(() => preview?.errors.filter((item) => item.severity === 'WARNING') ?? [], [preview]);
   const validationAttentionCount = blockingPreviewErrors.length + unresolvedConflicts.length + requiredFieldRowKeys.size;
   const attentionCount = validationAttentionCount + previewWarnings.length + applyErrors.length;
+  const safeLowPage = Math.min(lowPage, Math.max(0, Math.ceil((preview?.possibleLows.length ?? 0) / lowSize) - 1));
+  const pagedPossibleLows = (preview?.possibleLows ?? []).slice(safeLowPage * lowSize, safeLowPage * lowSize + lowSize);
   const actionable = Boolean(preview && (preview.newItems.length || preview.changedItems.length || preview.certificationChanges || preview.resolvedPreviously.length || Object.values(lowDecisions).some((decision) => decision === 'DEACTIVATE')));
   const readyCount = preview ? Math.max(0, preview.newItems.length + preview.changedItems.length - requiredFieldRowKeys.size) : 0;
 
@@ -444,7 +449,8 @@ export const CollaboratorImportPage: React.FC = () => {
               {!attentionCount ? <div className="p-10 text-center text-[10px] text-slate-400">No hay elementos que requieran atención.</div> : null}
             </div> : null}
 
-            {activeTab === 'lows' ? <table className="w-full min-w-[820px] text-left text-[10px]"><thead className="sticky top-0 bg-slate-50 text-[8.5px] uppercase text-slate-500"><tr><th className="px-3 py-2">Colaborador</th><th className="px-3 py-2">Perfil</th><th className="px-3 py-2">Tecnología</th><th className="px-3 py-2">Qué hacer</th></tr></thead><tbody className="divide-y divide-slate-100">{preview.possibleLows.map((item) => <tr key={item.collaboratorId}><td className="px-3 py-2"><div className="font-semibold text-slate-900">{item.fullName}</div><div className="text-[8.5px] text-slate-400">{item.email}</div></td><td className="px-3 py-2">{formatValue(item.profile)}</td><td className="px-3 py-2">{formatValue(item.currentTechnology)}</td><td className="w-[230px] px-3 py-2"><BBVASearchableSelect value={lowDecisions[item.collaboratorId] ?? 'REVIEW'} onChange={(value) => setLowDecisions((current) => ({ ...current, [item.collaboratorId]: value as ImportLowDecision }))} options={lowOptions} ariaLabel={`Decisión para ${item.fullName}`} /></td></tr>)}</tbody></table> : null}
+            {activeTab === 'lows' ? <table className="w-full min-w-[820px] text-left text-[10px]"><thead className="sticky top-0 bg-slate-50 text-[8.5px] uppercase text-slate-500"><tr><th className="px-3 py-2">Colaborador</th><th className="px-3 py-2">Perfil</th><th className="px-3 py-2">Tecnología</th><th className="px-3 py-2">Qué hacer</th></tr></thead><tbody className="divide-y divide-slate-100">{pagedPossibleLows.map((item) => <tr key={item.collaboratorId}><td className="px-3 py-2"><div className="font-semibold text-slate-900">{item.fullName}</div><div className="text-[8.5px] text-slate-400">{item.email}</div></td><td className="px-3 py-2">{formatValue(item.profile)}</td><td className="px-3 py-2">{formatValue(item.currentTechnology)}</td><td className="w-[230px] px-3 py-2"><BBVASearchableSelect value={lowDecisions[item.collaboratorId] ?? 'REVIEW'} onChange={(value) => setLowDecisions((current) => ({ ...current, [item.collaboratorId]: value as ImportLowDecision }))} options={lowOptions} ariaLabel={`Decisión para ${item.fullName}`} /></td></tr>)}</tbody></table> : null}
+            {activeTab === 'lows' && preview.possibleLows.length ? <BBVAPagination total={preview.possibleLows.length} page={safeLowPage} size={lowSize} onPageChange={setLowPage} onSizeChange={(next)=>{setLowSize(next);setLowPage(0);}}/> : null}
 
             {activeTab === 'resolved' ? <div className="divide-y divide-slate-100">{preview.resolvedPreviously.map((item, index) => <div key={`${item.rowKey}-${item.change?.resolutionKey ?? item.certification?.resolutionKey ?? index}`} className="grid gap-2 px-3 py-2 text-[9px] md:grid-cols-[minmax(180px,1fr)_160px_1fr_120px]"><div className="font-semibold text-slate-900">{item.fullName}</div><div>{item.change?.label ?? item.certification?.label ?? 'Certificación'}</div><div className="text-slate-500">{item.change ? `${formatValue(item.change.currentValue)} → ${formatValue(item.change.excelValue)}` : `${formatValue(item.certification?.excelStatus)} · ${formatValue(item.certification?.calculatedStatus)}`}</div><span className="w-fit rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-semibold text-emerald-700">{(item.change?.decision ?? item.certification?.decision) === 'APPLY_EXCEL' ? 'Aplicar Excel' : 'Mantener'}</span></div>)}</div> : null}
 

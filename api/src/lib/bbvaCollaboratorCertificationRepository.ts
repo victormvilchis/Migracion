@@ -55,6 +55,7 @@ const BASE_SELECT = `
     pc.ImportedCertificationStatus AS importedCertificationStatus,
     pc.ImportedExamStatus AS importedExamStatus,
     pc.LastScore10 AS lastScore10,
+    cc.TracksScore AS tracksScore,
     pc.ImportedAttemptNumber AS importedAttemptNumber,
     pc.LastDataSource AS lastDataSource,
     pc.LastImportFingerprint AS lastImportFingerprint,
@@ -140,6 +141,7 @@ function toRecord(row: any): CollaboratorCertificationRecord {
     recertificationEnabled: Boolean(row.recertificationEnabled),
     requiresAttempts: Boolean(row.requiresAttempts),
     requiresApplicationDate: Boolean(row.requiresApplicationDate),
+    tracksScore: Boolean(row.tracksScore),
     criticalActionRequired: Boolean(row.criticalActionRequired),
   } as CollaboratorCertificationRecord;
 }
@@ -525,12 +527,13 @@ export class CollaboratorCertificationRepository {
         .input('attemptNumber', sql.Int, attemptNumber)
         .input('applicationDate', sql.Date, input.applicationDate)
         .input('result', sql.NVarChar(16), input.result)
+        .input('score10', sql.Decimal(5,2), input.score10)
         .input('notes', sql.NVarChar(1000), input.notes)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           INSERT INTO bbva.PersonCertificationAttempt(
-            PersonCertificationId,CycleNumber,AttemptNumber,ApplicationDate,Result,Notes,CreatedByEmail
-          ) VALUES(@recordId,@cycle,@attemptNumber,@applicationDate,@result,@notes,@actorEmail);
+            PersonCertificationId,CycleNumber,AttemptNumber,ApplicationDate,Result,Score10,Notes,CreatedByEmail
+          ) VALUES(@recordId,@cycle,@attemptNumber,@applicationDate,@result,@score10,@notes,@actorEmail);
         `);
 
       await new sql.Request(transaction)
@@ -539,6 +542,7 @@ export class CollaboratorCertificationRepository {
         .input('approvedDate', sql.Date, approvedDate)
         .input('validityMonths', sql.Int, config?.ValidityMonths ?? null)
         .input('result', sql.NVarChar(16), input.result)
+        .input('score10', sql.Decimal(5,2), input.score10)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           UPDATE bbva.PersonCertification
@@ -547,7 +551,7 @@ export class CollaboratorCertificationRepository {
               ApprovedDate=CASE WHEN @result=N'APPROVED' THEN @approvedDate ELSE ApprovedDate END,
               ExpirationDate=CASE WHEN @result=N'APPROVED' AND @validityMonths IS NOT NULL THEN DATEADD(month,@validityMonths,@approvedDate)
                                   WHEN @result=N'APPROVED' THEN NULL ELSE ExpirationDate END,
-              NextScheduledDate=NULL,LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+              LastScore10=@score10,NextScheduledDate=NULL,LastDataSource=N'MANUAL',UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
           WHERE Id=@recordId;
         `);
 
@@ -613,7 +617,7 @@ export class CollaboratorCertificationRepository {
         .input('attemptId',sql.UniqueIdentifier,attemptId)
         .query(`
           SELECT pc.CurrentCycle currentCycle,pc.Applicable applicable,cc.ValidityMonths validityMonths,cc.RequiresApplicationDate requiresApplicationDate,
-                 cc.RequiresAttempts requiresAttempts,cc.MaxAttempts maxAttempts,cc.CertificationType certificationType,
+                 cc.RequiresAttempts requiresAttempts,cc.MaxAttempts maxAttempts,cc.CertificationType certificationType,cc.TracksScore tracksScore,
                  a.CycleNumber cycleNumber,a.AttemptNumber currentAttemptNumber
           FROM bbva.PersonCertification pc WITH (UPDLOCK,HOLDLOCK)
           INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
@@ -630,9 +634,9 @@ export class CollaboratorCertificationRepository {
       if(duplicate.recordset[0]) throw Object.assign(new Error('Ya existe otro intento con ese número en el ciclo actual.'),{statusCode:409});
       const resolution=await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('cycle',sql.Int,row.currentCycle).query(`SELECT TOP 1 ResolutionStatus status FROM bbva.CertificationCriticalResolution WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle ORDER BY UpdatedAt DESC,Id DESC;`);
       if(resolution.recordset[0]?.status && String(resolution.recordset[0].status)!=='PENDING_REVIEW') throw Object.assign(new Error('El intento no puede modificarse después de resolver el caso crítico del ciclo.'),{statusCode:409});
-      await new sql.Request(transaction).input('attemptId',sql.UniqueIdentifier,attemptId).input('attemptNumber',sql.Int,input.attemptNumber).input('applicationDate',sql.Date,input.applicationDate).input('result',sql.NVarChar(24),input.result).input('notes',sql.NVarChar(1000),input.notes).input('actor',sql.NVarChar(320),actorEmail).query(`UPDATE bbva.PersonCertificationAttempt SET AttemptNumber=@attemptNumber,ApplicationDate=@applicationDate,Result=@result,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@attemptId;`);
+      await new sql.Request(transaction).input('attemptId',sql.UniqueIdentifier,attemptId).input('attemptNumber',sql.Int,input.attemptNumber).input('applicationDate',sql.Date,input.applicationDate).input('result',sql.NVarChar(24),input.result).input('score10',sql.Decimal(5,2),input.score10).input('notes',sql.NVarChar(1000),input.notes).input('actor',sql.NVarChar(320),actorEmail).query(`UPDATE bbva.PersonCertificationAttempt SET AttemptNumber=@attemptNumber,ApplicationDate=@applicationDate,Result=@result,Score10=@score10,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@attemptId;`);
       const aggregate=await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('cycle',sql.Int,row.currentCycle).query(`
-        SELECT TOP 1 AttemptNumber,ApplicationDate,Result FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle ORDER BY AttemptNumber DESC,CreatedAt DESC,Id DESC;
+        SELECT TOP 1 AttemptNumber,ApplicationDate,Result,Score10 FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle ORDER BY AttemptNumber DESC,CreatedAt DESC,Id DESC;
         SELECT MAX(ApplicationDate) approvedDate FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle AND Result=N'APPROVED';
         SELECT COUNT(1) attemptCount FROM bbva.PersonCertificationAttempt WHERE PersonCertificationId=@recordId AND CycleNumber=@cycle;
       `);
@@ -640,7 +644,7 @@ export class CollaboratorCertificationRepository {
       const approvedDate=aggregate.recordsets[1]?.[0]?.approvedDate??null;
       const attemptCount=Number(aggregate.recordsets[2]?.[0]?.attemptCount??0);
       const baseStatus=approvedDate?'APPROVED':latest?.Result==='FAILED'?'FAILED':latest?.ApplicationDate?'APPLIED':'PENDING';
-      await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('baseStatus',sql.NVarChar(24),baseStatus).input('applicationDate',sql.Date,latest?.ApplicationDate??null).input('approvedDate',sql.Date,approvedDate).input('validityMonths',sql.Int,row.validityMonths).input('actor',sql.NVarChar(320),actorEmail).query(`UPDATE bbva.PersonCertification SET BaseStatus=@baseStatus,ApplicationDate=@applicationDate,ApprovedDate=@approvedDate,ExpirationDate=CASE WHEN @approvedDate IS NOT NULL AND @validityMonths IS NOT NULL THEN DATEADD(month,@validityMonths,@approvedDate) ELSE NULL END,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@recordId;`);
+      await new sql.Request(transaction).input('recordId',sql.UniqueIdentifier,recordId).input('baseStatus',sql.NVarChar(24),baseStatus).input('applicationDate',sql.Date,latest?.ApplicationDate??null).input('approvedDate',sql.Date,approvedDate).input('validityMonths',sql.Int,row.validityMonths).input('score10',sql.Decimal(5,2),latest?.Score10??null).input('actor',sql.NVarChar(320),actorEmail).query(`UPDATE bbva.PersonCertification SET BaseStatus=@baseStatus,ApplicationDate=@applicationDate,ApprovedDate=@approvedDate,ExpirationDate=CASE WHEN @approvedDate IS NOT NULL AND @validityMonths IS NOT NULL THEN DATEADD(month,@validityMonths,@approvedDate) ELSE NULL END,LastScore10=@score10,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actor WHERE Id=@recordId;`);
 
       const criticalAfterEdit=Boolean(row.requiresAttempts) && isCriticalTwoAttemptExhausted({
         certificationType:String(row.certificationType??''),
@@ -688,6 +692,7 @@ export class CollaboratorCertificationRepository {
                  pc.BaseStatus AS baseStatus,
                  (SELECT COUNT(1) FROM bbva.PersonCertificationAttempt a WHERE a.PersonCertificationId=pc.Id AND a.CycleNumber=@cycle) AS attemptCount,
                  latestAttempt.Result AS latestAttemptResult,
+        cc.TracksScore AS tracksScore,
                  resolution.ResolutionStatus AS currentResolutionStatus
           FROM bbva.PersonCertification pc
           INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
@@ -874,6 +879,7 @@ export class CollaboratorCertificationRepository {
         cc.MaxAttempts AS maxAttempts,
         CAST(latestAttempt.Id AS NVARCHAR(36)) AS latestAttemptId,
         latestAttempt.Result AS latestAttemptResult,
+        cc.TracksScore AS tracksScore,
         criticalResolution.ResolutionStatus AS criticalResolutionStatus,
         criticalResolution.Notes AS criticalResolutionNotes,
         CONVERT(VARCHAR(33),criticalResolution.UpdatedAt,127) AS criticalResolutionAt,
@@ -924,6 +930,7 @@ export class CollaboratorCertificationRepository {
       maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
       recertificationEnabled: Boolean(row.recertificationEnabled),
       requiresAttempts: Boolean(row.requiresAttempts),
+      tracksScore: Boolean(row.tracksScore),
       criticalActionRequired: Boolean(row.criticalActionRequired),
     })) as CertificationTrackingRecord[];
     return rows.filter((row) => row.status !== 'VALID' && row.status !== 'NOT_APPLICABLE');

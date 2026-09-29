@@ -35,12 +35,12 @@ export function useUpdateCollaboratorCertification(collaboratorId: string) {
 
 export function useAddCertificationAttempt(collaboratorId: string) {
   const invalidate = useInvalidate(collaboratorId);
-  return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { applicationDate: string; result: CertificationAttemptResult; notes: string } }) => collaboratorCertificationApi.addAttempt(collaboratorId, recordId, payload), onSuccess: invalidate });
+  return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { applicationDate: string; result: CertificationAttemptResult; score10: number | null; notes: string } }) => collaboratorCertificationApi.addAttempt(collaboratorId, recordId, payload), onSuccess: invalidate });
 }
 
 export function useUpdateCertificationAttempt(collaboratorId:string){
   const invalidate=useInvalidate(collaboratorId);
-  return useMutation({mutationFn:({recordId,attemptId,payload}:{recordId:string;attemptId:string;payload:{applicationDate:string;result:CertificationAttemptResult;attemptNumber:number;notes:string}})=>collaboratorCertificationApi.updateAttempt(collaboratorId,recordId,attemptId,payload),onSuccess:invalidate});
+  return useMutation({mutationFn:({recordId,attemptId,payload}:{recordId:string;attemptId:string;payload:{applicationDate:string;result:CertificationAttemptResult;score10:number|null;attemptNumber:number;notes:string}})=>collaboratorCertificationApi.updateAttempt(collaboratorId,recordId,attemptId,payload),onSuccess:invalidate});
 }
 
 export function useResolveCriticalCertification(collaboratorId: string) {

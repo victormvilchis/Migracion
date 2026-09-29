@@ -23,6 +23,7 @@ import { BBVAAlert } from './BBVAAlert';
 import { BBVAFormActions, type BBVAFormMode, isBBVAFormReadOnly } from './BBVACrudForm';
 import { BBVADatePicker } from './BBVADatePicker';
 import { BBVASearchableSelect, type BBVASearchableSelectOption } from './BBVASearchableSelect';
+import { BBVARequiredMark } from './BBVARequiredMark';
 import { ISLookupField } from './ISLookupField';
 import type { IdentityDirectoryRecord } from '../pagesBBVATalent/types/identityDirectory';
 
@@ -194,17 +195,17 @@ export const TalentForm: React.FC<TalentFormProps> = ({ selected, initialTalentT
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Información profesional</h3>
         <div className="grid gap-3 md:grid-cols-12">
           <label className="md:col-span-4">
-            <span className={labelClass}>Perfil {talentType === 'ACADEMY' ? '*' : ''}</span>
+            <span className={labelClass}>Perfil {talentType === 'ACADEMY' ? <BBVARequiredMark/> : null}</span>
             <BBVASearchableSelect value={profileCatalogId ?? ''} onChange={(value) => setValue('profileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(profiles, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil" />
           </label>
           {fullForm ? (
             <label className="md:col-span-3">
-              <span className={labelClass}>Perfil tecnológico *</span>
+              <span className={labelClass}>Perfil tecnológico <BBVARequiredMark/></span>
               <BBVASearchableSelect value={technologyProfileCatalogId ?? ''} onChange={(value) => setValue('technologyProfileCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologyProfiles, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Perfil tecnológico" />
             </label>
           ) : null}
           <label className={fullForm ? 'md:col-span-3' : 'md:col-span-5'}>
-            <span className={labelClass}>Tecnología actual {talentType === 'ACADEMY' ? '*' : ''}</span>
+            <span className={labelClass}>Tecnología actual {talentType === 'ACADEMY' ? <BBVARequiredMark/> : null}</span>
             <BBVASearchableSelect value={currentTechnologyCatalogId ?? ''} onChange={(value) => setValue('currentTechnologyCatalogId', value, { shouldDirty: true, shouldValidate: true })} options={toSelectOptions(technologies, 'Seleccionar')} disabled={catalogsLoading || readOnly || saving} ariaLabel="Tecnología actual" />
           </label>
           {fullForm ? (

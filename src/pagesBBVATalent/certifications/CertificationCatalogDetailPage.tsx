@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
+import { BBVACatalogHeader } from '../../componentsBBVATalent/BBVACatalogHeader';
 import { CertificationCatalogForm } from '../../componentsBBVATalent/CertificationCatalogForm';
 import { useCertificationCatalogItem, useDeleteCertificationCatalogItem } from '../hooks/useCertificationCatalog';
 
@@ -38,6 +39,7 @@ export const CertificationCatalogDetailPage: React.FC<CertificationCatalogDetail
       <div className="flex justify-start">
         <BBVAFormBackButton onBack={() => navigate(route)} disabled={deleteMutation.isPending} />
       </div>
+      <BBVACatalogHeader title={mode === 'delete' ? 'ELIMINAR CERTIFICACIÓN' : 'CERTIFICACIÓN'} description={String(item.name ?? '').toUpperCase()} />
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
       <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <CertificationCatalogForm

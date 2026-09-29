@@ -51,6 +51,10 @@ function normalizeDate(value: string | null | undefined): string | null {
   return /^\d{4}-\d{2}-\d{2}$/.test(candidate) ? candidate : null;
 }
 
+function filterValues(value: string | null | undefined): Set<string> {
+  return new Set(String(value ?? '').split('~').map((item) => item.trim()).filter(Boolean));
+}
+
 function certificationStatus(row: DashboardCertificationRow, todayIso: string, quarter?: VendorQuarterDefinition | null): string {
   if (!row.applicable || row.baseStatus === 'NOT_APPLICABLE') return 'NOT_APPLICABLE';
   if (row.baseStatus !== 'APPROVED') return row.baseStatus === 'FAILED' ? 'FAILED' : row.baseStatus;
@@ -313,11 +317,12 @@ export class BbvaDashboardService {
     const selectedQuarter = quarter.selectedQuarter;
     const selectedQuarterCode = selectedQuarter?.code ?? 'UNCONFIGURED';
 
+    const technologyIds = filterValues(filters.technologyId);
     const certStatusById = new Map<string, string>();
     for (const cert of allCertifications) certStatusById.set(cert.id, certificationStatus(cert, todayIso, selectedQuarter));
 
     let collaborators = allCollaborators.filter((row) => {
-      if (filters.technologyId && row.technologyId !== filters.technologyId) return false;
+      if (technologyIds.size && (!row.technologyId || !technologyIds.has(row.technologyId))) return false;
       if (filters.profileId && row.profileId !== filters.profileId) return false;
       if (filters.technologyProfile && row.technologyProfile !== filters.technologyProfile) return false;
       if (filters.bbvaStructureLevel2 && row.bbvaStructureLevel2 !== filters.bbvaStructureLevel2) return false;
@@ -382,7 +387,7 @@ export class BbvaDashboardService {
 
     let talent = allTalent.filter((row) => {
       if (filters.talentType && row.talentType !== filters.talentType) return false;
-      if (filters.technologyId && row.technologyId !== filters.technologyId) return false;
+      if (technologyIds.size && (!row.technologyId || !technologyIds.has(row.technologyId))) return false;
       if (filters.profileId && row.profileId !== filters.profileId) return false;
       if (filters.bbvaStructureLevel2 && row.bbvaStructureLevel2 !== filters.bbvaStructureLevel2) return false;
       if (filters.bbvaStructureLevel3 && row.bbvaStructureLevel3 !== filters.bbvaStructureLevel3) return false;

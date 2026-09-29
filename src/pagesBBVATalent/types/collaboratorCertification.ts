@@ -43,6 +43,7 @@ export interface CollaboratorCertification {
   applicable: boolean;
   source: 'AUTO' | 'MANUAL';
   lastScore10: number | null;
+  tracksScore: boolean;
   softtekManagement: string | null;
   currentCycle: number;
   baseStatus: 'PENDING' | 'SCHEDULED' | 'APPLIED' | 'FAILED' | 'APPROVED' | 'NOT_APPLICABLE';
@@ -86,6 +87,7 @@ export interface CertificationAttempt {
   attemptNumber: number;
   applicationDate: string | null;
   result: CertificationAttemptResult;
+  score10: number | null;
   notes: string | null;
   createdAt: string;
   createdByEmail: string;
@@ -138,6 +140,7 @@ export interface CertificationTrackingItem {
   requiresAttempts: boolean;
   latestAttemptId: string | null;
   latestAttemptResult: CertificationAttemptResult | null;
+  tracksScore: boolean;
   criticalActionRequired: boolean;
   criticalResolutionStatus: CertificationCriticalResolutionStatus | null;
   criticalResolutionNotes: string | null;

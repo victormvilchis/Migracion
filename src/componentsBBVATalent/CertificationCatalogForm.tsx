@@ -3,6 +3,7 @@ import { useCatalogOptions } from '../pagesBBVATalent/hooks/useCatalog';
 import { BBVAAlert } from './BBVAAlert';
 import { BBVAFormActions, type BBVAFormMode, isBBVAFormReadOnly } from './BBVACrudForm';
 import { BBVASearchableSelect } from './BBVASearchableSelect';
+import { BBVARequiredMark } from './BBVARequiredMark';
 import {
   CERTIFICATION_LEVEL_LABELS,
   CERTIFICATION_LEVELS,
@@ -122,10 +123,10 @@ export const CertificationCatalogForm: React.FC<Props> = ({ selected, saving, mo
 
       <section className={sectionClass}>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-5"><span className={labelClass}>Certificación *</span><input disabled={readOnly || saving} className={fieldClass} value={values.name} maxLength={180} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} /></label>
-          <label className="md:col-span-3"><span className={labelClass}>Tipo *</span><BBVASearchableSelect value={values.certificationType} onChange={(value) => updateType(value as CertificationType)} options={CERTIFICATION_TYPES.map((type) => ({ value: type, label: CERTIFICATION_TYPE_LABELS[type] }))} disabled={readOnly || saving} ariaLabel="Tipo de certificación" /></label>
+          <label className="md:col-span-5"><span className={labelClass}>Certificación <BBVARequiredMark/></span><input disabled={readOnly || saving} className={fieldClass} value={values.name} maxLength={180} onChange={(e) => setValues((v) => ({ ...v, name: e.target.value }))} /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Tipo <BBVARequiredMark/></span><BBVASearchableSelect value={values.certificationType} onChange={(value) => updateType(value as CertificationType)} options={CERTIFICATION_TYPES.map((type) => ({ value: type, label: CERTIFICATION_TYPE_LABELS[type] }))} disabled={readOnly || saving} ariaLabel="Tipo de certificación" /></label>
           <label className="md:col-span-4"><span className={labelClass}>Certificadora</span><input disabled={readOnly || saving} className={fieldClass} value={values.provider} maxLength={120} onChange={(e) => setValues((v) => ({ ...v, provider: e.target.value }))} placeholder="Ej. NETEC" /></label>
-          <label className="md:col-span-5"><span className={labelClass}>Tecnología {values.certificationType === 'TECHNOLOGICAL' ? '*' : ''}</span><BBVASearchableSelect value={values.technologyId} onChange={(value) => setValues((v) => ({ ...v, technologyId: value }))} options={technologyOptions} disabled={readOnly || saving || values.certificationType !== 'TECHNOLOGICAL'} ariaLabel="Tecnología" /></label>
+          <label className="md:col-span-5"><span className={labelClass}>Tecnología {values.certificationType === 'TECHNOLOGICAL' ? <BBVARequiredMark/> : null}</span><BBVASearchableSelect value={values.technologyId} onChange={(value) => setValues((v) => ({ ...v, technologyId: value }))} options={technologyOptions} disabled={readOnly || saving || values.certificationType !== 'TECHNOLOGICAL'} ariaLabel="Tecnología" /></label>
           <label className="md:col-span-7"><span className={labelClass}>Descripción</span><textarea disabled={readOnly || saving} className={areaClass} value={values.description} maxLength={1000} onChange={(e) => setValues((v) => ({ ...v, description: e.target.value }))} /></label>
         </div>
       </section>

@@ -62,8 +62,8 @@ assert.equal((expanded.match(/Estructura nivel 2/g)||[]).length,0);
 assert.equal((expanded.match(/Estructura nivel 3/g)||[]).length,0);
 
 // Vida visual perceptible + accesibilidad.
-assert.match(css,/bbva-live-breathe/);
-assert.match(css,/bbva-quarter-flow/);
+assert.match(css,/bbva-insight-breathe/);
+assert.match(css,/bbva-insight-live/);
 assert.match(css,/prefers-reduced-motion/);
 assert.match(standards,/Más de 60 días/);
 assert.match(standards,/cobertura del Q es 100%/);

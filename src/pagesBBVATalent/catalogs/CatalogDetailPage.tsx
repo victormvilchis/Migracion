@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAFormBackButton } from '../../componentsBBVATalent/BBVACrudForm';
+import { BBVACatalogHeader } from '../../componentsBBVATalent/BBVACatalogHeader';
 import { CatalogForm } from '../../componentsBBVATalent/CatalogForm';
 import { useCatalogItem, useDeleteCatalogItem } from '../hooks/useCatalog';
 import { catalogConfigs, type CatalogType } from '../types/catalog';
@@ -42,6 +43,7 @@ export const CatalogDetailPage: React.FC<CatalogDetailPageProps> = ({ type, mode
       <div className="flex justify-start">
         <BBVAFormBackButton onBack={() => navigate(config.route)} disabled={deleteMutation.isPending} />
       </div>
+      <BBVACatalogHeader title={`${mode === 'delete' ? 'ELIMINAR' : 'VER'} ${config.singular.toUpperCase()}`} description={item.name.toUpperCase()} />
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
       <div className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <CatalogForm

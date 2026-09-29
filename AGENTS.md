@@ -641,7 +641,7 @@ BFS remains its own product, architecture and source of truth.
 - La cobertura de Panel/Métricas es por Q: representa el porcentaje de certificaciones aplicables que NO vencen dentro del Q seleccionado. Si no existe ningún vencimiento en el Q, la cobertura del Q es 100%.
 - Seguimiento muestra Q de vencimiento como filtro y columna. Estructura BBVA no se duplica en esa tabla y la acción Postal no se ofrece como acción rápida de seguimiento.
 - Banco de talento muestra días de permanencia. Más de 60 días sin asignación activan la señal determinística «Urgente de asignar»; el número histórico de entradas no determina urgencia.
-- El movimiento visual debe ser perceptible pero no distractor: respiración ligera de tarjetas, progreso Q animado e indicadores vivos, siempre respetando prefers-reduced-motion.
+- El movimiento visual se reserva a insights y recomendaciones analíticas; KPIs, tarjetas operativas y paneles generales permanecen estáticos. Todo movimiento respeta prefers-reduced-motion.
 - En dashboards se conservan únicamente KPIs esenciales; el resto vive en paneles de detalle, histórico o drill-down.
 
 ### V25 operational display and drill-down standards
@@ -681,3 +681,48 @@ BFS remains its own product, architecture and source of truth.
 - La regla aplica tanto a estado persistido en `sessionStorage` como a filtros representados por query params. Volver mediante historial del navegador desde otro módulo no debe restaurar filtros de una visita anterior.
 - El alcance se determina desde la navegación oficial (`bbvaNavigation`), no por prefijos hardcodeados independientes en cada página. Los módulos nuevos heredan este comportamiento al registrarse en la navegación y usar los hooks estándar de listas/filtros.
 - No usar `localStorage` para filtros operativos BBVA. `localStorage` queda reservado a preferencias duraderas de interfaz que no son filtros, como el estado colapsado del sidebar.
+
+### V30 — tablas limpias y paginación orientativa
+
+- Los contenedores de tablas BBVA no repiten el nombre del módulo, la descripción de la pantalla ni frases de contexto ya evidentes por breadcrumb, filtros o métricas. Evitar encabezados como `X de Y registros en el contexto actual`, descripciones genéricas del periodo o subtítulos redundantes encima de las columnas.
+- Un encabezado sobre una tabla sólo se conserva cuando cambia el significado del dataset (por ejemplo, `Certificaciones que vencen en 2026Q4`) o contiene una acción necesaria; los conteos globales corresponden a métricas o a la propia paginación.
+- La vista principal de Colaboradores no muestra una columna de conteo `Certificaciones`; el estado resume la situación operativa y el detalle/menú de acciones permite consultar las certificaciones de la persona.
+- `BBVAPagination` es el estándar único de paginación BBVA. La página activa debe distinguirse inequívocamente con fondo sólido corporativo, texto de alto contraste y `aria-current="page"`; nunca depender sólo de un borde sutil.
+- Estas reglas aplican a módulos BBVA actuales y futuros. No implementar estilos locales de página activa ni encabezados redundantes por pantalla.
+### V30.1 — headers de contexto por módulo
+
+- Sólo los módulos bajo **Administración > Catálogos** mantienen headers de contexto/título descriptivo de módulo o de guardado.
+- Fuera de Catálogos, el breadcrumb ya aporta ubicación y contexto; no repetir grupo, módulo, título ni descripción general en un header adicional.
+- En listados no catálogo, los CTAs principales permanecen visibles sin necesitar un encabezado descriptivo.
+- En formularios no catálogo, conservar únicamente navegación, feedback, campos y acciones; no agregar headers redundantes de “Nuevo/Editar” cuando el breadcrumb ya lo indica.
+- Los encabezados de identidad o de contenido específico (persona, certificación, intento, resultado) no se consideran headers redundantes de módulo y pueden permanecer cuando aportan información operativa real.
+
+
+### V30.2 — forms y tablas compactas como estándar BBVA
+
+- Los badges abreviados de roles representan el rol, no una capacidad adicional. Se forman con las iniciales de las dos primeras palabras (`Service Manager` → `SM`, `Delivery Manager` → `DM`); `isDeliveryManager` sólo indica que el rol puede fungir como DM.
+- Todo campo obligatorio en formularios BBVA actuales y futuros muestra su asterisco con `BBVARequiredMark`, en rojo visible. No usar asteriscos obligatorios negros o heredados dentro del texto del label.
+- Colaboradores y Banco de talento son la referencia visual para listados BBVA: filtros compactos, controles con ancho finito, sin card/borde gris envolvente, con separación visual antes de la tabla.
+- `BBVAFilterBar` es el contenedor estándar para barras de filtros adicionales. `Actualizar` y `Limpiar` se integran como acciones de la misma barra, alineadas con los filtros; no crear un segundo encabezado o franja de filtros.
+- Las tablas BBVA no llevan headers descriptivos propios fuera de los catálogos. El breadcrumb, métricas o controles anteriores aportan el contexto. Las acciones de tabla se colocan de forma compacta fuera de la superficie de columnas.
+- Toda tabla de listado o detalle potencialmente creciente usa `BBVAPagination`; el tamaño inicial es 10 y la página activa conserva el estándar visual/accesible global.
+- Estas reglas son transversales para módulos actuales y futuros; evitar estilos locales que reintroduzcan cards de filtros anchas, headers redundantes o marcas obligatorias inconsistentes.
+
+### V30.3 — contexto de catálogos, motion y calendarios BBVA
+
+- Todo módulo ubicado bajo **Administración > Catálogos** muestra `BBVACatalogHeader` en sus vistas de listado, alta, edición y detalle. Es la única familia de módulos que conserva un header contextual persistente; no crear excepciones fuera de Catálogos.
+- En Administración > Usuarios, los nombres de personas se presentan en MAYÚSCULAS y los roles se representan mediante sus iniciales de las dos primeras palabras (`Service Manager` → `SM`, `Delivery Manager` → `DM`). En Administración > Roles, el nombre visible del rol se presenta en MAYÚSCULAS y el badge conserva esas iniciales.
+- Las tarjetas operativas, KPI, scorecards y paneles generales permanecen estáticos. El movimiento continuo se reserva exclusivamente a **insights y recomendaciones analíticas**, mediante `bbva-insight-live`, respetando `prefers-reduced-motion`.
+- Todos los calendarios BBVA consumen el DatePicker compartido. El selector de años se ordena del más nuevo al más viejo. Si el campo no tiene fecha, al abrir el calendario el contexto inicia en el mes/año actual; si existe una fecha persistida, se conserva su año y mes.
+- No reintroducir `bbva-live-card`, `bbva-live-panel` ni animaciones de respiración/progreso sobre tarjetas operativas comunes.
+
+### V30.4 — jerarquía operativa de filtros, score y tablas
+
+- En cualquier Panel, Dashboard o módulo que muestre KPIs/resúmenes operativos, la barra de filtros se presenta antes de las tarjetas. El usuario define primero el universo y después interpreta las métricas; no colocar KPIs encima de sus filtros.
+- Los filtros de Tecnología de los módulos operativos BBVA son multiselect. La selección múltiple se conserva en el contexto de la visita del módulo conforme a V29 y el backend interpreta todos los valores seleccionados, no sólo el primero.
+- Estructura BBVA se filtra con un único control compacto y jerárquico: Nivel 2 como padre y Nivel 3 anidado. No volver a dos selects independientes ni a una lista plana que mezcle niveles sin jerarquía visual.
+- Las certificaciones con `TracksScore=true` permiten capturar `Calificación / score` de 0 a 10 en alta/edición de intento y aprobación rápida. Las certificaciones que no manejan score no muestran ni aceptan ese dato. `Score10` y `LastScore10` son la fuente persistida para métricas/promedios.
+- El orden canónico de niveles es `JR → STD → SR`. `GENERIC` se coloca después cuando el dominio lo requiera y `TR` sólo permanece en contextos de formación/pre-entry donde ya exista; nunca alterar el orden JR/STD/SR.
+- En toda tabla BBVA que tenga Estado/Estatus y Acciones, Estado/Estatus es la última columna de negocio e inmediatamente precede a Acciones. No insertar columnas entre ambas.
+- Seguimiento no muestra una tarjeta independiente `Preparación Vendors`; Periodo y sus métricas viven en filtros/KPIs para evitar duplicidad visual.
+- Estas reglas son transversales para módulos actuales y futuros.

@@ -46,8 +46,10 @@ for (const source of [dashboard, metrics]) {
 }
 assert.match(dashboard, /cards=\{5\}/);
 assert.match(metrics, /cards=\{5\}/);
-assert.match(dashboard, /El periodo seleccionado define vigencia, vencimientos y métricas/);
-assert.match(metrics, /Vigencia, cobertura y vencimientos responden al periodo seleccionado/);
+assert.doesNotMatch(dashboard, /El periodo seleccionado define vigencia, vencimientos y métricas/);
+assert.match(dashboard, /ariaLabel="Periodo"/);
+assert.doesNotMatch(metrics, /Vigencia, cobertura y vencimientos responden al periodo seleccionado/);
+assert.match(metrics, /ariaLabel="Periodo"/);
 
 // V24 simplifica Seguimiento: Q operativo en filtro/columna, sin duplicar Estructura ni Postal.
 assert.match(tracking, /quarterCode/);
@@ -73,7 +75,7 @@ assert.match(migration, /PRIMARY KEY \(SnapshotDate,QuarterCode\)/);
 assert.match(migration, /SET QuarterCode=N''GLOBAL''/);
 
 // Movimiento sutil y accesible.
-assert.match(css, /\.bbva-live-card/);
+assert.match(css, /\.bbva-insight-live/);
 assert.match(css, /prefers-reduced-motion/);
 assert.match(standards, /MAYÚSCULAS/);
 assert.match(standards, /nunca exponen códigos editables/);

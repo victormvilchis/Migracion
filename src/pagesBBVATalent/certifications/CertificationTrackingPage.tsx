@@ -1,12 +1,14 @@
 import React, { Fragment, useMemo, useState } from 'react';
-import { AlertCircle, ArrowRightLeft, CalendarClock, CalendarRange, CheckCircle2, Clock3, Eye, RefreshCw, Search, ShieldAlert } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CalendarClock, CheckCircle2, Clock3, Eye, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVACertificationStatusBadge } from '../../componentsBBVATalent/BBVACertificationStatusBadge';
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
 import { BBVAFilterSummary, type BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
+import { BBVAFilterBar } from '../../componentsBBVATalent/BBVAFilterBar';
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
+import { BBVAMultiSelect } from '../../componentsBBVATalent/BBVAMultiSelect';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHeader';
@@ -22,6 +24,7 @@ import { useBBVAListQueryState } from '../hooks/useBBVAListQueryState';
 import { publishBbvaDataChange } from '../lib/bbvaDataSync';
 import { displayPersonName, displayRoleName, sentenceCaseData, upperDisplay, displayCertificationName } from '../lib/bbvaDisplayFormat';
 import { formatPeriodCode, periodOptions } from '../lib/periodOptions';
+import { decodeMultiValue, encodeMultiValue } from '../lib/multiValueFilter';
 import {
   attemptContext,
   buildTrackingSummary,
@@ -132,17 +135,19 @@ export const CertificationTrackingPage: React.FC = () => {
     certifications: uniqueOptions(items, (item) => item.certificationName),
   }), [items]);
 
+  const selectedTechnologies = useMemo(() => decodeMultiValue(filters.technology), [filters.technology]);
+
   const contextItems = useMemo(() => {
     const term = filters.search.trim().toLocaleLowerCase('es-MX');
     return items.filter((item) => {
       const searchable = `${item.collaboratorName} ${displayCertificationName(item.certificationName)} ${item.profile ?? ''} ${item.technology ?? ''} ${item.technologyName ?? ''}`.toLocaleLowerCase('es-MX');
       return (!term || searchable.includes(term))
         && (!filters.profile || item.profile === filters.profile)
-        && (!filters.technology || item.technology === filters.technology)
+        && (!selectedTechnologies.length || Boolean(item.technology && selectedTechnologies.includes(item.technology)))
         && (!filters.certification || item.certificationName === filters.certification)
         && (!filters.quarterCode || (filters.quarterCode === 'NO_QUARTER' ? !item.quarterCode : item.quarterCode === filters.quarterCode));
     });
-  }, [filters.certification, filters.profile, filters.quarterCode, filters.search, filters.technology, items]);
+  }, [filters.certification, filters.profile, filters.quarterCode, filters.search, items, selectedTechnologies]);
 
   const filtered = useMemo(() => contextItems
     .filter((item) => !filters.certificationStatus || item.status === filters.certificationStatus)
@@ -160,12 +165,12 @@ export const CertificationTrackingPage: React.FC = () => {
     if (filters.search) active.push({ key: 'search', label: `Búsqueda: ${filters.search}`, onRemove: () => update({ search: '' }) });
     if (filters.certificationStatus) active.push({ key: 'certificationStatus', label: `Estado: ${COLLABORATOR_CERTIFICATION_STATUS_LABELS[filters.certificationStatus as CollaboratorCertificationStatus] ?? filters.certificationStatus}`, onRemove: () => update({ certificationStatus: '' }) });
     if (filters.profile) active.push({ key: 'profile', label: `Perfil: ${sentenceCaseData(filters.profile)}`, onRemove: () => update({ profile: '' }) });
-    if (filters.technology) active.push({ key: 'technology', label: `Tecnología: ${sentenceCaseData(filters.technology)}`, onRemove: () => update({ technology: '' }) });
+    if (selectedTechnologies.length) active.push({ key: 'technology', label: selectedTechnologies.length === 1 ? `Tecnología: ${upperDisplay(selectedTechnologies[0])}` : `Tecnologías: ${selectedTechnologies.length}`, onRemove: () => update({ technology: '' }) });
     if (filters.certification) active.push({ key: 'certification', label: `Certificación: ${displayCertificationName(filters.certification)}`, onRemove: () => update({ certification: '' }) });
     if (filters.quarterCode) active.push({ key: 'quarterCode', label: `Periodo: ${filters.quarterCode === 'NO_QUARTER' ? 'Sin periodo' : formatPeriodCode(filters.quarterCode)}`, onRemove: () => update({ quarterCode: '' }) });
     if (filters.critical === 'OPEN') active.push({ key: 'critical', label: 'Críticos 2/2 abiertos', onRemove: () => update({ critical: '' }) });
     return active;
-  }, [filters.certification, filters.certificationStatus, filters.critical, filters.profile, filters.quarterCode, filters.search, filters.technology, update]);
+  }, [filters.certification, filters.certificationStatus, filters.critical, filters.profile, filters.quarterCode, filters.search, selectedTechnologies, update]);
 
   const changeSort = (field: SortField) => {
     if (sort === field) patchSort({ direction: direction === 'asc' ? 'desc' : 'asc' });
@@ -174,11 +179,11 @@ export const CertificationTrackingPage: React.FC = () => {
 
   const filterStatus = (status: CollaboratorCertificationStatus | '') => update({ certificationStatus: status });
 
-  const approve = async (date: string) => {
+  const approve = async (date: string, score10: number | null) => {
     if (!approval) return;
     try {
       setError(null);
-      await approveMutation.mutateAsync({ recordId: approval.certificationRecordId, payload: { applicationDate: date, result: 'APPROVED', notes: 'Aprobación registrada desde Seguimiento.' } });
+      await approveMutation.mutateAsync({ recordId: approval.certificationRecordId, payload: { applicationDate: date, result: 'APPROVED', score10, notes: 'Aprobación registrada desde Seguimiento.' } });
       setApproval(null);
       await query.refetch();
     } catch (e) { setError((e as Error).message); }
@@ -223,6 +228,19 @@ export const CertificationTrackingPage: React.FC = () => {
     <div className="space-y-2 animate-fade-in">
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
 
+      <BBVAFilterBar actions={<><BBVAButton variant="secondary" size="sm" icon={<RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />} onClick={() => void query.refetch()}>Actualizar</BBVAButton>{activeFilters.length ? <BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar</BBVAButton> : null}</>}>
+        <div className="relative w-full sm:w-[280px]">
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+          <input value={filters.search} onChange={(e) => update({ search: e.target.value })} placeholder="Persona o certificación" className="h-9 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-[11px] outline-none focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/40 [.bbva-dark_&]:text-slate-100" aria-label="Buscar persona o certificación" />
+        </div>
+        <div className="w-full sm:w-[185px]"><BBVASearchableSelect value={filters.certificationStatus} onChange={(value) => update({ certificationStatus: value })} options={[{ value: '', label: 'Todos los estados' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([key]) => !['VALID', 'NOT_APPLICABLE'].includes(key)).map(([value, label]) => ({ value, label }))]} ariaLabel="Estado" /></div>
+        <BBVAMultiSelect className="w-full sm:w-[190px]" values={selectedTechnologies} onChange={(values) => update({ technology: encodeMultiValue(values) })} options={options.technologies.map((option)=>({ ...option, label: upperDisplay(option.label) }))} placeholder="Todas las tecnologías" selectedLabel="tecnologías" ariaLabel="Tecnología" />
+        <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={filters.profile} onChange={(value) => update({ profile: value })} options={[{ value: '', label: 'Todos los perfiles' }, ...options.profiles.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Perfil" /></div>
+        <div className="w-full sm:w-[205px]"><BBVASearchableSelect value={filters.certification} onChange={(value) => update({ certification: value })} options={[{ value: '', label: 'Todas las certificaciones' }, ...options.certifications.map((option)=>({ ...option, label: displayCertificationName(option.label) }))]} ariaLabel="Certificación" /></div>
+        <div className="w-full sm:w-[190px]"><BBVASearchableSelect value={filters.quarterCode} onChange={(value) => update({ quarterCode: value })} options={[...currentYearPeriods, { value: 'NO_QUARTER', label: 'Sin periodo configurado' }]} ariaLabel="Periodo de vencimiento" searchPlaceholder="Buscar periodo" /></div>
+      </BBVAFilterBar>
+      {activeFilters.length ? <BBVAFilterSummary items={activeFilters} /> : null}
+
       {!query.isLoading ? (
         <section aria-label="Resumen operativo de seguimiento" className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(125px,1fr))] items-stretch gap-1.5">
@@ -237,49 +255,17 @@ export const CertificationTrackingPage: React.FC = () => {
         </section>
       ) : null}
 
-
       <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-2.5 [.bbva-dark_&]:border-slate-800">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm font-semibold text-slate-950 [.bbva-dark_&]:text-slate-100">Certificaciones por atender</h2>
-              {summary.limitReached ? <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[8.5px] font-semibold text-rose-700 [.bbva-dark_&]:border-rose-400/20 [.bbva-dark_&]:bg-rose-400/10 [.bbva-dark_&]:text-rose-300">{summary.limitReached} con límite de intentos</span> : null}
-            </div>
-            <p className="mt-0.5 text-[9.5px] text-slate-500 [.bbva-dark_&]:text-slate-400">{filtered.length} de {contextItems.length} registros en el contexto actual.</p>
-          </div>
-          <BBVAButton variant="secondary" size="sm" icon={<RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />} onClick={() => void query.refetch()}>Actualizar</BBVAButton>
-        </div>
-
-        <div className="border-b border-slate-200 p-2.5 [.bbva-dark_&]:border-slate-800">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-7">
-            <div className="relative md:col-span-2 xl:col-span-1">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
-              <input value={filters.search} onChange={(e) => update({ search: e.target.value })} placeholder="Persona o certificación" className="h-9 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-[11px] outline-none focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/40 [.bbva-dark_&]:text-slate-100" aria-label="Buscar persona o certificación" />
-            </div>
-            <BBVASearchableSelect value={filters.certificationStatus} onChange={(value) => update({ certificationStatus: value })} options={[{ value: '', label: 'Todos los estados' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([key]) => !['VALID', 'NOT_APPLICABLE'].includes(key)).map(([value, label]) => ({ value, label }))]} ariaLabel="Estado" />
-            <BBVASearchableSelect value={filters.technology} onChange={(value) => update({ technology: value })} options={[{ value: '', label: 'Todas las tecnologías' }, ...options.technologies.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Tecnología" />
-            <BBVASearchableSelect value={filters.profile} onChange={(value) => update({ profile: value })} options={[{ value: '', label: 'Todos los perfiles' }, ...options.profiles.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Perfil" />
-            <BBVASearchableSelect value={filters.certification} onChange={(value) => update({ certification: value })} options={[{ value: '', label: 'Todas las certificaciones' }, ...options.certifications.map((option)=>({ ...option, label: displayCertificationName(option.label) }))]} ariaLabel="Certificación" />
-            <BBVASearchableSelect value={filters.quarterCode} onChange={(value) => update({ quarterCode: value })} options={[...currentYearPeriods, { value: 'NO_QUARTER', label: 'Sin periodo configurado' }]} ariaLabel="Periodo de vencimiento" searchPlaceholder="Buscar periodo" />
-          </div>
-          {activeFilters.length ? (
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <BBVAFilterSummary items={activeFilters} />
-              <BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar filtros</BBVAButton>
-            </div>
-          ) : null}
-        </div>
-
         <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full min-w-[1360px] text-left text-[10.5px]">
             <thead className="bg-slate-50 text-[9px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:bg-slate-950/40"><tr>
               <th className="px-3 py-2"><BBVATableSortHeader label="Colaborador" active={sort === 'collaboratorName'} direction={direction} onClick={() => changeSort('collaboratorName')} /></th>
               <th className="px-3 py-2"><BBVATableSortHeader label="Certificación" active={sort === 'certificationName'} direction={direction} onClick={() => changeSort('certificationName')} /></th>
               <th className="px-3 py-2">Periodo</th>
-              <th className="px-3 py-2"><BBVATableSortHeader label="Estado" active={sort === 'status'} direction={direction} onClick={() => changeSort('status')} /></th>
               <th className="px-3 py-2"><BBVATableSortHeader label="Vigencia" active={sort === 'expirationDate'} direction={direction} onClick={() => changeSort('expirationDate')} /></th>
               <th className="px-3 py-2"><BBVATableSortHeader label="Programación" active={sort === 'scheduledDate'} direction={direction} onClick={() => changeSort('scheduledDate')} /></th>
               <th className="px-3 py-2 text-center"><BBVATableSortHeader label="Intentos" active={sort === 'attempt'} direction={direction} onClick={() => changeSort('attempt')} align="center" /></th>
+              <th className="px-3 py-2"><BBVATableSortHeader label="Estado" active={sort === 'status'} direction={direction} onClick={() => changeSort('status')} /></th>
               <th className="px-3 py-2 text-right">Acciones</th>
             </tr></thead>
             <tbody className="divide-y divide-slate-100 [.bbva-dark_&]:divide-slate-800">{paged.map((item) => {
@@ -309,10 +295,10 @@ export const CertificationTrackingPage: React.FC = () => {
                   <td className="px-3 py-2.5"><div className="font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{displayPersonName(item.collaboratorName)}</div><div className="mt-0.5 text-[9px] text-slate-400">{displayRoleName(item.profile,'SIN PERFIL')} · {upperDisplay(item.technology,'SIN TECNOLOGÍA')}</div></td>
                   <td className="px-3 py-2.5"><div className="font-semibold text-slate-800 [.bbva-dark_&]:text-slate-200">{displayCertificationName(item.certificationName)}</div><div className="mt-0.5 text-[9px] text-slate-400">{sentenceCaseData(item.technologyName || item.certificationType)}</div></td>
                   <td className="px-3 py-2.5"><span className={`inline-flex rounded-full px-2 py-1 text-[9px] font-semibold ${item.quarterCode === query.data?.vendorQuarter.currentCode ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'}`}>{formatPeriodCode(item.quarterCode, '—')}</span></td>
-                  <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-1 text-[8.5px] font-bold uppercase tracking-[.04em] text-white">Crítico</span> : <BBVACertificationStatusBadge status={item.status} />}<div className={`mt-1 text-[9px] leading-3 ${criticalOpen ? 'font-semibold text-rose-700 [.bbva-dark_&]:text-rose-300' : 'text-slate-500 [.bbva-dark_&]:text-slate-400'}`}>{criticalDecision ? '2/2 intentos agotados · decisión pendiente' : item.criticalResolutionStatus === 'LOW_REQUESTED' ? 'Baja solicitada · falta confirmar salida' : item.criticalResolutionStatus === 'INTERN' ? 'Caso resuelto como becario' : item.criticalResolutionStatus === 'LOW_CONFIRMED' ? 'Baja de BBVA confirmada' : item.status === 'EXPIRED' ? 'Revisión de vigencia' : item.status === 'RECERTIFICATION_PENDING' ? 'Nuevo ciclo requerido' : item.status === 'EXPIRING' ? 'Seguimiento preventivo' : item.status === 'FAILED' ? 'Revisar siguiente intento' : item.status === 'SCHEDULED' ? 'Presentación programada' : 'Acción pendiente'}</div></td>
                   <td className="px-3 py-2.5"><div className="font-medium text-slate-700 [.bbva-dark_&]:text-slate-200">{formatDate(item.expirationDate)}</div><div className={`mt-0.5 text-[9px] ${item.status === 'EXPIRED' ? 'font-semibold text-rose-600 [.bbva-dark_&]:text-rose-300' : item.status === 'EXPIRING' ? 'font-semibold text-amber-600 [.bbva-dark_&]:text-amber-300' : 'text-slate-400'}`}>{expirationContext(item)}</div></td>
                   <td className="px-3 py-2.5">{item.scheduledDate ? <><span className="inline-flex items-center gap-1 font-medium text-blue-700 [.bbva-dark_&]:text-cyan-300"><CalendarClock className="h-3 w-3" />{formatDate(item.scheduledDate)}</span>{scheduleText ? <div className="mt-0.5 text-[9px] text-slate-400">{scheduleText}</div> : null}</> : <span className="text-slate-400">Sin fecha programada</span>}</td>
                   <td className="px-3 py-2.5 text-center">{item.requiresAttempts ? <div><div className="font-semibold tabular-nums text-slate-800 [.bbva-dark_&]:text-slate-200">{item.maxAttempts !== null ? `${item.attemptCount} / ${item.maxAttempts}` : item.attemptCount}</div><div className={`mt-0.5 text-[9px] ${limitReached ? 'font-semibold text-rose-600 [.bbva-dark_&]:text-rose-300' : remaining === 1 ? 'font-semibold text-amber-600 [.bbva-dark_&]:text-amber-300' : 'text-slate-400'}`}>{attemptContext(item)}</div></div> : <span className="text-slate-400">No aplica</span>}</td>
+                  <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-1 text-[8.5px] font-bold uppercase tracking-[.04em] text-white">Crítico</span> : <BBVACertificationStatusBadge status={item.status} />}<div className={`mt-1 text-[9px] leading-3 ${criticalOpen ? 'font-semibold text-rose-700 [.bbva-dark_&]:text-rose-300' : 'text-slate-500 [.bbva-dark_&]:text-slate-400'}`}>{criticalDecision ? '2/2 intentos agotados · decisión pendiente' : item.criticalResolutionStatus === 'LOW_REQUESTED' ? 'Baja solicitada · falta confirmar salida' : item.criticalResolutionStatus === 'INTERN' ? 'Caso resuelto como becario' : item.criticalResolutionStatus === 'LOW_CONFIRMED' ? 'Baja de BBVA confirmada' : item.status === 'EXPIRED' ? 'Revisión de vigencia' : item.status === 'RECERTIFICATION_PENDING' ? 'Nuevo ciclo requerido' : item.status === 'EXPIRING' ? 'Seguimiento preventivo' : item.status === 'FAILED' ? 'Revisar siguiente intento' : item.status === 'SCHEDULED' ? 'Presentación programada' : 'Acción pendiente'}</div></td>
                   <td className="px-3 py-2.5" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><div className="flex flex-wrap justify-end gap-1.5">
                     {criticalDecision ? <BBVAButton variant="table" size="sm" className="border-rose-300 bg-rose-50 font-semibold text-rose-700 hover:bg-rose-100" onClick={() => setCriticalItem(item)}>Resolver</BBVAButton> : item.criticalResolutionStatus === 'LOW_REQUESTED' ? <BBVAButton variant="table" size="sm" className="border-rose-200 text-rose-700 hover:bg-rose-50" onClick={() => navigate(`/bbva/collaborators/${item.collaboratorId}/move-to-talent`, { state: { criticalCertification: item.certificationName, criticalMessage: 'Solicitud de baja registrada por agotamiento 2/2. Completa el movimiento para confirmar la salida de BBVA.', preferredReasonGroup: 'BBVA_EXIT' } })}><ArrowRightLeft className="h-3 w-3" />Continuar baja</BBVAButton> : null}
                     {canApprove ? <BBVAButton variant="table" size="sm" className="border-emerald-200 text-emerald-700 hover:bg-emerald-50" onClick={() => setApproval(item)}><CheckCircle2 className="h-3 w-3" />Aprobar</BBVAButton> : null}
@@ -338,23 +324,10 @@ export const CertificationTrackingPage: React.FC = () => {
         {!query.isLoading && filtered.length ? <BBVAPagination total={filtered.length} page={safePage} size={size} onPageChange={(next)=>patchSort({page:next})} onSizeChange={(next)=>patchSort({size:next,page:0})}/> : null}
       </div>
 
-      {query.data?.vendorQuarter?.targetCode ? (
-        <section className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 via-white to-cyan-50 px-3 py-2.5 shadow-sm [.bbva-dark_&]:border-blue-400/20 [.bbva-dark_&]:from-blue-950/30 [.bbva-dark_&]:via-slate-900 [.bbva-dark_&]:to-cyan-950/20" aria-label="Preparación para corte Vendors">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[.07em] text-blue-700 [.bbva-dark_&]:text-cyan-300"><CalendarRange className="h-3.5 w-3.5" />Preparación Vendors · {formatPeriodCode(query.data.vendorQuarter.targetCode)}</div>
-              <div className="mt-1 text-[10px] text-slate-600 [.bbva-dark_&]:text-slate-300">Inicio del periodo: {formatDate(query.data.vendorQuarter.targetStartDate)}{query.data.vendorQuarter.daysToTargetStart !== null ? ` · ${query.data.vendorQuarter.daysToTargetStart === 0 ? 'corte actual' : `${query.data.vendorQuarter.daysToTargetStart} días para el corte`}` : ''}</div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-[9.5px]">
-              <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-700 [.bbva-dark_&]:border-amber-400/20 [.bbva-dark_&]:bg-amber-400/10 [.bbva-dark_&]:text-amber-300">{query.data.vendorQuarter.pendingCertifications} pendientes</span>
-              <span className={`rounded-full border px-2.5 py-1 font-semibold ${query.data.vendorQuarter.exhaustedAttempts ? 'border-rose-200 bg-rose-50 text-rose-700 [.bbva-dark_&]:border-rose-400/20 [.bbva-dark_&]:bg-rose-400/10 [.bbva-dark_&]:text-rose-300' : 'border-emerald-200 bg-emerald-50 text-emerald-700 [.bbva-dark_&]:border-emerald-400/20 [.bbva-dark_&]:bg-emerald-400/10 [.bbva-dark_&]:text-emerald-300'}`}>{query.data.vendorQuarter.exhaustedAttempts} con intentos agotados</span>
-            </div>
-          </div>
-        </section>
-      ) : null}
 
 
-      <CertificationQuickApprovalDialog open={Boolean(approval)} collaboratorName={approval?.collaboratorName ?? ''} certificationName={displayCertificationName(approval?.certificationName, '')} attemptNumber={approval?.nextAttemptNumber ?? 1} busy={approveMutation.isPending} onCancel={() => setApproval(null)} onConfirm={(date) => void approve(date)} />
+
+      <CertificationQuickApprovalDialog open={Boolean(approval)} collaboratorName={approval?.collaboratorName ?? ''} certificationName={displayCertificationName(approval?.certificationName, '')} attemptNumber={approval?.nextAttemptNumber ?? 1} tracksScore={Boolean(approval?.tracksScore)} busy={approveMutation.isPending} onCancel={() => setApproval(null)} onConfirm={(date, score10) => void approve(date, score10)} />
       <CertificationCriticalResolutionDialog
         open={Boolean(criticalItem)}
         collaboratorName={criticalItem?.collaboratorName ?? ''}

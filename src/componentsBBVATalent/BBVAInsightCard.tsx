@@ -50,7 +50,7 @@ export const BBVAInsightCard: React.FC<BBVAInsightCardProps> = ({ eyebrow, title
   const config = tones[tone];
   const Icon = config.Icon;
   return (
-    <article className={cn('flex min-h-[148px] flex-col rounded-2xl border p-3.5 transition hover:-translate-y-px hover:shadow-sm', config.shell)}>
+    <article className={cn('bbva-insight-live flex min-h-[148px] flex-col rounded-2xl border p-3.5 transition hover:-translate-y-px hover:shadow-sm', config.shell)}>
       <div className="flex items-start gap-3">
         <span className={cn('inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', config.icon)}>
           <Icon className="h-4 w-4" aria-hidden="true" />

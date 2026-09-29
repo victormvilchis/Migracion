@@ -126,7 +126,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
   const yearOptions = useMemo(
     () => Array.from({ length: maxYear - minYear + 1 }, (_, index) => {
-      const year = minYear + index;
+      const year = maxYear - index;
       return { value: String(year), label: String(year) };
     }),
     [maxYear, minYear],
@@ -215,7 +215,15 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         ref={buttonRef}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={() => setOpen((current) => {
+          const next = !current;
+          if (next && !selected) {
+            const today = new Date();
+            const year = clamp(today.getFullYear(), minYear, maxYear);
+            setVisibleMonth(new Date(year, today.getMonth(), 1));
+          }
+          return next;
+        })}
         aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
