@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertCircle, Award, RefreshCw, ShieldCheck, UserRoundCheck, UsersRound } from 'lucide-react';
+import { AlertCircle, Award, RefreshCw, ShieldCheck, UserRoundCheck, UsersRound, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BBVAActivityFeed } from '../../componentsBBVATalent/BBVAActivityFeed';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
@@ -38,6 +38,9 @@ export const BBVADashboardPage:React.FC=()=>{
   const [historyMetric,setHistoryMetric]=useState<DashboardHistoricalMetricKey>('coveragePercent');
   const [expirationPage,setExpirationPage]=useState(0);const [expirationSize,setExpirationSize]=useState(10);
   const [attentionPage,setAttentionPage]=useState(0);const [attentionSize,setAttentionSize]=useState(10);
+  const [dismissedRecommendationIds,setDismissedRecommendationIds]=useState<string[]>([]);
+  const [recommendationsPaused,setRecommendationsPaused]=useState(false);
+  const recommendationScrollerRef=React.useRef<HTMLDivElement|null>(null);
   const query=useBbvaDashboard(filters); const data=query.data; const cards=data?.cards;
   const attentionRows=useMemo(()=>data?.attention.filter((row)=>row.critical+row.expired+row.recertificationPending+row.expiring+row.pending>0)??[],[data?.attention]);
   const expirationRows=data?.quarterExpirations??[];
@@ -53,6 +56,11 @@ export const BBVADashboardPage:React.FC=()=>{
   const maxTech=Math.max(1,...technologyBars.map((item)=>item.value));
   const metricsUrl=(status?:string)=>{const params=new URLSearchParams();const effective=status??filters.certificationStatus;if(filters.technologyId)params.set('technologyId',filters.technologyId);if(effective)params.set('certificationStatus',effective);if(filters.talentType)params.set('talentType',filters.talentType);if(filters.bbvaStructureLevel2)params.set('bbvaStructureLevel2',filters.bbvaStructureLevel2);if(filters.bbvaStructureLevel3)params.set('bbvaStructureLevel3',filters.bbvaStructureLevel3);if(filters.quarterCode)params.set('quarterCode',filters.quarterCode);const q=params.toString();return `/bbva/certifications/metrics${q?`?${q}`:''}`;};
   const recommendationUrl=(item:DashboardRecommendation)=>item.target==='COLLABORATORS'?'/bbva/collaborators':item.target==='TALENT_BANK'?'/bbva/talent-bank':item.target==='REPORTS'?'/bbva/reports/certifications':item.target==='METRICS'?metricsUrl(item.certificationStatus??undefined):item.id==='critical-two-attempts'?'/bbva/certifications/tracking?critical=OPEN':item.certificationStatus?`/bbva/certifications/tracking?certificationStatus=${encodeURIComponent(item.certificationStatus)}`:'/bbva/certifications/tracking';
+  const visibleRecommendations=useMemo(()=>(data?.recommendations??[]).filter((item)=>!dismissedRecommendationIds.includes(item.id)),[data?.recommendations,dismissedRecommendationIds]);
+  const recommendationContextKey=[filters.technologyId,filters.certificationStatus,filters.talentType,filters.bbvaStructureLevel2,filters.bbvaStructureLevel3,filters.quarterCode].join('|');
+  React.useEffect(()=>{setDismissedRecommendationIds([]);},[recommendationContextKey]);
+  const moveRecommendations=(direction:-1|1)=>{const node=recommendationScrollerRef.current;if(!node)return;const card=node.querySelector<HTMLElement>('[data-recommendation-card]');const step=(card?.offsetWidth??320)+8;node.scrollBy({left:direction*step,behavior:'smooth'});};
+  React.useEffect(()=>{if(recommendationsPaused||visibleRecommendations.length<3)return;const timer=window.setInterval(()=>{const node=recommendationScrollerRef.current;if(!node)return;const remaining=node.scrollWidth-node.clientWidth-node.scrollLeft;if(remaining<24)node.scrollTo({left:0,behavior:'smooth'});else moveRecommendations(1);},6500);return()=>window.clearInterval(timer);},[recommendationsPaused,visibleRecommendations.length]);
 
   if(query.error)return <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert>;
   return <div className="space-y-3 animate-fade-in">
@@ -78,7 +86,20 @@ export const BBVADashboardPage:React.FC=()=>{
       </section>
 
       <div className="grid gap-3 xl:grid-cols-[1fr_1.2fr]">
-        <BBVAChartCard title="Recomendaciones del contexto actual" description="Reglas determinísticas calculadas por backend; no se generan scores ni frases aleatorias."><div className="grid gap-2 md:grid-cols-2">{data.recommendations.slice(0,4).map((item)=><BBVAInsightCard key={item.id} eyebrow={item.eyebrow} title={item.title} description={item.description} tone={recommendationTone(item.priority)} actionLabel={item.actionLabel} onAction={()=>navigate(recommendationUrl(item))}/>)}</div></BBVAChartCard>
+        <BBVAChartCard
+          title="Recomendaciones del contexto actual"
+          description="Reglas determinísticas calculadas por backend. Se muestran todas las recomendaciones disponibles para el contexto actual."
+          action={visibleRecommendations.length>2?<div className="flex items-center gap-1"><button type="button" onClick={()=>moveRecommendations(-1)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-blue-200 hover:text-blue-700" aria-label="Recomendaciones anteriores"><ChevronLeft className="h-3.5 w-3.5"/></button><button type="button" onClick={()=>moveRecommendations(1)} className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-blue-200 hover:text-blue-700" aria-label="Siguientes recomendaciones"><ChevronRight className="h-3.5 w-3.5"/></button></div>:undefined}
+        >
+          {visibleRecommendations.length ? <div
+            ref={recommendationScrollerRef}
+            onMouseEnter={()=>setRecommendationsPaused(true)}
+            onMouseLeave={()=>setRecommendationsPaused(false)}
+            onFocusCapture={()=>setRecommendationsPaused(true)}
+            onBlurCapture={()=>setRecommendationsPaused(false)}
+            className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >{visibleRecommendations.map((item)=><div key={item.id} data-recommendation-card className="min-w-[calc(100%-8px)] snap-start sm:min-w-[300px] xl:min-w-[calc(50%-4px)]"><BBVAInsightCard eyebrow={item.eyebrow} title={item.title} description={item.description} tone={recommendationTone(item.priority)} actionLabel="Poner en marcha" onAction={()=>navigate(recommendationUrl(item))} onDismiss={()=>setDismissedRecommendationIds((current)=>current.includes(item.id)?current:[...current,item.id])}/></div>)}</div>:<div className="rounded-xl border border-dashed border-slate-200 px-3 py-6 text-center text-[9.5px] text-slate-500">No hay más recomendaciones pendientes para este contexto.</div>}
+        </BBVAChartCard>
         <BBVAChartCard title="Distribución por tecnología" description={`Colaboradores de ${formatPeriodCode(data.vendorQuarter.selectedCode, 'periodo seleccionado')}. Selecciona una tecnología para actualizar el panel.`}><BBVAHorizontalBars items={technologyBars} max={maxTech} selectedKey={selectedTechnologies.length===1?selectedTechnologies[0]:''} onSelect={(id)=>update('technologyId',toggleMultiValue(filters.technologyId,id))}/></BBVAChartCard>
       </div>
 

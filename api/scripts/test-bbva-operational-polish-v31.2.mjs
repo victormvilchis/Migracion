@@ -16,7 +16,7 @@ assert.match(explorer,/description: `\$\{item\.collaboratorCount\} colaboradores
 const collaborators=read('src/pagesBBVATalent/collaborators/CollaboratorsPage.tsx');
 assert.match(collaborators,/label="Perfil \/ tecnología"/);
 assert.doesNotMatch(collaborators,/label="Rol"[\s\S]*label="Tecnología actual"/);
-assert.match(collaborators,/min-w-\[1020px\]/);
+assert.match(collaborators, /table-auto/);
 assert.match(collaborators,/colSpan=\{7\}/);
 
 for(const rel of [

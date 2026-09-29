@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, AlertCircle, CheckCircle2, Clock3, RefreshCw, ShieldAlert } from 'lucide-react';
+import { ArrowRight, AlertCircle, CheckCircle2, Clock3, RefreshCw, ShieldAlert, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { BBVADataHelp, type BBVADataHelpContent } from './BBVADataHelp';
 
@@ -12,6 +12,8 @@ interface BBVAInsightCardProps {
   tone?: DashboardInsightTone;
   actionLabel?: string;
   onAction?: () => void;
+  onDismiss?: () => void;
+  dismissLabel?: string;
   help?: BBVADataHelpContent;
 }
 
@@ -48,11 +50,11 @@ const tones: Record<DashboardInsightTone, { shell: string; icon: string; Icon: R
   },
 };
 
-export const BBVAInsightCard: React.FC<BBVAInsightCardProps> = ({ eyebrow, title, description, tone = 'blue', actionLabel, onAction, help }) => {
+export const BBVAInsightCard: React.FC<BBVAInsightCardProps> = ({ eyebrow, title, description, tone = 'blue', actionLabel, onAction, onDismiss, dismissLabel = 'Descartar', help }) => {
   const config = tones[tone];
   const Icon = config.Icon;
   return (
-    <article className={cn('bbva-insight-live flex min-h-[148px] flex-col rounded-2xl border p-3.5 transition hover:-translate-y-px hover:shadow-sm', config.shell)}>
+    <article className={cn('bbva-insight-live flex min-h-[148px] flex-col rounded-2xl border p-3.5 transition-shadow hover:shadow-sm', config.shell)}>
       <div className="flex items-start gap-3">
         <span className={cn('inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl', config.icon)}>
           <Icon className="h-4 w-4" aria-hidden="true" />
@@ -64,14 +66,27 @@ export const BBVAInsightCard: React.FC<BBVAInsightCardProps> = ({ eyebrow, title
         <BBVADataHelp label={title} content={help ?? { what: description, calculation: 'Insight determinístico construido con los datos y reglas de negocio del contexto actual; no usa frases ni scores aleatorios.', interpretation: 'El mensaje señala una condición relevante para seguimiento. Usa la acción asociada para revisar los registros que explican el insight.', scope: 'Cambia cuando cambian los filtros, el periodo, las certificaciones o el universo operativo que alimenta el panel.' }} />
       </div>
       <p className="mt-3 text-[9.5px] leading-4 text-slate-600 [.bbva-dark_&]:text-slate-300">{description}</p>
-      {onAction && actionLabel ? (
-        <button
-          type="button"
-          onClick={onAction}
-          className="mt-auto inline-flex w-fit items-center gap-1 rounded-lg px-1.5 py-1.5 text-[9.5px] font-semibold text-blue-700 transition hover:bg-white/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 [.bbva-dark_&]:text-cyan-300 [.bbva-dark_&]:hover:bg-white/5"
-        >
-          {actionLabel}<ArrowRight className="h-3 w-3" aria-hidden="true" />
-        </button>
+      {onAction || onDismiss ? (
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-1.5 pt-2">
+          {onDismiss ? (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="inline-flex h-7 items-center gap-1 rounded-lg px-2 text-[8.5px] font-semibold text-slate-500 transition-colors hover:bg-white/80 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 [.bbva-dark_&]:hover:bg-white/5 [.bbva-dark_&]:hover:text-slate-100"
+            >
+              <X className="h-3 w-3" aria-hidden="true" />{dismissLabel}
+            </button>
+          ) : <span />}
+          {onAction && actionLabel ? (
+            <button
+              type="button"
+              onClick={onAction}
+              className="inline-flex h-7 items-center gap-1 rounded-lg px-2 text-[9px] font-semibold text-blue-700 transition-colors hover:bg-white/80 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/25 [.bbva-dark_&]:text-cyan-300 [.bbva-dark_&]:hover:bg-white/5"
+            >
+              {actionLabel}<ArrowRight className="h-3 w-3" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </article>
   );

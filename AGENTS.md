@@ -793,3 +793,11 @@ BFS remains its own product, architecture and source of truth.
 - El countdown usa la fecha operativa BBVA y puede quedar en tiempo, vencer hoy o estar fuera de tiempo. Después de aprobar, pasar de ciclo o quedar No aplica, la ventana inicial deja de ser la siguiente acción.
 - Al sincronizar certificaciones por cambios de perfil/tecnología, sólo se recalcula `InitialDueDate` de registros automáticos del ciclo 1 sin aprobación y que no hayan sido conciliados por importación. Los límites importados se preservan.
 - La nota de Tech Review se conserva como regla de negocio: los nuevos ingresos deben completar las certificaciones requeridas dentro de estas ventanas antes de considerarse listos para asignación. No inventar una fecha de Tech Review si no existe una fuente explícita en el sistema.
+
+
+### V31.6a — tablas adaptativas y recomendaciones accionables
+
+- Las tablas operativas deben preferir `table-auto` y columnas semánticas: nombre/perfil/estructura absorben el espacio disponible; fechas, estados, responsables cortos y acciones permanecen compactos con `whitespace-nowrap`. Evitar porcentajes rígidos cuando provoquen huecos artificiales.
+- En Panel/Dashboard, las recomendaciones se consumen completas desde backend; no truncarlas artificialmente con `slice(0,n)` si existen más reglas aplicables al contexto.
+- Las recomendaciones se presentan como carrusel horizontal con snap y autoavance moderado hacia la derecha. El movimiento se pausa mientras el usuario interactúa y respeta los controles manuales. No usar desplazamiento vertical/`translateY` en hover.
+- Toda recomendación puede descartarse visualmente en el contexto actual o ponerse en marcha usando su target determinístico existente. Descartar no modifica reglas ni datos de negocio en backend; únicamente limpia la vista de la sesión/contexto.
