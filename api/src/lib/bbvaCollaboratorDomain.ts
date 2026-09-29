@@ -23,6 +23,10 @@ export interface CollaboratorInput {
   bbvaAccessEndDate: string | null;
   bbvaAccessAuthorizer: string | null;
   bbvaAccessStatus: string | null;
+  officeAttendanceDays: string | null;
+  officeSite: string | null;
+  officeSiteOther: string | null;
+  equipmentTag: string | null;
   notes: string | null;
   expectedUpdatedAt: string | null;
 }
@@ -58,6 +62,10 @@ export interface CollaboratorRecord {
   bbvaAccessEndDate: string | null;
   bbvaAccessAuthorizer: string | null;
   bbvaAccessStatus: string | null;
+  officeAttendanceDays: string | null;
+  officeSite: string | null;
+  officeSiteOther: string | null;
+  equipmentTag: string | null;
   /** Alias temporal para compatibilidad. */
   startDate: string | null;
   /** Alias temporal para compatibilidad. */

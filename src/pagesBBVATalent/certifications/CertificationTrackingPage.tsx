@@ -5,7 +5,7 @@ import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVACertificationStatusBadge } from '../../componentsBBVATalent/BBVACertificationStatusBadge';
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
-import { BBVAFilterSummary, type BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
+import type { BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
 import { BBVAFilterBar } from '../../componentsBBVATalent/BBVAFilterBar';
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
 import { BBVAMultiSelect } from '../../componentsBBVATalent/BBVAMultiSelect';
@@ -49,6 +49,7 @@ const filterDefaults = {
   technology: '',
   certification: '',
   critical: '',
+  attemptCriticality: '',
   quarterCode: '',
 };
 
@@ -152,12 +153,20 @@ export const CertificationTrackingPage: React.FC = () => {
   const filtered = useMemo(() => contextItems
     .filter((item) => !filters.certificationStatus || item.status === filters.certificationStatus)
     .filter((item) => filters.critical !== 'OPEN' || hasOpenCriticalResolution(item))
-    .sort((a, b) => (direction === 'asc' ? 1 : -1) * compare(a, b, sort)), [contextItems, direction, filters.certificationStatus, filters.critical, sort]);
+    .filter((item) => {
+      if (!filters.attemptCriticality) return true;
+      if (filters.attemptCriticality === 'NO_ATTEMPTS') return item.requiresAttempts && item.attemptCount === 0;
+      if (filters.attemptCriticality === 'ONE_ATTEMPT') return item.requiresAttempts && item.attemptCount === 1;
+      if (filters.attemptCriticality === 'LAST_AVAILABLE') return item.requiresAttempts && remainingAttempts(item) === 1 && !hasAttemptLimitReached(item);
+      if (filters.attemptCriticality === 'LIMIT_REACHED') return hasAttemptLimitReached(item);
+      return true;
+    })
+    .sort((a, b) => (direction === 'asc' ? 1 : -1) * compare(a, b, sort)), [contextItems, direction, filters.attemptCriticality, filters.certificationStatus, filters.critical, sort]);
 
   const summary = useMemo(() => buildTrackingSummary(contextItems), [contextItems]);
   const safePage=Math.min(page,Math.max(0,Math.ceil(filtered.length/size)-1));
   const paged=useMemo(()=>filtered.slice(safePage*size,safePage*size+size),[filtered,safePage,size]);
-  React.useEffect(()=>{patchSort({page:0});},[filters.search,filters.certificationStatus,filters.profile,filters.technology,filters.certification,filters.critical,filters.quarterCode]);
+  React.useEffect(()=>{patchSort({page:0});},[filters.search,filters.certificationStatus,filters.profile,filters.technology,filters.certification,filters.critical,filters.attemptCriticality,filters.quarterCode]);
   const currentYearPeriods=useMemo(()=>periodOptions(query.data?.vendorQuarter.quarters??[],query.data?.vendorQuarter.currentCode,query.data?.vendorQuarter.referenceDate,true),[query.data?.vendorQuarter.quarters,query.data?.vendorQuarter.currentCode,query.data?.vendorQuarter.referenceDate]);
 
   const activeFilters = useMemo<BBVAFilterSummaryItem[]>(() => {
@@ -169,8 +178,9 @@ export const CertificationTrackingPage: React.FC = () => {
     if (filters.certification) active.push({ key: 'certification', label: `Certificación: ${displayCertificationName(filters.certification)}`, onRemove: () => update({ certification: '' }) });
     if (filters.quarterCode) active.push({ key: 'quarterCode', label: `Periodo: ${filters.quarterCode === 'NO_QUARTER' ? 'Sin periodo' : formatPeriodCode(filters.quarterCode)}`, onRemove: () => update({ quarterCode: '' }) });
     if (filters.critical === 'OPEN') active.push({ key: 'critical', label: 'Críticos 2/2 abiertos', onRemove: () => update({ critical: '' }) });
+    if (filters.attemptCriticality) active.push({ key: 'attemptCriticality', label: `Intentos: ${{NO_ATTEMPTS:'Sin intentos',ONE_ATTEMPT:'1 intento',LAST_AVAILABLE:'Último disponible',LIMIT_REACHED:'Agotados'}[filters.attemptCriticality] ?? filters.attemptCriticality}`, onRemove: () => update({ attemptCriticality: '' }) });
     return active;
-  }, [filters.certification, filters.certificationStatus, filters.critical, filters.profile, filters.quarterCode, filters.search, selectedTechnologies, update]);
+  }, [filters.attemptCriticality, filters.certification, filters.certificationStatus, filters.critical, filters.profile, filters.quarterCode, filters.search, selectedTechnologies, update]);
 
   const changeSort = (field: SortField) => {
     if (sort === field) patchSort({ direction: direction === 'asc' ? 'desc' : 'asc' });
@@ -233,13 +243,13 @@ export const CertificationTrackingPage: React.FC = () => {
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
           <input value={filters.search} onChange={(e) => update({ search: e.target.value })} placeholder="Persona o certificación" className="h-9 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-[11px] outline-none focus:border-blue-500 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/40 [.bbva-dark_&]:text-slate-100" aria-label="Buscar persona o certificación" />
         </div>
-        <div className="w-full sm:w-[185px]"><BBVASearchableSelect value={filters.certificationStatus} onChange={(value) => update({ certificationStatus: value })} options={[{ value: '', label: 'Todos los estados' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([key]) => !['VALID', 'NOT_APPLICABLE'].includes(key)).map(([value, label]) => ({ value, label }))]} ariaLabel="Estado" /></div>
         <BBVAMultiSelect className="w-full sm:w-[190px]" values={selectedTechnologies} onChange={(values) => update({ technology: encodeMultiValue(values) })} options={options.technologies.map((option)=>({ ...option, label: upperDisplay(option.label) }))} placeholder="Todas las tecnologías" selectedLabel="tecnologías" ariaLabel="Tecnología" />
         <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={filters.profile} onChange={(value) => update({ profile: value })} options={[{ value: '', label: 'Todos los perfiles' }, ...options.profiles.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Perfil" /></div>
         <div className="w-full sm:w-[205px]"><BBVASearchableSelect value={filters.certification} onChange={(value) => update({ certification: value })} options={[{ value: '', label: 'Todas las certificaciones' }, ...options.certifications.map((option)=>({ ...option, label: displayCertificationName(option.label) }))]} ariaLabel="Certificación" /></div>
         <div className="w-full sm:w-[190px]"><BBVASearchableSelect value={filters.quarterCode} onChange={(value) => update({ quarterCode: value })} options={[...currentYearPeriods, { value: 'NO_QUARTER', label: 'Sin periodo configurado' }]} ariaLabel="Periodo de vencimiento" searchPlaceholder="Buscar periodo" /></div>
+        <div className="w-full sm:w-[190px]"><BBVASearchableSelect value={filters.critical === 'OPEN' ? 'CRITICAL_OPEN' : filters.attemptCriticality} onChange={(value) => value === 'CRITICAL_OPEN' ? update({ critical: 'OPEN', attemptCriticality: '' }) : update({ critical: '', attemptCriticality: value })} options={[{value:'',label:'Todos los intentos'},{value:'NO_ATTEMPTS',label:'Sin intentos registrados'},{value:'ONE_ATTEMPT',label:'1 intento registrado'},{value:'LAST_AVAILABLE',label:'Último intento disponible'},{value:'LIMIT_REACHED',label:'Intentos agotados'},{value:'CRITICAL_OPEN',label:'Críticos 2/2 abiertos'}]} ariaLabel="Intentos o criticidad" /></div>
+        <div className="w-full sm:w-[185px]"><BBVASearchableSelect value={filters.certificationStatus} onChange={(value) => update({ certificationStatus: value })} options={[{ value: '', label: 'Todos los estados' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([key]) => !['VALID', 'NOT_APPLICABLE'].includes(key)).map(([value, label]) => ({ value, label }))]} ariaLabel="Estado" /></div>
       </BBVAFilterBar>
-      {activeFilters.length ? <BBVAFilterSummary items={activeFilters} /> : null}
 
       {!query.isLoading ? (
         <section aria-label="Resumen operativo de seguimiento" className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">

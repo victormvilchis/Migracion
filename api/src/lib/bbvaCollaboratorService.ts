@@ -19,6 +19,22 @@ function requiredText(value: unknown, field: string, maxLength: number): string 
   return text;
 }
 
+
+const OFFICE_DAY_CODES = new Set(['MON','TUE','WED','THU','FRI']);
+const OFFICE_SITES = new Set(['PARQUES_POLANCO','TORRE_REFORMA','OTHER']);
+function normalizeOfficeDays(value: unknown): string | null {
+  const days = String(value ?? '').split(',').map((item) => item.trim().toUpperCase()).filter(Boolean);
+  const unique = [...new Set(days)];
+  if (unique.some((day) => !OFFICE_DAY_CODES.has(day))) throw new Error('Los días de oficina contienen un valor no válido.');
+  return unique.length ? unique.join(',') : null;
+}
+function normalizeOfficeSite(value: unknown): string | null {
+  const site = String(value ?? '').trim().toUpperCase();
+  if (!site) return null;
+  if (!OFFICE_SITES.has(site)) throw new Error('La sede de oficina no es válida.');
+  return site;
+}
+
 function normalizeDate(value: unknown, field: string): string | null {
   const candidate = String(value ?? '').trim();
   if (!candidate) return null;
@@ -37,6 +53,7 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
   if (!catalogs.technologyProfileCatalogId) throw new Error('El perfil tecnológico es obligatorio y debe seleccionarse del catálogo.');
   if (!catalogs.currentTechnologyCatalogId) throw new Error('La tecnología actual es obligatoria y debe seleccionarse del catálogo.');
 
+  const officeSite = normalizeOfficeSite(payload?.officeSite);
   return {
     softtekCode: cleanText(payload?.softtekCode, 80)?.toUpperCase() ?? null,
     bbvaUser: cleanText(payload?.bbvaUser ?? payload?.corporateUser, 100)?.toUpperCase() ?? null,
@@ -60,6 +77,10 @@ async function normalizePayload(payload: any): Promise<CollaboratorInput> {
     bbvaAccessEndDate: normalizeDate(payload?.bbvaAccessEndDate, 'Fecha fin de accesos BBVA'),
     bbvaAccessAuthorizer: cleanText(payload?.bbvaAccessAuthorizer, 220),
     bbvaAccessStatus: cleanText(payload?.bbvaAccessStatus, 100),
+    officeAttendanceDays: normalizeOfficeDays(payload?.officeAttendanceDays),
+    officeSite,
+    officeSiteOther: officeSite === 'OTHER' ? cleanText(payload?.officeSiteOther, 160) : null,
+    equipmentTag: cleanText(payload?.equipmentTag, 100)?.toUpperCase() ?? null,
     notes: cleanText(payload?.notes, 2000),
     expectedUpdatedAt: cleanText(payload?.expectedUpdatedAt, 64),
   };

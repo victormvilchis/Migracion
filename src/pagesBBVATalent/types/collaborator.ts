@@ -23,6 +23,10 @@ export interface CollaboratorPayload {
   bbvaAccessEndDate: string;
   bbvaAccessAuthorizer: string;
   bbvaAccessStatus: string;
+  officeAttendanceDays: string;
+  officeSite: string;
+  officeSiteOther: string;
+  equipmentTag: string;
   notes: string;
   expectedUpdatedAt?: string;
   /** Compatibilidad temporal con contratos anteriores. */
@@ -59,6 +63,10 @@ export interface Collaborator {
   bbvaAccessEndDate: string | null;
   bbvaAccessAuthorizer: string | null;
   bbvaAccessStatus: string | null;
+  officeAttendanceDays: string | null;
+  officeSite: string | null;
+  officeSiteOther: string | null;
+  equipmentTag: string | null;
   notes: string | null;
   hasCv: boolean;
   certificationApplicable: number;

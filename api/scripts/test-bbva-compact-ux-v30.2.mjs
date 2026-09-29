@@ -22,7 +22,7 @@ const agents=read('AGENTS.md');
 
 // El badge describe el rol; la capacidad DM permanece como configuración independiente.
 assert.match(roles,/roleInitials/);
-assert.match(roles,/words\.slice\(0,2\).*charAt\(0\)/s);
+assert.match(roles,/words\.slice\(0,3\).*charAt\(0\)/s);
 assert.doesNotMatch(roles,/isDeliveryManager\s*\?[^:\n]*DM/);
 assert.match(roleEditor,/isDeliveryManager/);
 assert.match(roleEditor,/Disponible para asignación como Delivery Manager/);

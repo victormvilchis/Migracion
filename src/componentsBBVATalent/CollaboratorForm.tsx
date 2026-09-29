@@ -31,6 +31,21 @@ function toSelectOptions(options: CatalogOption[], emptyLabel = 'Seleccionar'): 
   return [{ value: '', label: emptyLabel }, ...options.map((option) => ({ value: option.id, label: option.name }))];
 }
 
+
+const officeDayOptions = [
+  { value: 'MON', label: 'Lun' },
+  { value: 'TUE', label: 'Mar' },
+  { value: 'WED', label: 'Mié' },
+  { value: 'THU', label: 'Jue' },
+  { value: 'FRI', label: 'Vie' },
+] as const;
+const officeSiteOptions: BBVASearchableSelectOption[] = [
+  { value: '', label: 'Sin sede registrada' },
+  { value: 'PARQUES_POLANCO', label: 'BBVA Parques Polanco' },
+  { value: 'TORRE_REFORMA', label: 'BBVA Torre Reforma' },
+  { value: 'OTHER', label: 'Otra' },
+];
+
 const expertiseOptions: BBVASearchableSelectOption[] = [
   { value: '', label: '—' },
   { value: 'TR', label: 'TR' },
@@ -59,6 +74,10 @@ function values(item: Collaborator | null | undefined, profiles: CatalogOption[]
     bbvaAccessEndDate: item?.bbvaAccessEndDate ?? '',
     bbvaAccessAuthorizer: item?.bbvaAccessAuthorizer ?? '',
     bbvaAccessStatus: item?.bbvaAccessStatus ?? '',
+    officeAttendanceDays: item?.officeAttendanceDays ?? '',
+    officeSite: item?.officeSite ?? '',
+    officeSiteOther: item?.officeSiteOther ?? '',
+    equipmentTag: item?.equipmentTag ?? '',
     notes: item?.notes ?? '',
     expectedUpdatedAt: item?.updatedAt,
   };
@@ -111,6 +130,8 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
   const bbvaAccessEndDate = watch('bbvaAccessEndDate');
   const bbvaStructureLevel2 = watch('bbvaStructureLevel2');
   const bbvaStructureLevel3 = watch('bbvaStructureLevel3');
+  const officeAttendanceDays = watch('officeAttendanceDays');
+  const officeSite = watch('officeSite');
   const structureLevel3 = useMemo(() => structures.filter((item) => item.level === 3 && item.parentName === bbvaStructureLevel2), [bbvaStructureLevel2, structures]);
   const structure2SelectOptions = useMemo(() => [{ value: '', label: 'Seleccionar nivel 2' }, ...structureLevel2.map((item) => ({ value: item.name, label: item.name })), ...(bbvaStructureLevel2 && !structureLevel2.some((item) => item.name === bbvaStructureLevel2) ? [{ value: bbvaStructureLevel2, label: `${bbvaStructureLevel2} · histórico` }] : [])], [bbvaStructureLevel2, structureLevel2]);
   const structure3SelectOptions = useMemo(() => [{ value: '', label: 'Seleccionar nivel 3' }, ...structureLevel3.map((item) => ({ value: item.name, label: item.name })), ...(bbvaStructureLevel3 && !structureLevel3.some((item) => item.name === bbvaStructureLevel3) ? [{ value: bbvaStructureLevel3, label: `${bbvaStructureLevel3} · histórico` }] : [])], [bbvaStructureLevel3, structureLevel3]);
@@ -125,6 +146,12 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
     if (record.profile) setValue('profileCatalogId', optionId(profiles, null, record.profile), { shouldDirty: true, shouldValidate: true });
     if (record.technologyProfile) setValue('technologyProfileCatalogId', optionId(technologyProfiles, null, record.technologyProfile), { shouldDirty: true, shouldValidate: true });
     if (record.currentTechnology) setValue('currentTechnologyCatalogId', optionId(technologies, null, record.currentTechnology), { shouldDirty: true, shouldValidate: true });
+  };
+
+  const selectedOfficeDays = (officeAttendanceDays ?? '').split(',').map((value) => value.trim()).filter(Boolean);
+  const toggleOfficeDay = (day: string) => {
+    const next = selectedOfficeDays.includes(day) ? selectedOfficeDays.filter((value) => value !== day) : [...selectedOfficeDays, day];
+    setValue('officeAttendanceDays', next.join(','), { shouldDirty: true, shouldValidate: true });
   };
 
   const hasInactiveReference = Boolean(selected && (
@@ -196,7 +223,7 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
           </label>
         </div>
       </section>
-      <details open={Boolean(selected?.bbvaStructureLevel2 || selected?.bbvaStructureLevel3 || selected?.bbvaAccessStatus || selected?.bbvaAccessEndDate || selected?.bbvaAccessAuthorizer)} className="group rounded-2xl border border-slate-200 bg-white shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+      <details open={Boolean(selected?.bbvaStructureLevel2 || selected?.bbvaStructureLevel3 || selected?.bbvaAccessStatus || selected?.bbvaAccessEndDate || selected?.bbvaAccessAuthorizer || selected?.officeAttendanceDays || selected?.officeSite || selected?.equipmentTag)} className="group rounded-2xl border border-slate-200 bg-white shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[11px] font-semibold text-slate-900 [&::-webkit-details-marker]:hidden [.bbva-dark_&]:text-slate-100"><span>Información BBVA y accesos</span><span className="text-[9px] font-medium text-slate-400 group-open:hidden">Mostrar</span><span className="hidden text-[9px] font-medium text-slate-400 group-open:inline">Ocultar</span></summary>
         <div className="grid gap-3 border-t border-slate-100 px-4 pb-4 pt-3 md:grid-cols-12 [.bbva-dark_&]:border-slate-800">
           <label className="md:col-span-4"><span className={labelClass}>Estructura nivel 2</span><BBVASearchableSelect value={bbvaStructureLevel2 ?? ''} onChange={(value) => { setValue('bbvaStructureLevel2', value, { shouldDirty: true }); if (value !== bbvaStructureLevel2) setValue('bbvaStructureLevel3', '', { shouldDirty: true }); }} options={structure2SelectOptions} disabled={readOnly || saving || structuresQuery.isLoading} ariaLabel="Estructura nivel 2"/><input type="hidden" {...register('bbvaStructureLevel2')} /></label>
@@ -204,6 +231,15 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
           <label className="md:col-span-4"><span className={labelClass}>Status accesos</span><input {...register('bbvaAccessStatus')} disabled={readOnly || saving} className={fieldClass} /></label>
           <label className="md:col-span-4"><span className={labelClass}>Fecha fin de accesos</span><BBVADatePicker value={bbvaAccessEndDate} onChange={(value) => setValue('bbvaAccessEndDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha fin de accesos BBVA" /></label>
           <label className="md:col-span-8"><span className={labelClass}>Nombre autorizador</span><input {...register('bbvaAccessAuthorizer')} disabled={readOnly || saving} className={fieldClass} /></label>
+          <details className="group md:col-span-12 rounded-xl border border-slate-200 bg-slate-50/45 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/25">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2.5 text-[10px] font-semibold text-slate-700 [&::-webkit-details-marker]:hidden [.bbva-dark_&]:text-slate-200"><span>Asistencia a oficina y equipo</span><span className="text-[8.5px] font-medium text-slate-400 group-open:hidden">Mostrar</span><span className="hidden text-[8.5px] font-medium text-slate-400 group-open:inline">Ocultar</span></summary>
+            <div className="grid gap-3 border-t border-slate-200 p-3 md:grid-cols-12 [.bbva-dark_&]:border-slate-700">
+              <div className="md:col-span-5"><span className={labelClass}>Días de oficina</span><div className="flex flex-wrap gap-1.5">{officeDayOptions.map((day) => { const active = selectedOfficeDays.includes(day.value); return <button key={day.value} type="button" disabled={readOnly || saving} onClick={() => toggleOfficeDay(day.value)} className={`h-8 min-w-[46px] rounded-lg border px-2.5 text-[9px] font-semibold transition ${active ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:border-blue-200'} disabled:cursor-not-allowed disabled:opacity-70`}>{day.label}</button>; })}</div><input type="hidden" {...register('officeAttendanceDays')} /></div>
+              <label className="md:col-span-4"><span className={labelClass}>Sede</span><BBVASearchableSelect value={officeSite ?? ''} onChange={(value) => { setValue('officeSite', value, { shouldDirty: true }); if (value !== 'OTHER') setValue('officeSiteOther', '', { shouldDirty: true }); }} options={officeSiteOptions} disabled={readOnly || saving} ariaLabel="Sede de oficina"/><input type="hidden" {...register('officeSite')} /></label>
+              <label className="md:col-span-3"><span className={labelClass}>Tag de equipo</span><input {...register('equipmentTag')} disabled={readOnly || saving} className={fieldClass} placeholder="Ej. LT123456" /></label>
+              {officeSite === 'OTHER' ? <label className="md:col-span-6"><span className={labelClass}>Otra sede</span><input {...register('officeSiteOther')} disabled={readOnly || saving} className={fieldClass} placeholder="Nombre de la sede" /></label> : <input type="hidden" {...register('officeSiteOther')} />}
+            </div>
+          </details>
           <input type="hidden" {...register('originalFullName')} />
         </div>
       </details>

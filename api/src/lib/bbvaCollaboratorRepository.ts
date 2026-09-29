@@ -33,6 +33,10 @@ const COLLABORATOR_SELECT = `
     CONVERT(VARCHAR(10), p.BbvaAccessEndDate, 23) AS bbvaAccessEndDate,
     p.BbvaAccessAuthorizer AS bbvaAccessAuthorizer,
     p.BbvaAccessStatus AS bbvaAccessStatus,
+    p.OfficeAttendanceDays AS officeAttendanceDays,
+    p.OfficeSite AS officeSite,
+    p.OfficeSiteOther AS officeSiteOther,
+    p.EquipmentTag AS equipmentTag,
     CONVERT(VARCHAR(10), c.StartDate, 23) AS startDate,
     CONVERT(VARCHAR(10), p.HireDate, 23) AS hireDate,
     p.Notes AS notes,
@@ -119,6 +123,10 @@ function bindPerson(request: sql.Request, input: CollaboratorInput) {
     .input('bbvaAccessEndDate', sql.Date, input.bbvaAccessEndDate)
     .input('bbvaAccessAuthorizer', sql.NVarChar(220), input.bbvaAccessAuthorizer)
     .input('bbvaAccessStatus', sql.NVarChar(100), input.bbvaAccessStatus)
+    .input('officeAttendanceDays', sql.NVarChar(80), input.officeAttendanceDays)
+    .input('officeSite', sql.NVarChar(40), input.officeSite)
+    .input('officeSiteOther', sql.NVarChar(160), input.officeSiteOther)
+    .input('equipmentTag', sql.NVarChar(100), input.equipmentTag)
     .input('notes', sql.NVarChar(2000), input.notes);
 }
 
@@ -129,6 +137,7 @@ async function upsertManualProvenance(transaction: sql.Transaction, personId: st
     ['CurrentTechnology',input.currentTechnology,current?.currentTechnology],['Expertise',input.expertise,current?.expertise],['SofttekHireDate',input.softtekHireDate,current?.softtekHireDate],['BbvaStartDate',input.bbvaStartDate,current?.bbvaStartDate],
     ['DeliveryManager',input.deliveryManager,current?.deliveryManager],['BbvaStructureLevel2',input.bbvaStructureLevel2,current?.bbvaStructureLevel2],['BbvaStructureLevel3',input.bbvaStructureLevel3,current?.bbvaStructureLevel3],
     ['BbvaAccessEndDate',input.bbvaAccessEndDate,current?.bbvaAccessEndDate],['BbvaAccessAuthorizer',input.bbvaAccessAuthorizer,current?.bbvaAccessAuthorizer],['BbvaAccessStatus',input.bbvaAccessStatus,current?.bbvaAccessStatus],
+    ['OfficeAttendanceDays',input.officeAttendanceDays,current?.officeAttendanceDays],['OfficeSite',input.officeSite,current?.officeSite],['OfficeSiteOther',input.officeSiteOther,current?.officeSiteOther],['EquipmentTag',input.equipmentTag,current?.equipmentTag],
   ];
   const comparable = (value: unknown) => String(value ?? '').trim();
   for (const [fieldName, raw, previous] of entries) {
@@ -168,8 +177,8 @@ export class CollaboratorRepository {
       await bindPerson(new sql.Request(transaction), input)
         .input('personId', sql.UniqueIdentifier, personId)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`INSERT INTO bbva.Person (Id,SofttekCode,CorporateUser,Email,BbvaUser,SofttekEmail,BbvaEmail,FirstName,LastName,Profile,ProfileCatalogId,TechnologyProfile,TechnologyProfileCatalogId,CurrentTechnology,CurrentTechnologyCatalogId,Expertise,HireDate,OriginalFullName,BbvaStructureLevel2,BbvaStructureLevel3,BbvaAccessEndDate,BbvaAccessAuthorizer,BbvaAccessStatus,Notes,CreatedByEmail,UpdatedByEmail)
-                VALUES (@personId,@softtekCode,@bbvaUser,@softtekEmail,@bbvaUser,@softtekEmail,@bbvaEmail,@firstName,@lastName,@profile,@profileCatalogId,@technologyProfile,@technologyProfileCatalogId,@currentTechnology,@currentTechnologyCatalogId,@expertise,@softtekHireDate,@originalFullName,@bbvaStructureLevel2,@bbvaStructureLevel3,@bbvaAccessEndDate,@bbvaAccessAuthorizer,@bbvaAccessStatus,@notes,@actorEmail,@actorEmail);`);
+        .query(`INSERT INTO bbva.Person (Id,SofttekCode,CorporateUser,Email,BbvaUser,SofttekEmail,BbvaEmail,FirstName,LastName,Profile,ProfileCatalogId,TechnologyProfile,TechnologyProfileCatalogId,CurrentTechnology,CurrentTechnologyCatalogId,Expertise,HireDate,OriginalFullName,BbvaStructureLevel2,BbvaStructureLevel3,BbvaAccessEndDate,BbvaAccessAuthorizer,BbvaAccessStatus,OfficeAttendanceDays,OfficeSite,OfficeSiteOther,EquipmentTag,Notes,CreatedByEmail,UpdatedByEmail)
+                VALUES (@personId,@softtekCode,@bbvaUser,@softtekEmail,@bbvaUser,@softtekEmail,@bbvaEmail,@firstName,@lastName,@profile,@profileCatalogId,@technologyProfile,@technologyProfileCatalogId,@currentTechnology,@currentTechnologyCatalogId,@expertise,@softtekHireDate,@originalFullName,@bbvaStructureLevel2,@bbvaStructureLevel3,@bbvaAccessEndDate,@bbvaAccessAuthorizer,@bbvaAccessStatus,@officeAttendanceDays,@officeSite,@officeSiteOther,@equipmentTag,@notes,@actorEmail,@actorEmail);`);
       await new sql.Request(transaction)
         .input('collaboratorId', sql.UniqueIdentifier, collaboratorId)
         .input('personId', sql.UniqueIdentifier, personId)
@@ -215,7 +224,7 @@ export class CollaboratorRepository {
       await bindPerson(new sql.Request(transaction), input)
         .input('personId', sql.UniqueIdentifier, current.personId)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
-        .query(`UPDATE bbva.Person SET SofttekCode=@softtekCode,CorporateUser=@bbvaUser,Email=@softtekEmail,BbvaUser=@bbvaUser,SofttekEmail=@softtekEmail,BbvaEmail=@bbvaEmail,FirstName=@firstName,LastName=@lastName,Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@softtekHireDate,OriginalFullName=@originalFullName,BbvaStructureLevel2=@bbvaStructureLevel2,BbvaStructureLevel3=@bbvaStructureLevel3,BbvaAccessEndDate=@bbvaAccessEndDate,BbvaAccessAuthorizer=@bbvaAccessAuthorizer,BbvaAccessStatus=@bbvaAccessStatus,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@personId;`);
+        .query(`UPDATE bbva.Person SET SofttekCode=@softtekCode,CorporateUser=@bbvaUser,Email=@softtekEmail,BbvaUser=@bbvaUser,SofttekEmail=@softtekEmail,BbvaEmail=@bbvaEmail,FirstName=@firstName,LastName=@lastName,Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,TechnologyProfileCatalogId=@technologyProfileCatalogId,CurrentTechnology=@currentTechnology,CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@softtekHireDate,OriginalFullName=@originalFullName,BbvaStructureLevel2=@bbvaStructureLevel2,BbvaStructureLevel3=@bbvaStructureLevel3,BbvaAccessEndDate=@bbvaAccessEndDate,BbvaAccessAuthorizer=@bbvaAccessAuthorizer,BbvaAccessStatus=@bbvaAccessStatus,OfficeAttendanceDays=@officeAttendanceDays,OfficeSite=@officeSite,OfficeSiteOther=@officeSiteOther,EquipmentTag=@equipmentTag,Notes=@notes,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE Id=@personId;`);
       await new sql.Request(transaction)
         .input('id', sql.UniqueIdentifier, id)
         .input('bbvaStartDate', sql.Date, input.bbvaStartDate)

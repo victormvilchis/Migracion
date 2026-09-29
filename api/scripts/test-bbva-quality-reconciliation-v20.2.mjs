@@ -25,7 +25,7 @@ for (const token of ['BbvaStructureLevel2','BbvaStructureLevel3','BbvaAccessEndD
 const importService = read('api/src/lib/bbvaCollaboratorImportService.ts');
 assert.ok(importService.includes("startDate: ['FECHA DE ALTA', 'FECHA ALTA BBVA']"));
 assert.ok(importService.includes("hireDate: ['FECHA ALTA -SAP'"));
-assert.ok(importService.includes("decision: field === 'lifecycleState' || !currentValue ? 'APPLY_EXCEL' : 'KEEP_CURRENT'"));
+assert.ok(importService.includes("decision: field === 'lifecycleState' ? 'KEEP_CURRENT' : !currentValue ? 'APPLY_EXCEL' : 'KEEP_CURRENT'"));
 assert.ok(importService.includes('preservedExistingFields'));
 assert.ok(importService.includes('recordImportProvenance'));
 

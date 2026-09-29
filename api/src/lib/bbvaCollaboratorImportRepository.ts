@@ -292,6 +292,23 @@ export class CollaboratorImportRepository {
     }
   }
 
+
+  async updatePersonOnly(record: ImportPersonRecord, input: ImportPersonInput, actorEmail: string): Promise<void> {
+    const pool = await getDbConnection();
+    await bindPerson(pool.request(), input)
+      .input('personId', sql.UniqueIdentifier, record.personId)
+      .input('actorEmail', sql.NVarChar(255), actorEmail)
+      .query(`
+        UPDATE bbva.Person SET
+          SofttekCode=@softtekCode,CorporateUser=@corporateUser,BbvaUser=@corporateUser,Email=@email,SofttekEmail=@email,BbvaEmail=@bbvaEmail,FirstName=@firstName,LastName=@lastName,
+          Profile=@profile,ProfileCatalogId=@profileCatalogId,TechnologyProfile=@technologyProfile,TechnologyProfileCatalogId=@technologyProfileCatalogId,
+          CurrentTechnology=@currentTechnology,CurrentTechnologyCatalogId=@currentTechnologyCatalogId,Expertise=@expertise,HireDate=@hireDate,OriginalFullName=@originalFullName,
+          BbvaStructureLevel2=@bbvaStructureLevel2,BbvaStructureLevel3=@bbvaStructureLevel3,BbvaAccessEndDate=@bbvaAccessEndDate,BbvaAccessAuthorizer=@bbvaAccessAuthorizer,BbvaAccessStatus=@bbvaAccessStatus,Notes=@notes,
+          UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+        WHERE Id=@personId;
+      `);
+  }
+
   async reactivate(record: ImportPersonRecord, input: ImportPersonInput, actorEmail: string): Promise<string> {
     const pool = await getDbConnection();
     const transaction = new sql.Transaction(pool);

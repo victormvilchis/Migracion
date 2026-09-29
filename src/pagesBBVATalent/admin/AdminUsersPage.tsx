@@ -11,7 +11,7 @@ import { useAdminUsers, useDeleteAdminUser, useUpdateAdminUserStatus } from '../
 import { upperDisplay, upperIdentity } from '../lib/bbvaDisplayFormat';
 import type { AdminStatus, AdminUser } from '../types/adminUser';
 
-const roleInitials=(name:string)=>{const words=String(name??'').trim().split(/\s+/).filter(Boolean);if(!words.length)return '—';return (words.length>1?words.slice(0,2).map((word)=>word.charAt(0)).join(''):words[0].slice(0,2)).toLocaleUpperCase('es-MX');};
+const roleInitials=(name:string)=>{const words=String(name??'').trim().split(/\s+/).filter(Boolean);if(!words.length)return '—';return (words.length>1?words.slice(0,3).map((word)=>word.charAt(0)).join(''):words[0].slice(0,2)).toLocaleUpperCase('es-MX');};
 
 export const AdminUsersPage: React.FC = () => {
   const navigate=useNavigate(); const [search,setSearch]=useState(''); const [status,setStatus]=useState<AdminStatus|'ALL'>('ACTIVE'); const [page,setPage]=useState(0); const [size,setSize]=useState(10); const [pending,setPending]=useState<{kind:'status'|'delete';item:AdminUser;status?:AdminStatus}|null>(null); const [error,setError]=useState<string|null>(null);

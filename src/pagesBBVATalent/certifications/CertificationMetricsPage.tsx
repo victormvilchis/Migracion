@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle, Award, RefreshCw, ShieldCheck, UsersRound } from 'lucide-react';
+import { AlertTriangle, Award, CalendarClock, RefreshCw, ShieldCheck, UsersRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
@@ -58,10 +58,10 @@ export const CertificationMetricsPage:React.FC=()=>{
   return <div className="space-y-3 animate-fade-in">
     <BBVAFilterBar actions={<><BBVAButton variant="secondary" size="sm" icon={<RefreshCw className={`h-3.5 w-3.5 ${query.isFetching?'animate-spin':''}`}/>} onClick={()=>void query.refetch()}>Actualizar</BBVAButton>{(filters.technologyId||filters.certificationStatus||filters.talentType||filters.bbvaStructureLevel2||filters.bbvaStructureLevel3)?<BBVAButton variant="secondary" size="sm" onClick={()=>updateFilters({technologyId:'',certificationStatus:'',talentType:'',bbvaStructureLevel2:'',bbvaStructureLevel3:''})}>Limpiar</BBVAButton>:null}</>}>
       <BBVAMultiSelect className="w-full sm:w-[210px]" values={selectedTechnologies} onChange={(values)=>update('technologyId',encodeMultiValue(values))} options={(data?.filters.technologies??[]).map((item)=>({value:item.id,label:sentenceCaseData(item.name)}))} placeholder="Todas las tecnologías" selectedLabel="tecnologías" ariaLabel="Tecnología"/>
-      <div className="w-full sm:w-[220px]"><BBVASearchableSelect value={filters.certificationStatus} onChange={(v)=>update('certificationStatus',v)} options={statusOptions} ariaLabel="Estado de certificación"/></div>
       <div className="w-full sm:w-[190px]"><BBVASearchableSelect value={filters.quarterCode || data?.vendorQuarter.selectedCode || data?.vendorQuarter.currentCode || ''} onChange={(v)=>update('quarterCode',v)} options={quarterOptions} ariaLabel="Periodo" searchPlaceholder="Buscar periodo" emptyMessage="No hay periodos configurados."/></div>
       <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={filters.talentType} onChange={(v)=>update('talentType',v)} options={universeOptions} ariaLabel="Universo"/></div>
       <BBVAStructureFilter className="w-full sm:w-[220px]" items={structuresQuery.data?.items??[]} level2={filters.bbvaStructureLevel2} level3={filters.bbvaStructureLevel3} onChange={(next)=>updateFilters({bbvaStructureLevel2:next.level2,bbvaStructureLevel3:next.level3})} ariaLabel="Estructura BBVA"/>
+      <div className="w-full sm:w-[220px]"><BBVASearchableSelect value={filters.certificationStatus} onChange={(v)=>update('certificationStatus',v)} options={statusOptions} ariaLabel="Estado de certificación"/></div>
     </BBVAFilterBar>
 
     {query.isLoading||!data||!cards?<BBVAMetricsSkeleton cards={5}/>:<>
@@ -69,7 +69,7 @@ export const CertificationMetricsPage:React.FC=()=>{
         <BBVAMetricCard label="Promedio certificaciones" value={cards.certificationAverage??'—'} icon={<Award className="h-4 w-4"/>} tone="blue" help={dashboardMetricDefinitions.certificationAverage} supportingText={`${cards.certificationScoreBase} resultados válidos`}/>
         <BBVAMetricCard label={`Cobertura · ${formatPeriodCode(data.vendorQuarter.selectedCode)}`} value={`${cards.coveragePercent}%`} icon={<ShieldCheck className="h-4 w-4"/>} tone="emerald" help={dashboardMetricDefinitions.coveragePercent} supportingText={data.quarterExpirations.length ? `${data.quarterExpirations.length} vencen en el periodo · ${cards.certificationsApplicable} aplicables` : 'Sin vencimientos en el periodo'} trendText={comparisonText(data.history.comparisons.coveragePercent)}/>
         <BBVAMetricCard label={`Vencen en ${formatPeriodCode(data.vendorQuarter.selectedCode)}`} value={data.quarterExpirations.length} icon={<AlertTriangle className="h-4 w-4"/>} tone={data.quarterExpirations.length?'amber':'emerald'} supportingText="Fechas dentro del periodo" trendText={comparisonText(data.history.comparisons.expiring)} onAction={()=>update('certificationStatus','EXPIRING')} actionLabel="Filtrar"/>
-        <BBVAMetricCard label={`Personas con vencimiento · ${formatPeriodCode(data.vendorQuarter.selectedCode)}`} value={new Set(data.quarterExpirations.map((item)=>item.personId)).size} icon={<UsersRound className="h-4 w-4"/>} tone={data.quarterExpirations.length?'amber':'emerald'} supportingText={data.quarterExpirations.length?'Seguimiento del periodo':'Sin vencimientos en el periodo'} onAction={()=>update('certificationStatus','EXPIRING')} actionLabel="Revisar"/>
+        <BBVAMetricCard label="Pendientes de certificación" value={cards.pending} icon={<CalendarClock className="h-4 w-4"/>} tone={cards.pending?'blue':'emerald'} help={dashboardMetricDefinitions.pending} supportingText={cards.pending?'Requieren cobertura':'Sin pendientes'} trendText={comparisonText(data.history.comparisons.pending)} onAction={()=>update('certificationStatus','PENDING')} actionLabel="Revisar"/>
         <BBVAMetricCard label="Críticos 2/2" value={cards.vendorExitRequired} icon={<UsersRound className="h-4 w-4"/>} tone={cards.vendorExitRequired?'rose':'emerald'} supportingText={`${cards.recertificationPending} recertificaciones`} trendText={comparisonText(data.history.comparisons.vendorExitRequired)} onAction={()=>navigate('/bbva/certifications/tracking?critical=OPEN')} actionLabel="Resolver"/>
       </div>
 

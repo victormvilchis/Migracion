@@ -758,3 +758,13 @@ BFS remains its own product, architecture and source of truth.
 - Los selects con dropdown portaleado calculan su posición antes de abrirse. No renderizar un portal inicialmente en `(0,0)` ni permitir un destello perceptible en el borde izquierdo de la pantalla. Esta regla aplica a `BBVASearchableSelect`, `BBVAMultiSelect` y `BBVAStructureFilter`.
 - En Certificaciones del colaborador, la acción `Agregar certificación` vive en la misma barra compacta de filtros/acciones de la tabla. El selector indica explícitamente que sirve para agregar y el botón usa el texto completo `Agregar certificación`.
 - Los tres KPIs de Certificaciones del colaborador tienen mayor jerarquía tipográfica que los controles: etiquetas legibles, valor principal de 26px y contexto secundario reforzado.
+
+### V31.3 — reglas operativas de seguimiento, filtros, acceso físico e importación
+
+- Seguimiento usa una barra compacta sin encabezados redundantes ni chips de `Resultados filtrados`. Puede filtrar por intentos/criticidad (`sin intentos`, `1 intento`, `último intento disponible`, `agotados`, `críticos 2/2`) además de los filtros existentes.
+- En cualquier barra de filtros BBVA actual o futura, `Estado / Estatus` es siempre el último filtro visible. Acciones como Actualizar/Limpiar pueden ir después en el área de acciones, pero ningún filtro de negocio se coloca después de Estado.
+- Los badges de roles usan hasta tres iniciales significativas: `Delivery Manager → DM`, `Service Manager → SM`, `Account Delivery Manager → ADM`. No truncar roles de tres palabras a dos letras.
+- `Información BBVA y accesos` contiene una subsección `Asistencia a oficina y equipo`, cerrada por default. Puede registrar días laborables, sede (`BBVA Parques Polanco`, `BBVA Torre Reforma`, `Otra`) y únicamente el tag del equipo. Son datos de `Person` y no se mezclan con identidad, estructura o certificaciones.
+- En Métricas no duplicar `Vencen en periodo` con `Personas con vencimiento`. Se conserva el KPI de vencimientos y el segundo espacio se usa para `Pendientes de certificación`.
+- La importación debe detectar personas que ya existen en Banco de talento aunque aparezcan nuevamente en el tablero. El estado operativo nunca se reactiva por default ni por acciones masivas de datos. Se presenta una decisión explícita `Mantener en Banco de talento / estado actual` o `Reactivar como colaborador`.
+- Si una persona permanece en Banco de talento, la importación puede actualizar datos maestros aceptados de `Person` sin activar `Collaborator` ni cerrar la entrada activa de Talent Bank. Las decisiones de ciclo de vida no se reutilizan automáticamente entre importaciones.

@@ -348,7 +348,7 @@ function buildChange(person: ImportPersonRecord, row: NormalizedRow, field: Impo
     label: FIELD_LABELS[field],
     currentValue,
     excelValue,
-    decision: field === 'lifecycleState' || !currentValue ? 'APPLY_EXCEL' : 'KEEP_CURRENT',
+    decision: field === 'lifecycleState' ? 'KEEP_CURRENT' : !currentValue ? 'APPLY_EXCEL' : 'KEEP_CURRENT',
     resolvedPreviously: false,
   };
 }
@@ -841,6 +841,7 @@ export class CollaboratorImportService {
     for (const item of changedItems) {
       const unresolved: ImportFieldChange[] = [];
       for (const change of item.changes) {
+        if (change.field === 'lifecycleState') { unresolved.push(change); continue; }
         const decision = stored.get(change.resolutionKey);
         if (decision) resolvedPreviously.push({ rowKey:item.rowKey,rowNumber:item.rowNumber,collaboratorId:item.collaboratorId,fullName:item.fullName,change:{...change,decision,resolvedPreviously:true} });
         else unresolved.push(change);
@@ -1181,6 +1182,9 @@ export class CollaboratorImportService {
           } else if (person.collaboratorStatus === 'ACTIVE') {
             await repository.update(person,input,actorEmail);
             result.updated += 1;
+          } else if (hasDataChange) {
+            await repository.updatePersonOnly(person,input,actorEmail);
+            result.updated += 1;
           }
           await repository.recordImportProvenance(person.personId, provenanceForRow(row), actorEmail);
         } catch (error) {
@@ -1202,7 +1206,7 @@ export class CollaboratorImportService {
         );
       }
 
-      if ((shouldReactivate || hasDataChange) && collaboratorId) {
+      if ((shouldReactivate || (hasDataChange && person.collaboratorStatus === 'ACTIVE')) && collaboratorId) {
         try {
           await certificationService.synchronize(collaboratorId,actorEmail);
         } catch (error) {
