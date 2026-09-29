@@ -31,6 +31,13 @@ export interface CollaboratorCertificationRecord {
   applicable: boolean;
   source: 'AUTO' | 'MANUAL';
   initialDueDate: string | null;
+  bbvaStartDate: string | null;
+  initialCompletionDays: number | null;
+  firstAttemptDueDate: string | null;
+  initialSchedulePhase: 'FIRST_ATTEMPT' | 'SECOND_ATTEMPT' | null;
+  initialScheduleDueDate: string | null;
+  daysToInitialSchedule: number | null;
+  initialScheduleTiming: 'ON_TIME' | 'DUE_TODAY' | 'OVERDUE' | null;
   importedCertificationStatus: string | null;
   importedExamStatus: string | null;
   lastScore10: number | null;
@@ -124,6 +131,14 @@ export interface CertificationTrackingRecord {
   technology: string | null;
   bbvaStructureLevel2: string | null;
   bbvaStructureLevel3: string | null;
+  bbvaStartDate: string | null;
+  initialCompletionDays: number | null;
+  initialDueDate: string | null;
+  firstAttemptDueDate: string | null;
+  initialSchedulePhase: 'FIRST_ATTEMPT' | 'SECOND_ATTEMPT' | null;
+  initialScheduleDueDate: string | null;
+  daysToInitialSchedule: number | null;
+  initialScheduleTiming: 'ON_TIME' | 'DUE_TODAY' | 'OVERDUE' | null;
   quarterCode: string | null;
   certificationRecordId: string;
   certificationId: string;

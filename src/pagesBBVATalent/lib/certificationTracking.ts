@@ -57,6 +57,19 @@ export const expirationContext = (item: CertificationTrackingItem, now = new Dat
   return `Vence en ${days} días`;
 };
 
+export const initialCertificationContext = (item: Pick<CertificationTrackingItem, 'initialSchedulePhase' | 'initialScheduleDueDate' | 'daysToInitialSchedule'>) => {
+  if (!item.initialSchedulePhase || !item.initialScheduleDueDate || item.daysToInitialSchedule === null) return null;
+  const label = item.initialSchedulePhase === 'FIRST_ATTEMPT' ? '1er intento' : '2do intento';
+  const days = item.daysToInitialSchedule;
+  if (days < 0) {
+    const elapsed = Math.abs(days);
+    return `${label} fuera de tiempo por ${elapsed} ${elapsed === 1 ? 'día' : 'días'}`;
+  }
+  if (days === 0) return `${label} vence hoy`;
+  if (days === 1) return `${label} vence mañana`;
+  return `${label} en ${days} días`;
+};
+
 export const scheduledContext = (value?: string | null, now = new Date()) => {
   const days = calendarDaysFromToday(value, now);
   if (days === null) return null;

@@ -90,7 +90,9 @@ export class CollaboratorService {
   list(): Promise<CollaboratorRecord[]> { return repository.list(); }
   get(id: string): Promise<CollaboratorRecord | null> { return repository.findById(id); }
   async create(payload: any, actorEmail: string): Promise<CollaboratorRecord> {
-    const item = await repository.create(await normalizePayload(payload), actorEmail);
+    const normalized=await normalizePayload(payload);
+    if (!normalized.bbvaStartDate) throw Object.assign(new Error('La fecha de alta BBVA es obligatoria para un nuevo colaborador porque define sus ventanas iniciales de certificación.'),{statusCode:400});
+    const item = await repository.create(normalized, actorEmail);
     await certificationService.synchronize(item.id, actorEmail);
     return (await repository.findById(item.id)) as CollaboratorRecord;
   }

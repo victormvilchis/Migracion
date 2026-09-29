@@ -206,7 +206,7 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
       <section className="space-y-2.5 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.04)] [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <h3 className="text-[11px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">Gestión</h3>
         <div className="grid gap-3 md:grid-cols-12">
-          <label className="md:col-span-3"><span className={labelClass}>Fecha de alta BBVA</span><BBVADatePicker value={bbvaStartDate} onChange={(value) => setValue('bbvaStartDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta BBVA" /></label>
+          <label className="md:col-span-3"><span className={labelClass}>Fecha de alta BBVA {mode === 'create' ? <BBVARequiredMark/> : null}</span><BBVADatePicker value={bbvaStartDate} onChange={(value) => setValue('bbvaStartDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de alta BBVA" /></label>
           <label className="md:col-span-3"><span className={labelClass}>Fecha de contratación Softtek</span><BBVADatePicker value={softtekHireDate} onChange={(value) => setValue('softtekHireDate', value, { shouldDirty: true, shouldValidate: true })} disabled={readOnly || saving} ariaLabel="Fecha de contratación Softtek" /></label>
           <label className="md:col-span-4">
             <span className={labelClass}>Delivery Manager <BBVARequiredMark/></span>
@@ -247,7 +247,7 @@ export const CollaboratorForm: React.FC<CollaboratorFormProps> = ({ selected, sa
       <BBVAFormActions
         mode={mode}
         busy={saving}
-        submitDisabled={catalogsLoading}
+        submitDisabled={catalogsLoading || (mode === 'create' && !bbvaStartDate)}
         onBack={onCancel}
         createLabel="Guardar"
         editLabel="Guardar cambios"

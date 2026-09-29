@@ -2,6 +2,7 @@ import sql from 'mssql';
 import { getDbConnection } from './db.js';
 import { BBVA_SQL_BUSINESS_DATE, bbvaBusinessDate } from './bbvaBusinessTime.js';
 import { isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
+import { deriveInitialCertificationSchedule } from './bbvaInitialCertificationSchedule.js';
 import type {
   CertificationAttemptInput,
   CertificationAttemptUpdateInput,
@@ -51,6 +52,8 @@ const BASE_SELECT = `
     pc.Mandatory AS mandatory,
     pc.Applicable AS applicable,
     pc.Source AS source,
+    CONVERT(VARCHAR(10),c.StartDate,23) AS bbvaStartDate,
+    cc.InitialCompletionDays AS initialCompletionDays,
     CONVERT(VARCHAR(10),pc.InitialDueDate,23) AS initialDueDate,
     pc.ImportedCertificationStatus AS importedCertificationStatus,
     pc.ImportedExamStatus AS importedExamStatus,
@@ -63,6 +66,7 @@ const BASE_SELECT = `
     pc.SofttekManagement AS softtekManagement,
     pc.CurrentCycle AS currentCycle,
     pc.BaseStatus AS baseStatus,
+    latestAttempt.Result AS latestAttemptResult,
     ${STATUS_CASE} AS status,
     ISNULL(attemptStats.attemptCount,0) AS attemptCount,
     CONVERT(VARCHAR(10),pc.ApplicationDate,23) AS applicationDate,
@@ -85,6 +89,7 @@ const BASE_SELECT = `
   FROM bbva.PersonCertification pc
   INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
   LEFT JOIN bbva.CatalogTechnology t ON t.Id=cc.TechnologyId
+  INNER JOIN bbva.Person p ON p.Id=pc.PersonId
   INNER JOIN bbva.Collaborator c ON c.PersonId=pc.PersonId
   OUTER APPLY (
     SELECT TOP 1 r.ResolutionStatus,r.Notes,r.UpdatedAt
@@ -127,12 +132,33 @@ const BASE_SELECT = `
 `;
 
 function toRecord(row: any): CollaboratorCertificationRecord {
+  const currentCycle=Number(row.currentCycle);
+  const attemptCount=Number(row.attemptCount);
+  const initialCompletionDays=row.initialCompletionDays===null?null:Number(row.initialCompletionDays);
+  const schedule=deriveInitialCertificationSchedule({
+    bbvaStartDate:row.bbvaStartDate??null,
+    initialCompletionDays,
+    initialDueDate:row.initialDueDate??null,
+    currentCycle,
+    baseStatus:String(row.baseStatus??''),
+    applicable:Boolean(row.applicable),
+    requiresAttempts:Boolean(row.requiresAttempts),
+    attemptCount,
+    latestAttemptResult:row.latestAttemptResult??null,
+  },bbvaBusinessDate());
   return {
     ...row,
     mandatory: Boolean(row.mandatory),
     applicable: Boolean(row.applicable),
-    currentCycle: Number(row.currentCycle),
-    attemptCount: Number(row.attemptCount),
+    currentCycle,
+    attemptCount,
+    initialCompletionDays,
+    firstAttemptDueDate:schedule.firstAttemptDueDate,
+    initialDueDate:schedule.completionDueDate,
+    initialSchedulePhase:schedule.phase,
+    initialScheduleDueDate:schedule.dueDate,
+    daysToInitialSchedule:schedule.daysRemaining,
+    initialScheduleTiming:schedule.timing,
     validityMonths: row.validityMonths === null ? null : Number(row.validityMonths),
     expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
     maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
@@ -198,13 +224,14 @@ export class CollaboratorCertificationRepository {
       const current = await new sql.Request(transaction).input('id', sql.UniqueIdentifier, collaboratorId).query(`
         SELECT c.Status AS collaboratorStatus, CAST(p.Id AS NVARCHAR(36)) AS personId,
                CAST(p.CurrentTechnologyCatalogId AS NVARCHAR(36)) AS technologyId,
+               CONVERT(VARCHAR(10),c.StartDate,23) AS bbvaStartDate,
                UPPER(ISNULL(cp.Seniority,p.Expertise)) AS seniority
         FROM bbva.Collaborator c
         INNER JOIN bbva.Person p ON p.Id=c.PersonId
         LEFT JOIN bbva.CatalogProfile cp ON cp.Id=p.ProfileCatalogId
         WHERE c.Id=@id;
       `);
-      const row = current.recordset[0] as { collaboratorStatus?: string; personId?: string; technologyId?: string | null; seniority?: string | null } | undefined;
+      const row = current.recordset[0] as { collaboratorStatus?: string; personId?: string; technologyId?: string | null; bbvaStartDate?: string | null; seniority?: string | null } | undefined;
       if (!row?.personId) {
         await transaction.rollback();
         return false;
@@ -214,6 +241,7 @@ export class CollaboratorCertificationRepository {
         .input('personId', sql.UniqueIdentifier, row.personId)
         .input('technologyId', sql.UniqueIdentifier, row.technologyId || null)
         .input('seniority', sql.NVarChar(16), row.seniority || null)
+        .input('bbvaStartDate', sql.Date, row.bbvaStartDate || null)
         .input('actorEmail', sql.NVarChar(255), actorEmail)
         .query(`
           DECLARE @Applicable TABLE (CertificationId UNIQUEIDENTIFIER PRIMARY KEY, Mandatory BIT NOT NULL);
@@ -233,9 +261,9 @@ export class CollaboratorCertificationRepository {
             );
 
           INSERT INTO bbva.PersonCertification (
-            PersonId,CertificationId,CertificationLevel,Applicable,Mandatory,Source,CurrentCycle,BaseStatus,CreatedByEmail,UpdatedByEmail
+            PersonId,CertificationId,CertificationLevel,Applicable,Mandatory,Source,CurrentCycle,BaseStatus,InitialDueDate,CreatedByEmail,UpdatedByEmail
           )
-          SELECT @personId,a.CertificationId,CASE WHEN cc.CertificationType=N'TECHNOLOGICAL' THEN @seniority ELSE N'GENERIC' END,1,a.Mandatory,N'AUTO',1,N'PENDING',@actorEmail,@actorEmail
+          SELECT @personId,a.CertificationId,CASE WHEN cc.CertificationType=N'TECHNOLOGICAL' THEN @seniority ELSE N'GENERIC' END,1,a.Mandatory,N'AUTO',1,N'PENDING',CASE WHEN @bbvaStartDate IS NOT NULL AND cc.InitialCompletionDays IS NOT NULL THEN DATEADD(day,cc.InitialCompletionDays,@bbvaStartDate) ELSE NULL END,@actorEmail,@actorEmail
           FROM @Applicable a
           INNER JOIN bbva.CertificationCatalog cc ON cc.Id=a.CertificationId
           WHERE NOT EXISTS (
@@ -258,6 +286,7 @@ export class CollaboratorCertificationRepository {
           SET Applicable=1,
               Mandatory=a.Mandatory,
               CertificationLevel=CASE WHEN cc.CertificationType=N'TECHNOLOGICAL' THEN @seniority ELSE N'GENERIC' END,
+              InitialDueDate=CASE WHEN pc.CurrentCycle=1 AND pc.ApprovedDate IS NULL AND ISNULL(pc.LastDataSource,N'AUTO')<>N'IMPORT' AND @bbvaStartDate IS NOT NULL AND cc.InitialCompletionDays IS NOT NULL THEN DATEADD(day,cc.InitialCompletionDays,@bbvaStartDate) ELSE pc.InitialDueDate END,
               UpdatedAt=SYSUTCDATETIME(),
               UpdatedByEmail=@actorEmail
           FROM bbva.PersonCertification pc
@@ -861,11 +890,15 @@ export class CollaboratorCertificationRepository {
         p.CurrentTechnology AS technology,
         p.BbvaStructureLevel2 AS bbvaStructureLevel2,
         p.BbvaStructureLevel3 AS bbvaStructureLevel3,
+        CONVERT(VARCHAR(10),c.StartDate,23) AS bbvaStartDate,
         CAST(pc.Id AS NVARCHAR(36)) AS certificationRecordId,
         CAST(cc.Id AS NVARCHAR(36)) AS certificationId,
         cc.Name AS certificationName,
         cc.CertificationType AS certificationType,
         tech.Name AS technologyName,
+        cc.InitialCompletionDays AS initialCompletionDays,
+        CONVERT(VARCHAR(10),pc.InitialDueDate,23) AS initialDueDate,
+        pc.BaseStatus AS baseStatus,
         ${STATUS_CASE} AS status,
         pc.CurrentCycle AS currentCycle,
         ISNULL(attemptStats.attemptCount,0) AS attemptCount,
@@ -922,17 +955,40 @@ export class CollaboratorCertificationRepository {
                CASE ${STATUS_CASE} WHEN N'EXPIRED' THEN 1 WHEN N'RECERTIFICATION_PENDING' THEN 1 WHEN N'EXPIRING' THEN 2 WHEN N'FAILED' THEN 3 WHEN N'SCHEDULED' THEN 4 WHEN N'PENDING' THEN 5 ELSE 6 END,
                effectiveDates.EffectiveExpirationDate ASC,pc.NextScheduledDate ASC,p.FirstName ASC,cc.Name ASC;
     `);
-    const rows = result.recordset.map((row: any) => ({
-      ...row,
-      currentCycle: Number(row.currentCycle),
-      attemptCount: Number(row.attemptCount),
-      nextAttemptNumber: Number(row.nextAttemptNumber),
-      maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
-      recertificationEnabled: Boolean(row.recertificationEnabled),
-      requiresAttempts: Boolean(row.requiresAttempts),
-      tracksScore: Boolean(row.tracksScore),
-      criticalActionRequired: Boolean(row.criticalActionRequired),
-    })) as CertificationTrackingRecord[];
+    const rows = result.recordset.map((row: any) => {
+      const currentCycle=Number(row.currentCycle);
+      const attemptCount=Number(row.attemptCount);
+      const initialCompletionDays=row.initialCompletionDays===null?null:Number(row.initialCompletionDays);
+      const schedule=deriveInitialCertificationSchedule({
+        bbvaStartDate:row.bbvaStartDate??null,
+        initialCompletionDays,
+        initialDueDate:row.initialDueDate??null,
+        currentCycle,
+        baseStatus:String(row.baseStatus??''),
+        applicable:true,
+        requiresAttempts:Boolean(row.requiresAttempts),
+        attemptCount,
+        latestAttemptResult:row.latestAttemptResult??null,
+      },bbvaBusinessDate());
+      return {
+        ...row,
+        currentCycle,
+        attemptCount,
+        nextAttemptNumber: Number(row.nextAttemptNumber),
+        initialCompletionDays,
+        firstAttemptDueDate:schedule.firstAttemptDueDate,
+        initialDueDate:schedule.completionDueDate,
+        initialSchedulePhase:schedule.phase,
+        initialScheduleDueDate:schedule.dueDate,
+        daysToInitialSchedule:schedule.daysRemaining,
+        initialScheduleTiming:schedule.timing,
+        maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
+        recertificationEnabled: Boolean(row.recertificationEnabled),
+        requiresAttempts: Boolean(row.requiresAttempts),
+        tracksScore: Boolean(row.tracksScore),
+        criticalActionRequired: Boolean(row.criticalActionRequired),
+      };
+    }) as CertificationTrackingRecord[];
     return rows.filter((row) => row.status !== 'VALID' && row.status !== 'NOT_APPLICABLE');
   }
 

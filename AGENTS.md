@@ -777,3 +777,19 @@ BFS remains its own product, architecture and source of truth.
 - Las visualizaciones y paneles analíticos (`BBVAChartCard`, `BBVAInsightCard`) también incluyen ayuda contextual. Insights continúan siendo determinísticos y deben explicar de qué datos/reglas dependen.
 - En tablas de Colaboradores, `Perfil / tecnología` usa abreviación exclusivamente visual para reducir ancho (`ANALISTA PROGRAMADOR` se omite, `DATA ENGINEER` puede mostrarse como `DATA ENG.`, `ESPECIAL` como `ESP.`, `DESARROLLADOR` como `DEV`). El valor persistido no se altera y el texto completo permanece disponible como tooltip/title.
 - La cabecera local `BBVA Workspace` del sidebar y la barra de breadcrumb/contexto usan la misma altura de 40px para que la esquina y las líneas divisorias queden alineadas.
+
+
+### V31.5 — ventanas iniciales de certificación por alta BBVA
+
+- En el alta manual de un colaborador, `Fecha de alta BBVA` es obligatoria. Esta fecha es la referencia autoritativa para calcular las ventanas de sus certificaciones iniciales; no usar `Fecha de contratación Softtek` ni la fecha de creación del registro como sustituto.
+- Para el primer ciclo de certificación de un nuevo ingreso se aplican estas reglas operativas:
+  - Tecnológica: 30 días totales, primer intento a los 15 días.
+  - Desarrollo Seguro: 90 días totales, primer intento a los 45 días.
+  - Normativa & Testing: 60 días totales, primer intento a los 30 días.
+  - Agile: 90 días totales, primer intento a los 45 días.
+- Las cuatro reglas consideran máximo 2 intentos. El segundo intento debe quedar resuelto dentro de la fecha límite total calculada desde el alta BBVA.
+- `PersonCertification.InitialDueDate` representa la fecha límite total del ciclo inicial. El primer intento se deriva como la mitad de `CertificationCatalog.InitialCompletionDays`, siempre en días calendario.
+- La programación manual (`NextScheduledDate`) no se sustituye por la ventana inicial. Si existe una fecha programada explícita, se muestra como programación; en ausencia de ella se muestra el milestone automático del primer o segundo intento.
+- El countdown usa la fecha operativa BBVA y puede quedar en tiempo, vencer hoy o estar fuera de tiempo. Después de aprobar, pasar de ciclo o quedar No aplica, la ventana inicial deja de ser la siguiente acción.
+- Al sincronizar certificaciones por cambios de perfil/tecnología, sólo se recalcula `InitialDueDate` de registros automáticos del ciclo 1 sin aprobación y que no hayan sido conciliados por importación. Los límites importados se preservan.
+- La nota de Tech Review se conserva como regla de negocio: los nuevos ingresos deben completar las certificaciones requeridas dentro de estas ventanas antes de considerarse listos para asignación. No inventar una fecha de Tech Review si no existe una fuente explícita en el sistema.

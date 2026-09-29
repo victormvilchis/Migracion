@@ -55,8 +55,16 @@ function followUp(item: CollaboratorCertification) {
   if (item.status === 'EXPIRED') return 'Vencida';
   if (item.status === 'EXPIRING') return `Vence ${formatDate(item.expirationDate)}`;
   if (item.requiresAttempts && item.maxAttempts && item.attemptCount >= item.maxAttempts) return `Intentos agotados (${item.maxAttempts})`;
+  if (item.status === 'FAILED' && item.initialSchedulePhase === 'SECOND_ATTEMPT' && item.daysToInitialSchedule !== null) {
+    const days=item.daysToInitialSchedule;
+    return days < 0 ? `2do intento fuera de tiempo · ${Math.abs(days)} d` : days === 0 ? '2do intento vence hoy' : `2do intento · ${days} d`;
+  }
   if (item.status === 'FAILED') return 'Nuevo intento';
   if (item.status === 'SCHEDULED' && item.scheduledDate) return `Programada ${formatDate(item.scheduledDate)}`;
+  if (['PENDING', 'SCHEDULED', 'APPLIED'].includes(item.status) && item.initialSchedulePhase === 'FIRST_ATTEMPT' && item.daysToInitialSchedule !== null) {
+    const days=item.daysToInitialSchedule;
+    return days < 0 ? `1er intento fuera de tiempo · ${Math.abs(days)} d` : days === 0 ? '1er intento vence hoy' : `1er intento · ${days} d`;
+  }
   if (['PENDING', 'SCHEDULED', 'APPLIED'].includes(item.status)) return 'Pendiente de aprobación';
   return item.expirationDate ? `Vence ${formatDate(item.expirationDate)}` : 'Sin vencimiento';
 }
