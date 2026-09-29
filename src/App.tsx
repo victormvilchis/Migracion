@@ -31,10 +31,9 @@ const CertificationMetricsPage = React.lazy(() => import('./pagesBBVATalent/cert
 const CertificationCatalogListPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogListPage').then((m) => ({ default: m.CertificationCatalogListPage })));
 const CertificationCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogEditorPage').then((m) => ({ default: m.CertificationCatalogEditorPage })));
 const CertificationCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/certifications/CertificationCatalogDetailPage').then((m) => ({ default: m.CertificationCatalogDetailPage })));
-const StructureCatalogPage = React.lazy(() => import('./pagesBBVATalent/catalogs/StructureCatalogPage').then((m) => ({ default: m.StructureCatalogPage })));
 const StructureCatalogEditorPage = React.lazy(() => import('./pagesBBVATalent/catalogs/StructureCatalogEditorPage').then((m) => ({ default: m.StructureCatalogEditorPage })));
 const StructureCatalogDetailPage = React.lazy(() => import('./pagesBBVATalent/catalogs/StructureCatalogDetailPage').then((m) => ({ default: m.StructureCatalogDetailPage })));
-const EngineeringSpecialtyListPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyListPage').then((m) => ({ default: m.EngineeringSpecialtyListPage })));
+const EngineeringSpecialtyExplorerPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyExplorerPage').then((m) => ({ default: m.EngineeringSpecialtyExplorerPage })));
 const EngineeringSpecialtyEditorPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyEditorPage').then((m) => ({ default: m.EngineeringSpecialtyEditorPage })));
 const EngineeringSpecialtyDetailPage = React.lazy(() => import('./pagesBBVATalent/staffing/EngineeringSpecialtyDetailPage').then((m) => ({ default: m.EngineeringSpecialtyDetailPage })));
 const BBVAReportsPage = React.lazy(() => import('./pagesBBVATalent/reports/BBVAReportsPage').then((m) => ({ default: m.BBVAReportsPage })));
@@ -148,11 +147,11 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
               <Route path="/bbva/admin/catalogs/technology-profiles/:id/delete" element={modulePage(<CatalogDetailPage type="technology-profiles" mode="delete" />)} />
               <Route path="/bbva/admin/catalogs/technology-profiles/:id" element={modulePage(<CatalogDetailPage type="technology-profiles" mode="view" />)} />
 
-              <Route path="/bbva/admin/catalogs/structures" element={modulePage(<StructureCatalogPage />)} />
-              <Route path="/bbva/admin/catalogs/structures/new" element={modulePage(<StructureCatalogEditorPage />)} />
-              <Route path="/bbva/admin/catalogs/structures/:id/edit" element={modulePage(<StructureCatalogEditorPage />)} />
-              <Route path="/bbva/admin/catalogs/structures/:id" element={modulePage(<StructureCatalogDetailPage />)} />
-              <Route path="/bbva/admin/catalogs/engineering-specialties" element={modulePage(<EngineeringSpecialtyListPage />)} />
+              <Route path="/bbva/admin/catalogs/structures/*" element={<Navigate to="/bbva/admin/catalogs/engineering-specialties" replace />} />
+              <Route path="/bbva/admin/catalogs/engineering-specialties" element={modulePage(<EngineeringSpecialtyExplorerPage />)} />
+              <Route path="/bbva/admin/catalogs/engineering-specialties/structures/new" element={modulePage(<StructureCatalogEditorPage />)} />
+              <Route path="/bbva/admin/catalogs/engineering-specialties/structures/:id/edit" element={modulePage(<StructureCatalogEditorPage />)} />
+              <Route path="/bbva/admin/catalogs/engineering-specialties/structures/:id" element={modulePage(<StructureCatalogDetailPage />)} />
               <Route path="/bbva/admin/catalogs/engineering-specialties/new" element={modulePage(<EngineeringSpecialtyEditorPage />)} />
               <Route path="/bbva/admin/catalogs/engineering-specialties/:id/edit" element={modulePage(<EngineeringSpecialtyEditorPage />)} />
               <Route path="/bbva/admin/catalogs/engineering-specialties/:id" element={modulePage(<EngineeringSpecialtyDetailPage />)} />

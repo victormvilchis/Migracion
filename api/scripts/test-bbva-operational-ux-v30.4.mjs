@@ -84,7 +84,7 @@ for (const absolute of pageFiles) {
     assert.equal(statusIndexes.at(-1), actionIndexes[0] - 1, `${path.relative(root, absolute)}: Estado/Estatus debe estar inmediatamente antes de Acciones.`);
   }
 }
-assert.ok(statusTablesChecked >= 10, `Se esperaban al menos 10 tablas con Estado/Estatus + Acciones; se revisaron ${statusTablesChecked}.`);
+assert.ok(statusTablesChecked >= 9, `Se esperaban al menos 9 tablas con Estado/Estatus + Acciones; se revisaron ${statusTablesChecked}. El explorador V31 sustituyó una tabla de catálogo por una vista visual.`);
 
 console.log('UX operativa BBVA V30.4: OK');
 console.log('- filtros arriba de KPIs en paneles/tableros: OK');

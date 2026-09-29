@@ -12,8 +12,7 @@ const userEditor=read('src/pagesBBVATalent/admin/AdminUserEditorPage.tsx');
 const roleEditor=read('src/pagesBBVATalent/admin/AdminRoleEditorPage.tsx');
 const dashboard=read('src/pagesBBVATalent/dashboard/BBVADashboardPage.tsx');
 const reports=read('src/pagesBBVATalent/reports/BBVAReportsPage.tsx');
-const catalog=read('src/pagesBBVATalent/catalogs/StructureCatalogPage.tsx');
-const specialties=read('src/pagesBBVATalent/staffing/EngineeringSpecialtyListPage.tsx');
+const specialties=read('src/pagesBBVATalent/staffing/EngineeringSpecialtyExplorerPage.tsx');
 const agents=read('AGENTS.md');
 
 assert.doesNotMatch(users,/>Administración<|>Usuarios<|Directorio interno para responsables/);
@@ -26,8 +25,8 @@ assert.doesNotMatch(dashboard,/Vista operativa|Preparación Vendors\. El periodo
 assert.doesNotMatch(reports,/Reportes BBVA|\{config\.title\}|\{config\.description\}/);
 
 // Catálogos sí conservan contexto visible del catálogo.
-assert.match(catalog,/ESTRUCTURAS BBVA/);
 assert.match(specialties,/GREMIOS Y ESPECIALIDADES/);
+assert.match(specialties,/Estructura BBVA/);
 assert.match(agents,/Sólo los módulos bajo \*\*Administración > Catálogos\*\* mantienen headers de contexto/);
 
 console.log('Headers de contexto BBVA V30.1: OK');

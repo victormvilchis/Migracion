@@ -134,8 +134,7 @@ export const bbvaNavigation: BBVANavGroup[] = [
           { id: 'categories', label: 'Categorías', path: '/bbva/admin/catalogs/categories', status: 'ready' },
           { id: 'technologies', label: 'Tecnologías', path: '/bbva/admin/catalogs/technologies', status: 'ready' },
           { id: 'profiles', label: 'Perfiles', path: '/bbva/admin/catalogs/profiles', status: 'ready' },
-          { id: 'bbva-structures', label: 'Estructuras BBVA', path: '/bbva/admin/catalogs/structures', description: 'Configuración jerárquica de nivel 2 y nivel 3.', status: 'ready' },
-          { id: 'engineering-specialties', label: 'Gremios y Especialidades', path: '/bbva/admin/catalogs/engineering-specialties', description: 'Jerarquía N3, gremio, especialidad y staffer.', status: 'ready' },
+          { id: 'engineering-specialties', label: 'Gremios y Especialidades', path: '/bbva/admin/catalogs/engineering-specialties', description: 'Explorador visual de Estructura BBVA, gremios, especialidades, staffer y cobertura de colaboradores.', status: 'ready' },
           {
             id: 'technology-profiles',
             label: 'Perfiles tecnológicos',

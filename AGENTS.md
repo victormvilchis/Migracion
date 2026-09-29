@@ -414,7 +414,7 @@ Branch:
 
 Baseline commit:
 
-`8fe772db94e10df2b27a2bc13669df361a662408`
+`eb03d2fe1f1fb19bb4b9fad041eaad540ab0c499`
 
 Before starting a task:
 
@@ -726,3 +726,26 @@ BFS remains its own product, architecture and source of truth.
 - En toda tabla BBVA que tenga Estado/Estatus y Acciones, Estado/Estatus es la última columna de negocio e inmediatamente precede a Acciones. No insertar columnas entre ambas.
 - Seguimiento no muestra una tarjeta independiente `Preparación Vendors`; Periodo y sus métricas viven en filtros/KPIs para evitar duplicidad visual.
 - Estas reglas son transversales para módulos actuales y futuros.
+
+
+### V31 — Gremios y Especialidades como explorador organizacional
+
+- `Estructuras BBVA` y `Gremios y Especialidades` se presentan como **un solo módulo visible**: `Administración > Catálogos > Gremios y Especialidades`. No se agrega un segundo acceso en navegación. Las rutas históricas de `/bbva/admin/catalogs/structures/*` redirigen al módulo unificado por retrocompatibilidad.
+- El módulo principal de Gremios y Especialidades **no usa tabla**. La vista operativa se construye como explorador visual con tres modos dentro de la misma pantalla: `Jerarquía`, `Mapa de calor` e `Insights`.
+- La jerarquía visual autoritativa es `Estructura nivel 2 → Gremio / nivel 3 → Especialidad`. El campo histórico `EngineeringSpecialtyCatalog.N3` representa el nombre de la estructura nivel 2 y `EngineeringSpecialtyCatalog.Guild` representa el gremio/nivel 3. No mostrar esos nombres internos como una jerarquía adicional inventada.
+- Las altas y ediciones de especialidad deben seleccionar nivel 2 y nivel 3 desde `StructureCatalog`; no aceptar relaciones libres que no existan o estén inactivas. El backend valida esa relación aunque el frontend use selects.
+- Un cambio de nombre de Estructura nivel 2 o nivel 3 propaga la denominación correspondiente a `EngineeringSpecialtyCatalog` dentro de la misma transacción, además de la propagación histórica a `Person`. No se permiten estructuras nivel 3 eliminadas mientras tengan especialidades asociadas.
+- El módulo muestra exactamente cuatro KPIs esenciales: `Gremios`, `Especialidades`, `Cobertura de colaboradores` y `Estructura BBVA`. No mostrar `Cobertura de staffer` como KPI.
+- `Cobertura de colaboradores` se calcula con los **colaboradores activos**: numerador = colaboradores cuyo par `BbvaStructureLevel2 + BbvaStructureLevel3` existe como estructura activa y además tiene un gremio/especialidad activa reconocida; denominador = total de colaboradores activos. Si no hay colaboradores activos, la cobertura es 100% por convención de universo vacío.
+- `Staffer` es información operativa relevante y puede aparecer en filtros, nodos, detalle e insights. `Responsable ASO` no forma parte de este módulo ni de sus KPIs.
+- El mapa de calor usa la concentración real de colaboradores por nivel 3 y expone también el número de especialidades del nodo. No inventar scores, riesgos ni relaciones persona-especialidad que no existen en el modelo.
+- Una persona puede mostrarse asociada a nivel 2/nivel 3 porque esos campos existen en `Person`; **no inferir que pertenece a una especialidad concreta** mientras no exista una relación explícita persona-especialidad.
+- Los insights pueden señalar huecos determinísticos: nivel 3 sin especialidades, especialidades sin staffer, colaboradores fuera de la jerarquía y grupos de especialidad sin correspondencia con `StructureCatalog`.
+- El módulo conserva `BBVACatalogHeader`, filtros compactos antes de los KPIs, acciones explícitas de Guardar/Confirmar y las reglas de motion V30.3: sólo los insights pueden tener movimiento continuo accesible.
+
+### V31.1 — refinamiento visual del explorador
+
+- El explorador `Gremios y Especialidades` mantiene el look & feel claro de BBVA. No usar barras o paneles laterales oscuros como superficie dominante.
+- `Mapa de calor` es una cuadrícula compacta: cada fila contextualiza un Nivel 2 y cada celda representa un Nivel 3. La intensidad se expresa con fondos claros y bordes BBVA, nunca con tarjetas azul oscuro o texto blanco como escala principal.
+- El mapa de calor conserva navegación al nodo jerárquico al hacer click, pero no se presenta como una colección de cards independientes.
+- Jerarquía, Mapa de calor e Insights usan un selector segmentado claro, integrado con el resto de la plataforma.
