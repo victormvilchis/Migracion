@@ -801,3 +801,21 @@ BFS remains its own product, architecture and source of truth.
 - En Panel/Dashboard, las recomendaciones se consumen completas desde backend; no truncarlas artificialmente con `slice(0,n)` si existen más reglas aplicables al contexto.
 - Las recomendaciones se presentan como carrusel horizontal con snap y autoavance moderado hacia la derecha. El movimiento se pausa mientras el usuario interactúa y respeta los controles manuales. No usar desplazamiento vertical/`translateY` en hover.
 - Toda recomendación puede descartarse visualmente en el contexto actual o ponerse en marcha usando su target determinístico existente. Descartar no modifica reglas ni datos de negocio en backend; únicamente limpia la vista de la sesión/contexto.
+
+
+### V31.7 — carrusel vivo de recomendaciones
+
+- Las recomendaciones del Panel se calculan en backend con la data vigente del contexto y el frontend refresca el dashboard cada 20 segundos mientras la vista está activa, además de refrescar al recuperar foco. No generar recomendaciones aleatorias ni de demo.
+- El backend no limita artificialmente la cantidad de recomendaciones. Además de reglas globales, puede generar focos por tecnología cuando existen varias concentraciones reales de pendientes, vencimientos, recertificaciones, alertas o críticos.
+- El carrusel avanza automáticamente desde que existen al menos 2 recomendaciones, muestra una tarjeta principal con la siguiente parcialmente visible, usa escala/opacidad como profundidad y no usa movimiento vertical. Pausa durante interacción y conserva navegación manual.
+- Descartar sigue siendo sólo una decisión visual de la sesión/contexto. Poner en marcha lleva al módulo operativo preservando estado y, cuando aplica, tecnología del foco.
+
+
+### V31.8 — periodos operativos configurables como fuente única
+
+- Las fechas reales de Vendors se conservan como referencia, pero toda clasificación temporal de BBVA Workspace usa la ventana operativa resuelta por `bbvaVendorCalendar`. Ningún módulo calcula límites de Q por su cuenta.
+- Regla por defecto: un mes nunca se divide entre dos Q. Si un Q real inicia después del día 1, su inicio operativo es el día 1 del mes siguiente; el Q que termina conserva completo su mes de cierre y su fin operativo es el último día de ese mes. Ejemplo: inicio real Q4 23/09 -> inicio operativo 01/10; septiembre completo sigue en Q3.
+- Los overrides se guardan en `bbva.OperationalQuarterConfig` y sólo aceptan inicio en día 1, fin en último día de mes y continuidad sin huecos ni traslapes. Si no existe override, se usa la sugerencia automática.
+- Esta fuente domina Seguimiento, Métricas, Panel, recomendaciones, readiness Vendors, histórico/snapshots y futuros filtros por periodo.
+- `EXPIRING` significa exclusivamente Próxima a vencer por ventana de alerta. `DUE_IN_PERIOD` significa Vence en el periodo seleccionado. No reutilizar un estado para ambas semánticas.
+- Seguimiento debe disponer del universo aplicable completo; `Todos los estados` no puede eliminar registros Vigentes antes de aplicar el filtro de periodo. Periodo y Estado son dimensiones independientes.

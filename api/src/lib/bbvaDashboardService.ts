@@ -12,9 +12,11 @@ import type {
 import { BbvaDashboardRepository, type DashboardCertificationRow } from './bbvaDashboardRepository.js';
 import { isCertificationReadyForTarget, isCriticalResolutionOpen, isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import { vendorQuarterContext, type VendorQuarterDefinition } from './bbvaVendorCalendar.js';
+import { BbvaOperationalQuarterRepository } from './bbvaOperationalQuarterRepository.js';
 import { addBusinessDays, bbvaBusinessDate } from './bbvaBusinessTime.js';
 
 const repository = new BbvaDashboardRepository();
+const operationalQuarterRepository = new BbvaOperationalQuarterRepository();
 
 const HISTORICAL_METRICS: DashboardHistoricalMetricKey[] = [
   'collaboratorsActive',
@@ -55,15 +57,10 @@ function filterValues(value: string | null | undefined): Set<string> {
   return new Set(String(value ?? '').split('~').map((item) => item.trim()).filter(Boolean));
 }
 
-function certificationStatus(row: DashboardCertificationRow, todayIso: string, quarter?: VendorQuarterDefinition | null): string {
+function certificationStatus(row: DashboardCertificationRow, todayIso: string): string {
   if (!row.applicable || row.baseStatus === 'NOT_APPLICABLE') return 'NOT_APPLICABLE';
   if (row.baseStatus !== 'APPROVED') return row.baseStatus === 'FAILED' ? 'FAILED' : row.baseStatus;
   if (!row.expirationDate) return 'VALID';
-  if (quarter) {
-    if (row.expirationDate < quarter.startDate) return row.recertificationEnabled ? 'RECERTIFICATION_PENDING' : 'EXPIRED';
-    if (row.expirationDate <= quarter.endDate) return 'EXPIRING';
-    return 'VALID';
-  }
   if (row.expirationDate < todayIso) return row.recertificationEnabled ? 'RECERTIFICATION_PENDING' : 'EXPIRED';
   if (row.expiringSoonDays != null && row.expirationDate <= addBusinessDays(todayIso, row.expiringSoonDays)) return 'EXPIRING';
   return 'VALID';
@@ -141,6 +138,52 @@ function concentrationByTechnology(rows: BbvaDashboardResponse['attention'], met
   if (value === total) return `Los ${total} casos se concentran en ${label}.`;
   const percentage = Math.round((value / total) * 1000) / 10;
   return `${label} concentra ${value} de ${total} casos (${percentage}%).`;
+}
+
+function recommendationSlug(value: string): string {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-MX').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'general';
+}
+
+function technologyConcentrations(
+  rows: BbvaDashboardResponse['attention'],
+  metric: 'expired' | 'recertificationPending' | 'expiring' | 'pending' | 'critical',
+): Array<{ technology: string; cases: number; people: number }> {
+  const map = new Map<string, { cases: number; people: Set<string> }>();
+  for (const row of rows) {
+    const cases = row[metric];
+    const technology = row.technology?.trim();
+    if (!technology || technology === 'Sin tecnología' || cases <= 0) continue;
+    const current = map.get(technology) ?? { cases: 0, people: new Set<string>() };
+    current.cases += cases;
+    current.people.add(row.collaboratorId);
+    map.set(technology, current);
+  }
+  return [...map.entries()]
+    .map(([technology, value]) => ({ technology, cases: value.cases, people: value.people.size }))
+    .sort((a, b) => b.cases - a.cases || b.people - a.people || a.technology.localeCompare(b.technology, 'es-MX'));
+}
+
+function appendTechnologyRecommendations(
+  target: DashboardRecommendation[],
+  rows: BbvaDashboardResponse['attention'],
+  metric: 'expired' | 'recertificationPending' | 'expiring' | 'pending' | 'critical',
+  options: { priority: DashboardRecommendation['priority']; eyebrow: string; certificationStatus: string | null; actionLabel: string; singular: string; plural: string },
+): void {
+  const concentrations = technologyConcentrations(rows, metric);
+  if (concentrations.length < 2) return;
+  for (const item of concentrations.slice(0, 3)) {
+    target.push({
+      id: `technology-${metric}-${recommendationSlug(item.technology)}`,
+      priority: options.priority,
+      eyebrow: `${options.eyebrow} · ${item.technology}`,
+      title: `${item.technology} concentra ${item.cases} ${item.cases === 1 ? options.singular : options.plural}.`,
+      description: `${item.people} ${item.people === 1 ? 'colaborador requiere' : 'colaboradores requieren'} seguimiento en este foco. La recomendación se recalcula con la data vigente del contexto.`,
+      target: 'TRACKING',
+      certificationStatus: options.certificationStatus,
+      technology: item.technology,
+      actionLabel: options.actionLabel,
+    });
+  }
 }
 
 export function buildRecommendations(
@@ -276,6 +319,41 @@ export function buildRecommendations(
     });
   }
 
+  appendTechnologyRecommendations(recommendations, attention, 'critical', { priority: 'CRITICAL', eyebrow: 'Foco crítico', certificationStatus: 'FAILED', actionLabel: 'Resolver foco', singular: 'caso crítico', plural: 'casos críticos' });
+  appendTechnologyRecommendations(recommendations, attention, 'expired', { priority: 'CRITICAL', eyebrow: 'Foco de vigencia', certificationStatus: 'EXPIRED', actionLabel: 'Revisar foco', singular: 'certificación vencida', plural: 'certificaciones vencidas' });
+  appendTechnologyRecommendations(recommendations, attention, 'recertificationPending', { priority: 'ATTENTION', eyebrow: 'Foco de recertificación', certificationStatus: 'RECERTIFICATION_PENDING', actionLabel: 'Abrir foco', singular: 'recertificación', plural: 'recertificaciones' });
+  appendTechnologyRecommendations(recommendations, attention, 'expiring', { priority: 'PREVENTIVE', eyebrow: 'Foco preventivo', certificationStatus: 'EXPIRING', actionLabel: 'Prevenir vencimientos', singular: 'certificación en alerta', plural: 'certificaciones en alerta' });
+  appendTechnologyRecommendations(recommendations, attention, 'pending', { priority: 'INFO', eyebrow: 'Foco de cobertura', certificationStatus: 'PENDING', actionLabel: 'Cubrir pendientes', singular: 'certificación pendiente', plural: 'certificaciones pendientes' });
+
+  if (cards.certificationsApplicable > 0 && cards.coveragePercent < 100) {
+    const gap = Math.round((100 - cards.coveragePercent) * 100) / 100;
+    recommendations.push({
+      id: 'coverage-gap',
+      priority: cards.expired > 0 ? 'ATTENTION' : 'INFO',
+      eyebrow: 'Brecha de cobertura',
+      title: `La cobertura actual es ${cards.coveragePercent.toLocaleString('es-MX', { maximumFractionDigits: 2 })}%.`,
+      description: `Faltan ${gap.toLocaleString('es-MX', { maximumFractionDigits: 2 })} puntos porcentuales para una cobertura completa del universo aplicable.`,
+      target: 'METRICS',
+      certificationStatus: null,
+      technology: null,
+      actionLabel: 'Analizar cobertura',
+    });
+  }
+
+  if (cards.talentBankActive > 0) {
+    recommendations.push({
+      id: 'talent-bank-active',
+      priority: 'INFO',
+      eyebrow: 'Disponibilidad',
+      title: `${cards.talentBankActive} ${cards.talentBankActive === 1 ? 'persona está' : 'personas están'} en Banco de talento.`,
+      description: 'Revisa perfiles disponibles y permanencia para detectar oportunidades de asignación con la información vigente.',
+      target: 'TALENT_BANK',
+      certificationStatus: null,
+      technology: null,
+      actionLabel: 'Revisar banco',
+    });
+  }
+
   if (!recommendations.length) {
     recommendations.push({
       id: 'clear',
@@ -289,7 +367,7 @@ export function buildRecommendations(
     });
   }
 
-  return recommendations.slice(0, 6);
+  return recommendations;
 }
 
 export class BbvaDashboardService {
@@ -313,13 +391,14 @@ export class BbvaDashboardService {
     const fromDate = normalizeDate(filters.fromDate);
     const toDate = normalizeDate(filters.toDate);
     const search = String(filters.search ?? '').trim().toLocaleLowerCase('es-MX');
-    const quarter = vendorQuarterContext(now, filters.quarterCode);
+    const operationalQuarterOverrides = await operationalQuarterRepository.listOverrides();
+    const quarter = vendorQuarterContext(now, filters.quarterCode, operationalQuarterOverrides);
     const selectedQuarter = quarter.selectedQuarter;
     const selectedQuarterCode = selectedQuarter?.code ?? 'UNCONFIGURED';
 
     const technologyIds = filterValues(filters.technologyId);
     const certStatusById = new Map<string, string>();
-    for (const cert of allCertifications) certStatusById.set(cert.id, certificationStatus(cert, todayIso, selectedQuarter));
+    for (const cert of allCertifications) certStatusById.set(cert.id, certificationStatus(cert, todayIso));
 
     let collaborators = allCollaborators.filter((row) => {
       if (technologyIds.size && (!row.technologyId || !technologyIds.has(row.technologyId))) return false;
@@ -336,7 +415,9 @@ export class BbvaDashboardService {
     if (filters.certificationStatus) {
       const personIds = new Set(
         allCertifications
-          .filter((cert) => certStatusById.get(cert.id) === filters.certificationStatus)
+          .filter((cert) => filters.certificationStatus === 'DUE_IN_PERIOD'
+            ? Boolean(selectedQuarter && cert.expirationDate && cert.expirationDate >= selectedQuarter.startDate && cert.expirationDate <= selectedQuarter.endDate)
+            : certStatusById.get(cert.id) === filters.certificationStatus)
           .map((cert) => cert.personId),
       );
       collaborators = collaborators.filter((row) => personIds.has(row.personId));
@@ -348,7 +429,7 @@ export class BbvaDashboardService {
     }
 
     const collaboratorPersonIds = new Set(collaborators.map((row) => row.personId));
-    const certifications = allCertifications.filter((row) => collaboratorPersonIds.has(row.personId) && row.applicable && certStatusById.get(row.id) !== 'NOT_APPLICABLE' && (!filters.certificationId || row.certificationId === filters.certificationId));
+    const certifications = allCertifications.filter((row) => collaboratorPersonIds.has(row.personId) && row.applicable && certStatusById.get(row.id) !== 'NOT_APPLICABLE' && (!filters.certificationId || row.certificationId === filters.certificationId) && (!filters.certificationStatus || (filters.certificationStatus === 'DUE_IN_PERIOD' ? Boolean(selectedQuarter && row.expirationDate && row.expirationDate >= selectedQuarter.startDate && row.expirationDate <= selectedQuarter.endDate) : certStatusById.get(row.id) === filters.certificationStatus)));
 
     const certificationScoreRows = allCertificationScores.filter((row) => {
       if (!collaboratorPersonIds.has(row.personId)) return false;

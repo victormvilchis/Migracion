@@ -989,7 +989,7 @@ export class CollaboratorCertificationRepository {
         criticalActionRequired: Boolean(row.criticalActionRequired),
       };
     }) as CertificationTrackingRecord[];
-    return rows.filter((row) => row.status !== 'VALID' && row.status !== 'NOT_APPLICABLE');
+    return rows;
   }
 
   async listImportCatalog(): Promise<ImportCertificationCatalogConfig[]> {

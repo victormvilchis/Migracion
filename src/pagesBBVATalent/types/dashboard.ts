@@ -66,6 +66,7 @@ export interface DashboardRecommendation {
   description: string;
   target: 'TRACKING' | 'METRICS' | 'COLLABORATORS' | 'TALENT_BANK' | 'REPORTS';
   certificationStatus: string | null;
+  technology?: string | null;
   actionLabel: string;
 }
 

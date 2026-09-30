@@ -2,9 +2,11 @@ import { CollaboratorCertificationRepository } from './bbvaCollaboratorCertifica
 import type { CertificationAttemptInput, CertificationAttemptUpdateInput, CertificationUpdateInput, CertificationCriticalResolutionInput } from './bbvaCollaboratorCertificationDomain.js';
 import { CRITICAL_TWO_ATTEMPT_TYPES, isCriticalResolutionOpen, isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import { vendorQuarterContext, vendorQuarterForDate } from './bbvaVendorCalendar.js';
+import { BbvaOperationalQuarterRepository } from './bbvaOperationalQuarterRepository.js';
 import { bbvaBusinessDate } from './bbvaBusinessTime.js';
 
 const repository = new CollaboratorCertificationRepository();
+const operationalQuarterRepository = new BbvaOperationalQuarterRepository();
 
 function valueOf(payload: unknown, key: string): unknown {
   return payload && typeof payload === 'object' && key in payload ? (payload as Record<string, unknown>)[key] : undefined;
@@ -75,9 +77,10 @@ export class CollaboratorCertificationService {
   }
 
   async tracking() {
+    const operationalQuarterOverrides = await operationalQuarterRepository.listOverrides();
     const rawItems = await repository.tracking();
-    const items = rawItems.map((item) => ({ ...item, quarterCode: vendorQuarterForDate(item.expirationDate)?.code ?? null }));
-    const quarter = vendorQuarterContext();
+    const items = rawItems.map((item) => ({ ...item, quarterCode: vendorQuarterForDate(item.expirationDate, operationalQuarterOverrides)?.code ?? null }));
+    const quarter = vendorQuarterContext(new Date(), null, operationalQuarterOverrides);
     const exhaustedAttempts = items.filter((item) =>
       isCriticalTwoAttemptExhausted({
         certificationType: item.certificationType,

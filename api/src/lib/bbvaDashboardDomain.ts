@@ -97,6 +97,7 @@ export interface DashboardRecommendation {
   description: string;
   target: DashboardRecommendationTarget;
   certificationStatus: string | null;
+  technology?: string | null;
   actionLabel: string;
 }
 

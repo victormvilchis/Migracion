@@ -8,9 +8,16 @@ export function currentPeriodYear(currentCode?: string | null, referenceDate?: s
   return new Date().getFullYear();
 }
 
+/** Periodos configurados visibles en todos los años. El año actual aparece primero; después futuros y finalmente históricos. */
 export function periodOptions(periods: PeriodDefinition[], currentCode?: string | null, referenceDate?: string | null, includeAll = false) {
-  const year=currentPeriodYear(currentCode,referenceDate);
-  const values=periods.filter((item)=>item.year===year);
+  const currentYear=currentPeriodYear(currentCode,referenceDate);
+  const values=[...periods].sort((a,b)=>{
+    const bucket=(year:number)=>year===currentYear?0:year>currentYear?1:2;
+    const ba=bucket(a.year),bb=bucket(b.year);if(ba!==bb)return ba-bb;
+    if(ba===1)return a.year-b.year||a.quarter-b.quarter;
+    if(ba===2)return b.year-a.year||a.quarter-b.quarter;
+    return a.quarter-b.quarter;
+  });
   return [
     ...(includeAll ? [{value:'',label:'Todos los periodos'}] : []),
     ...values.map((item)=>({value:item.code,label:`Periodo ${item.quarter} · ${item.year}${item.code===currentCode?' · Actual':''}`,description:`${item.startDate} → ${item.endDate}`})),

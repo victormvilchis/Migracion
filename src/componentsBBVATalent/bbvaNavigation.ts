@@ -134,6 +134,7 @@ export const bbvaNavigation: BBVANavGroup[] = [
           { id: 'categories', label: 'Categorías', path: '/bbva/admin/catalogs/categories', status: 'ready' },
           { id: 'technologies', label: 'Tecnologías', path: '/bbva/admin/catalogs/technologies', status: 'ready' },
           { id: 'profiles', label: 'Perfiles', path: '/bbva/admin/catalogs/profiles', status: 'ready' },
+          { id: 'operational-periods', label: 'Periodos (Q)', path: '/bbva/admin/catalogs/periods', description: 'Fechas reales y ventanas operativas que gobiernan métricas, seguimiento y readiness.', status: 'ready' },
           { id: 'engineering-specialties', label: 'Gremios y Especialidades', path: '/bbva/admin/catalogs/engineering-specialties', description: 'Explorador visual de Estructura BBVA, gremios, especialidades, staffer y cobertura de colaboradores.', status: 'ready' },
           {
             id: 'technology-profiles',
