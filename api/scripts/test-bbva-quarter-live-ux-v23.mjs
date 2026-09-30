@@ -10,15 +10,15 @@ const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
 
 // Q: sólo calendario configurado, current Q y selección explícita por año/Q.
 const current = vendorQuarterContext(new Date('2026-09-28T12:00:00-06:00'));
-assert.equal(current.currentQuarter?.code, '2026Q4');
-assert.equal(current.selectedQuarter?.code, '2026Q4');
+assert.equal(current.currentQuarter?.code, '2026Q3');
+assert.equal(current.selectedQuarter?.code, '2026Q3');
 assert.equal(current.referenceDate, '2026-09-28');
 const q3Close = vendorQuarterContext(new Date('2026-09-28T04:30:00.000Z'));
 assert.equal(q3Close.currentQuarter?.code, '2026Q3');
 assert.equal(q3Close.selectedQuarter?.code, '2026Q3');
 assert.equal(q3Close.targetQuarter?.code, '2026Q4', 'La preparación al siguiente Q debe seguir siendo retrocompatible.');
-assert.equal(q3Close.daysToTargetStart, 1);
-assert.equal(q3Close.daysToSelectedEnd, 0);
+assert.equal(q3Close.daysToTargetStart, 4);
+assert.equal(q3Close.daysToSelectedEnd, 3);
 assert.equal(vendorQuarterByCode('2026q3')?.code, '2026Q3');
 assert.equal(vendorQuarterByCode('2027Q1'), null, 'No se deben inventar Q no configurados.');
 assert.deepEqual([...new Set(BBVA_VENDOR_QUARTERS.map((q) => q.year))], [2026]);

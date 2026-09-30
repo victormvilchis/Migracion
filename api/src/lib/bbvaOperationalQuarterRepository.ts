@@ -88,6 +88,14 @@ export class BbvaOperationalQuarterRepository {
       .query(`IF OBJECT_ID(N'bbva.OperationalQuarterConfig',N'U') IS NOT NULL UPDATE bbva.OperationalQuarterConfig SET OperationalStartDate=@startDate,OperationalEndDate=@endDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE QuarterCode=@quarterCode;`);
   }
 
+
+  async invalidateMetricSnapshots(quarterCode:string):Promise<void>{
+    const pool=await getDbConnection();
+    await pool.request()
+      .input('quarterCode',sql.NVarChar(16),quarterCode)
+      .query(`IF OBJECT_ID(N'bbva.DashboardMetricSnapshot',N'U') IS NOT NULL DELETE FROM bbva.DashboardMetricSnapshot WHERE QuarterCode=@quarterCode;`);
+  }
+
   /** Compatibilidad con V31.8: sólo modifica la ventana operativa. */
   async upsert(quarterCode:string,operationalStartDate:string,operationalEndDate:string,actorEmail:string):Promise<void>{
     const existing=(await this.listOverrides()).find((item)=>item.quarterCode===quarterCode);

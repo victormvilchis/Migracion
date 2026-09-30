@@ -65,9 +65,11 @@ assert.equal(businessTime.bbvaBusinessDate(mexicoLateNight), '2026-09-27');
 const q3Close = calendar.vendorQuarterContext(mexicoLateNight);
 assert.equal(q3Close.currentQuarter?.code, '2026Q3');
 assert.equal(q3Close.targetQuarter?.code, '2026Q4');
-assert.equal(q3Close.daysToTargetStart, 1);
+assert.equal(q3Close.daysToTargetStart, 4);
 const q4Start = calendar.vendorQuarterContext(new Date('2026-09-28T07:00:00.000Z'));
-assert.equal(q4Start.currentQuarter?.code, '2026Q4');
+assert.equal(q4Start.currentQuarter?.code, '2026Q3');
+assert.equal(q4Start.targetQuarter?.code, '2026Q4');
+assert.equal(q4Start.daysToTargetStart, 3);
 
 // La postal LOW sólo existe después de que el ciclo de vida confirme realmente la baja.
 const baseCommunication = {

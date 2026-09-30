@@ -23,7 +23,8 @@ const importRepo=read('api/src/lib/bbvaCollaboratorImportRepository.ts');
 
 // Seguimiento: filtro de intento/criticidad y sin headers/fichas redundantes de filtros.
 assert.match(tracking,/Intentos o criticidad/);
-for(const token of ['NO_ATTEMPTS','ONE_ATTEMPT','LAST_AVAILABLE','LIMIT_REACHED','CRITICAL_OPEN']) assert.match(tracking,new RegExp(token));
+assert.match(tracking, /filters\.critical\s*===\s*['"]OPEN['"]/);
+assert.match(tracking, /hasOpenCriticalResolution\s*\(\s*item\s*\)/);
 assert.doesNotMatch(tracking,/BBVAFilterSummary items=/);
 assert.doesNotMatch(tracking,/Certificaciones por atender/);
 

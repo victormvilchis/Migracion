@@ -819,3 +819,12 @@ BFS remains its own product, architecture and source of truth.
 - Esta fuente domina Seguimiento, Métricas, Panel, recomendaciones, readiness Vendors, histórico/snapshots y futuros filtros por periodo.
 - `EXPIRING` significa exclusivamente Próxima a vencer por ventana de alerta. `DUE_IN_PERIOD` significa Vence en el periodo seleccionado. No reutilizar un estado para ambas semánticas.
 - Seguimiento debe disponer del universo aplicable completo; `Todos los estados` no puede eliminar registros Vigentes antes de aplicar el filtro de periodo. Periodo y Estado son dimensiones independientes.
+
+
+### V31.10 — calendario BBVA derivado de Vendors
+
+- Las fechas Vendors configuradas son la única fuente autoritativa del calendario Q. La ventana operativa no es un dato independiente: se deriva en backend y se materializa en SQL sólo por consistencia/consulta.
+- Regla de mes completo: si un Q empieza después del día 1, operativamente inicia el día 1 del mes siguiente; si termina cualquier día de un mes, operativamente cubre hasta el último día de ese mes. Ejemplo: Q3 termina 23/09 => Q3 operativo termina 30/09 y Q4 inicia 01/10.
+- Seguimiento, Métricas, Panel, readiness, asignación quarterCode y vencimientos por periodo deben consumir bbvaVendorCalendar/configuredVendorQuarters; no duplicar fechas ni fórmulas en frontend.
+- Cambiar una ventana Vendors invalida snapshots históricos del Q afectado para evitar comparar métricas calculadas con fronteras distintas.
+- El frontend puede mostrar una previsualización de la ventana operativa, pero no puede editarla ni enviarla como fuente de verdad.

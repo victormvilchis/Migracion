@@ -179,7 +179,7 @@ export const CertificationTrackingPage: React.FC = () => {
   const paged=useMemo(()=>filtered.slice(safePage*size,safePage*size+size),[filtered,safePage,size]);
   React.useEffect(()=>{patchSort({page:0});},[filters.certificationStatus,filters.profile,filters.technology,filters.certification,filters.critical,filters.attemptCriticality,filters.quarterCode]);
   const currentYearPeriods=useMemo(()=>periodOptions(query.data?.vendorQuarter.quarters??[],query.data?.vendorQuarter.currentCode,query.data?.vendorQuarter.referenceDate,true),[query.data?.vendorQuarter.quarters,query.data?.vendorQuarter.currentCode,query.data?.vendorQuarter.referenceDate]);
-  const dueInPeriodCount=useMemo(()=>items.filter((item)=>Boolean(effectiveQuarterCode&&item.quarterCode===effectiveQuarterCode)&&(!filters.profile||item.profile===filters.profile)&&(!filters.technology||item.technology===filters.technology)&&(!filters.certification||item.certificationName===filters.certification)).length,[effectiveQuarterCode,filters.certification,filters.profile,filters.technology,items]);
+  const dueInPeriodCount=useMemo(()=>contextItems.filter((item)=>Boolean(effectiveQuarterCode&&item.quarterCode===effectiveQuarterCode)).length,[contextItems,effectiveQuarterCode]);
 
   const activeFilters = useMemo<BBVAFilterSummaryItem[]>(() => {
     const active: BBVAFilterSummaryItem[] = [];

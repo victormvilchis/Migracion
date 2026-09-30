@@ -28,7 +28,11 @@ assert.match(collaborators, /BBVAStructureFilter/);
 assert.match(collaborators, /Limpiar filtros/);
 
 const periodOptions = read('src/pagesBBVATalent/lib/periodOptions.ts');
-assert.match(periodOptions, /filter\(\(item\)=>item\.year===year\)/);
+// V31.10b: selector multiaño conserva todos los periodos configurados y sólo usa el año actual para ordenarlos.
+assert.match(periodOptions, /const\s+values\s*=\s*\[\.\.\.periods\]\.sort/);
+assert.match(periodOptions, /currentPeriodYear/);
+assert.match(periodOptions, /bucket\s*=\s*\(year:number\)\s*=>\s*year===currentYear/);
+assert.doesNotMatch(periodOptions, /filter\(\(item\)=>item\.year===year\)/);
 assert.match(periodOptions, /Periodo \$\{item\.quarter\}/);
 
 const tracking = read('src/pagesBBVATalent/certifications/CertificationTrackingPage.tsx');

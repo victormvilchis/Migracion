@@ -41,7 +41,8 @@ for (const source of [dashboard, metrics]) {
 
 // KPI crítico y drill-down usan el mismo estado de negocio: FAILED + 2\/2 + último FAILED + resolución abierta.
 assert.match(dashboardService, /cert\.baseStatus === 'FAILED'[\s\S]*?isCriticalTwoAttemptExhausted\(cert\)[\s\S]*?isCriticalResolutionOpen\(cert\.criticalResolutionStatus\)/);
-assert.match(tracking, /filters\.critical !== 'OPEN' \|\| hasOpenCriticalResolution\(item\)/);
+assert.match(tracking, /filters\.critical === 'OPEN' \? hasOpenCriticalResolution\(item\)/);
+assert.match(tracking, /!filters\.critical \|\| \(filters\.critical === 'OPEN'/);
 assert.match(trackingRules, /requiresCriticalExitReview[\s\S]*?criticalActionRequired === true/);
 assert.match(trackingRules, /hasOpenCriticalResolution[\s\S]*?LOW_REQUESTED/);
 

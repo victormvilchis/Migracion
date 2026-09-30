@@ -76,26 +76,26 @@ export function generatedVendorYear(year:number):VendorQuarterDefinition[]{
 }
 
 export function configuredVendorQuarters(overrides: VendorQuarterOperationalOverride[]=[]): VendorQuarterDefinition[] {
-  const map=new Map(overrides.map((item)=>[String(item.quarterCode).trim().toUpperCase(),item]));
   const sources=new Map<string,VendorQuarterDefinition>();
   for(const item of BBVA_VENDOR_QUARTERS)sources.set(item.code,{...item});
   for(const override of overrides){
     const code=String(override.quarterCode??'').trim().toUpperCase();
     const parsed=parseCode(code);if(!parsed)continue;
     const existing=sources.get(code);
-    const sourceStart=String(override.sourceStartDate??existing?.startDate??'').trim();
-    const sourceEnd=String(override.sourceEndDate??existing?.endDate??'').trim();
+    const hasPersistedSource=validIso(String(override.sourceStartDate??''))&&validIso(String(override.sourceEndDate??''));
+    const sourceStart=hasPersistedSource?String(override.sourceStartDate):String(existing?.startDate??'');
+    const sourceEnd=hasPersistedSource?String(override.sourceEndDate):String(existing?.endDate??'');
     if(!validIso(sourceStart)||!validIso(sourceEnd))continue;
-    sources.set(code,{code,year:parsed.year,quarter:parsed.quarter,startDate:sourceStart,endDate:sourceEnd,sourceConfigured:override.sourceConfigured??existing?.sourceConfigured??false});
+    const sourceConfigured=hasPersistedSource?Boolean(override.sourceConfigured):(existing?.sourceConfigured??false);
+    sources.set(code,{code,year:parsed.year,quarter:parsed.quarter,startDate:sourceStart,endDate:sourceEnd,sourceConfigured});
   }
   return [...sources.values()]
     .sort((a,b)=>a.year-b.year||a.quarter-b.quarter)
     .map((source)=>{
-      const suggested=defaultOperationalQuarterWindow(source);
-      const override=map.get(source.code);
-      const startDate=override?.operationalStartDate??suggested.startDate;
-      const endDate=override?.operationalEndDate??suggested.endDate;
-      return {...source,sourceStartDate:source.startDate,sourceEndDate:source.endDate,sourceConfigured:override?.sourceConfigured??source.sourceConfigured??true,operationalStartDate:startDate,operationalEndDate:endDate,startDate,endDate};
+      const derived=defaultOperationalQuarterWindow(source);
+      // REGLA AUTORITATIVA V31.10: la ventana operativa SIEMPRE se deriva de Vendors.
+      // OperationalStartDate/OperationalEndDate persistidos son materialización/caché y nunca dominan el calendario.
+      return {...source,sourceStartDate:source.startDate,sourceEndDate:source.endDate,sourceConfigured:source.sourceConfigured??false,operationalStartDate:derived.startDate,operationalEndDate:derived.endDate,startDate:derived.startDate,endDate:derived.endDate};
     });
 }
 
@@ -111,9 +111,15 @@ export function validateOperationalQuarterConfiguration(periods: VendorQuarterDe
 }
 
 export function validateVendorSourceConfiguration(periods:VendorQuarterDefinition[]):void{
-  for(const item of periods){
+  const ordered=[...periods].sort((a,b)=>a.year-b.year||a.quarter-b.quarter);
+  for(let i=0;i<ordered.length;i+=1){
+    const item=ordered[i];
     const sourceStart=String(item.sourceStartDate??'');const sourceEnd=String(item.sourceEndDate??'');
     if(!validIso(sourceStart)||!validIso(sourceEnd)||sourceStart>sourceEnd) throw Object.assign(new Error(`Ventana Vendors inválida para ${item.code}.`),{statusCode:400});
+    if(i>0){
+      const previousEnd=String(ordered[i-1].sourceEndDate??'');
+      if(validIso(previousEnd)&&sourceStart<=previousEnd) throw Object.assign(new Error(`Las ventanas Vendors ${ordered[i-1].code} y ${item.code} se traslapan.`),{statusCode:400});
+    }
   }
 }
 
