@@ -133,18 +133,18 @@ export const BBVASearchableSelect: React.FC<Props> = ({
       {open && createPortal(
         <div
           ref={panelRef}
-          className={cn('fixed z-[2200] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.18)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900', dropdownClassName)}
+          className={cn('fixed z-[2200] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_48px_rgba(15,23,42,0.18)] dark:border-slate-700 dark:bg-[#0b1728] dark:shadow-[0_22px_55px_rgba(0,0,0,0.42)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900', dropdownClassName)}
           style={{ left: position.left, top: position.top, width: position.width, maxHeight: position.maxHeight }}
           data-opens-up={position.opensUp ? 'true' : 'false'}
         >
-          <div className="border-b border-slate-200 bg-slate-50/90 p-2 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/70">
+          <div className="border-b border-slate-200 bg-slate-50/90 p-2 dark:border-slate-700 dark:bg-slate-950/70 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-950/70">
             <input
               ref={searchRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={searchPlaceholder}
               aria-label={searchPlaceholder}
-              className="h-8 w-full rounded-xl border border-slate-200 bg-white px-3 text-[11px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100"
+              className="h-8 w-full rounded-xl border border-slate-200 bg-white px-3 text-[11px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900 [.bbva-dark_&]:text-slate-100"
             />
           </div>
           <div className="overflow-y-auto py-1 [scrollbar-width:thin]" style={{ maxHeight: Math.max(110, position.maxHeight - 50) }}>

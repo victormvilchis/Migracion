@@ -120,7 +120,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="relative w-full max-w-[720px] overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.32)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900"
+        className="relative w-full max-w-[720px] overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.32)] dark:border-slate-700 dark:bg-[#0b1728] dark:shadow-[0_32px_100px_rgba(0,0,0,0.48)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900"
       >
         <div className={`absolute inset-0 bg-gradient-to-br ${style.surface}`} aria-hidden="true" />
         <div className="relative p-5 sm:p-6">
@@ -140,10 +140,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             </div>
 
             <div className="min-w-0 flex-1 pr-8">
-              <h3 id={titleId} className="text-[22px] font-semibold leading-7 text-slate-950 [.bbva-dark_&]:text-slate-100">
+              <h3 id={titleId} className="text-[22px] font-semibold leading-7 text-slate-950 dark:text-slate-100 [.bbva-dark_&]:text-slate-100">
                 {title}
               </h3>
-              <p id={descriptionId} className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500 [.bbva-dark_&]:text-slate-300">
+              <p id={descriptionId} className="mt-3 max-w-2xl text-[15px] leading-7 text-slate-500 dark:text-slate-300 [.bbva-dark_&]:text-slate-300">
                 {message}
               </p>
             </div>

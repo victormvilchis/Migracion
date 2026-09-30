@@ -49,13 +49,13 @@ export const BBVASidebar: React.FC<BBVASidebarProps> = ({ collapsed = false, mob
       className={cn(
         'flex h-[calc(100vh-4rem)] flex-col border-r transition-[width,background-color,border-color,color] duration-300',
         'border-slate-200 bg-white text-slate-900 shadow-xs',
-        '[.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-[#07111f] [.bbva-dark_&]:text-slate-100 [.bbva-dark_&]:shadow-none',
+        '[.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-[#081426] [.bbva-dark_&]:text-slate-100 [.bbva-dark_&]:shadow-none',
         mobile ? 'w-[220px] shadow-2xl' : collapsed ? 'w-[58px]' : 'w-[206px]'
       )}
     >
       <div
         className={cn(
-          'flex h-10 items-center border-b border-slate-200 [.bbva-dark_&]:border-white/10',
+          'bbva-sidebar-header flex h-10 items-center border-b border-slate-200 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-[#020617]',
           collapsed && !mobile ? 'justify-center px-2' : 'justify-between px-3'
         )}
       >

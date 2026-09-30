@@ -77,9 +77,9 @@ export const CertificationCommunicationDialog: React.FC<Props> = ({ open, commun
 
   return createPortal(
     <div className="fixed inset-0 z-[2700] overflow-y-auto bg-slate-950/65 p-4 backdrop-blur-[3px]" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
-      <div className="mx-auto my-4 w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_32px_100px_rgba(15,23,42,.38)]">
+      <div className="mx-auto my-4 w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_32px_100px_rgba(15,23,42,.38)] dark:border-slate-700 dark:bg-[#0b1728] dark:shadow-[0_32px_100px_rgba(0,0,0,.58)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-[#0b1728] [.bbva-dark_&]:shadow-[0_32px_100px_rgba(0,0,0,.58)]">
         <div className="flex items-start justify-between border-b border-slate-100 px-5 py-4">
-          <div><div className="text-[9px] font-semibold uppercase tracking-[.08em] text-blue-600">Comunicación de certificación</div><h3 className="mt-1 text-lg font-semibold text-slate-950">{certificationName}</h3><p className="mt-1 text-[10.5px] text-slate-500">Postal y correo de seguimiento</p></div>
+          <div><div className="text-[9px] font-semibold uppercase tracking-[.08em] text-blue-600 [.bbva-dark_&]:text-cyan-300">Comunicación de certificación</div><h3 className="mt-1 text-lg font-semibold text-slate-950 [.bbva-dark_&]:text-white">{certificationName}</h3><p className="mt-1 text-[10.5px] text-slate-500">Postal y correo de seguimiento</p></div>
           <button type="button" onClick={onClose} disabled={busy} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 disabled:opacity-50" aria-label="Cerrar comunicación"><X className="h-5 w-5" /></button>
         </div>
 

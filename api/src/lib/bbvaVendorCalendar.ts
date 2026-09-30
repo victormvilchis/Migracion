@@ -4,7 +4,7 @@ export interface VendorQuarterDefinition {
   code: string;
   year: number;
   quarter: 1 | 2 | 3 | 4;
-  /** startDate/endDate son SIEMPRE la ventana operativa usada por todo BBVA Workspace. */
+  /** startDate/endDate son la ventana operativa efectiva usada por todo BBVA Workspace. */
   startDate: string;
   endDate: string;
   /** Fechas reales/provisionales del calendario Vendors. */
@@ -89,13 +89,16 @@ export function configuredVendorQuarters(overrides: VendorQuarterOperationalOver
     const sourceConfigured=hasPersistedSource?Boolean(override.sourceConfigured):(existing?.sourceConfigured??false);
     sources.set(code,{code,year:parsed.year,quarter:parsed.quarter,startDate:sourceStart,endDate:sourceEnd,sourceConfigured});
   }
+  const overrideMap=new Map(overrides.map((item)=>[String(item.quarterCode??'').trim().toUpperCase(),item]));
   return [...sources.values()]
     .sort((a,b)=>a.year-b.year||a.quarter-b.quarter)
     .map((source)=>{
       const derived=defaultOperationalQuarterWindow(source);
-      // REGLA AUTORITATIVA V31.10: la ventana operativa SIEMPRE se deriva de Vendors.
-      // OperationalStartDate/OperationalEndDate persistidos son materialización/caché y nunca dominan el calendario.
-      return {...source,sourceStartDate:source.startDate,sourceEndDate:source.endDate,sourceConfigured:source.sourceConfigured??false,operationalStartDate:derived.startDate,operationalEndDate:derived.endDate,startDate:derived.startDate,endDate:derived.endDate};
+      const override=overrideMap.get(source.code);
+      const operationalStartDate=validIso(String(override?.operationalStartDate??''))?String(override?.operationalStartDate):derived.startDate;
+      const operationalEndDate=validIso(String(override?.operationalEndDate??''))?String(override?.operationalEndDate):derived.endDate;
+      // V31.14: Vendors conserva la referencia de negocio; la ventana operativa persistida gobierna KPIs y puede ajustarse manualmente.
+      return {...source,sourceStartDate:source.startDate,sourceEndDate:source.endDate,sourceConfigured:source.sourceConfigured??false,operationalStartDate,operationalEndDate,startDate:operationalStartDate,endDate:operationalEndDate};
     });
 }
 
@@ -111,15 +114,11 @@ export function validateOperationalQuarterConfiguration(periods: VendorQuarterDe
 }
 
 export function validateVendorSourceConfiguration(periods:VendorQuarterDefinition[]):void{
-  const ordered=[...periods].sort((a,b)=>a.year-b.year||a.quarter-b.quarter);
-  for(let i=0;i<ordered.length;i+=1){
-    const item=ordered[i];
+  // Las ventanas Vendors son referencias reales del negocio y pueden traslaparse entre Q.
+  // Sólo se valida la consistencia interna de cada intervalo; los KPIs usan la ventana operativa.
+  for(const item of periods){
     const sourceStart=String(item.sourceStartDate??'');const sourceEnd=String(item.sourceEndDate??'');
     if(!validIso(sourceStart)||!validIso(sourceEnd)||sourceStart>sourceEnd) throw Object.assign(new Error(`Ventana Vendors inválida para ${item.code}.`),{statusCode:400});
-    if(i>0){
-      const previousEnd=String(ordered[i-1].sourceEndDate??'');
-      if(validIso(previousEnd)&&sourceStart<=previousEnd) throw Object.assign(new Error(`Las ventanas Vendors ${ordered[i-1].code} y ${item.code} se traslapan.`),{statusCode:400});
-    }
   }
 }
 

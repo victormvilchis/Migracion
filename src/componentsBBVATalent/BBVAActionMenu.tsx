@@ -73,7 +73,7 @@ export const BBVAActionMenu: React.FC<{ items: BBVAActionItem[] }> = ({ items })
       {open && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-[2300] min-w-[190px] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-[0_18px_48px_rgba(15,23,42,0.2)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900"
+          className="fixed z-[2300] min-w-[190px] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-[0_18px_48px_rgba(15,23,42,0.2)] dark:border-slate-700 dark:bg-[#0b1728] dark:shadow-[0_22px_55px_rgba(0,0,0,0.42)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900"
           style={{ top: position.top, right: position.right, maxHeight: position.maxHeight }}
         >
           {items.map((item) => {
@@ -84,7 +84,7 @@ export const BBVAActionMenu: React.FC<{ items: BBVAActionItem[] }> = ({ items })
                 type="button"
                 disabled={item.disabled}
                 onClick={() => { setOpen(false); item.onClick(); }}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] transition disabled:cursor-not-allowed disabled:opacity-40 ${item.tone === 'danger' ? 'text-rose-600 hover:bg-rose-50 [.bbva-dark_&]:text-rose-300 [.bbva-dark_&]:hover:bg-rose-500/10' : 'text-slate-700 hover:bg-slate-50 [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-white/[0.06]'}`}
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] transition disabled:cursor-not-allowed disabled:opacity-40 ${item.tone === 'danger' ? 'text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10 [.bbva-dark_&]:text-rose-300 [.bbva-dark_&]:hover:bg-rose-500/10' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-white/[0.06] [.bbva-dark_&]:text-slate-200 [.bbva-dark_&]:hover:bg-white/[0.06]'}`}
               >
                 {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null}
                 <span>{item.label}</span>

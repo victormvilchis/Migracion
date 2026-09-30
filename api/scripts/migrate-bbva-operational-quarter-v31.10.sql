@@ -25,12 +25,16 @@ BEGIN
   IF COL_LENGTH(N'bbva.OperationalQuarterConfig',N'SourceConfigured') IS NULL ALTER TABLE bbva.OperationalQuarterConfig ADD SourceConfigured BIT NOT NULL CONSTRAINT DF_OperationalQuarterConfig_SourceConfigured DEFAULT(0);
 END;
 
-/* La ventana operativa se materializa desde Vendors: nunca es una segunda fuente de verdad. */
-UPDATE bbva.OperationalQuarterConfig
-SET OperationalStartDate = CASE WHEN DAY(SourceStartDate)=1 THEN SourceStartDate ELSE DATEADD(DAY,1,EOMONTH(SourceStartDate)) END,
-    OperationalEndDate = EOMONTH(SourceEndDate),
-    UpdatedAt = SYSUTCDATETIME()
-WHERE SourceStartDate IS NOT NULL AND SourceEndDate IS NOT NULL;
+/* Compatibilidad histórica: V31.14 permite ventana operativa independiente.
+   Si V31.14 ya fue aplicada, NO volver a derivar ni sobrescribir ajustes manuales. */
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name=N'CK_OperationalQuarterConfig_MonthStart' AND parent_object_id=OBJECT_ID(N'bbva.OperationalQuarterConfig'))
+BEGIN
+  UPDATE bbva.OperationalQuarterConfig
+  SET OperationalStartDate = CASE WHEN DAY(SourceStartDate)=1 THEN SourceStartDate ELSE DATEADD(DAY,1,EOMONTH(SourceStartDate)) END,
+      OperationalEndDate = EOMONTH(SourceEndDate),
+      UpdatedAt = SYSUTCDATETIME()
+  WHERE SourceStartDate IS NOT NULL AND SourceEndDate IS NOT NULL;
+END;
 
 IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name=N'CK_OperationalQuarterConfig_SourcePair')
   ALTER TABLE bbva.OperationalQuarterConfig WITH CHECK ADD CONSTRAINT CK_OperationalQuarterConfig_SourcePair
@@ -44,7 +48,8 @@ IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name=N'CK_OperationalQu
   ALTER TABLE bbva.OperationalQuarterConfig WITH CHECK ADD CONSTRAINT CK_OperationalQuarterConfig_SourceConfigured
   CHECK (SourceConfigured=0 OR (SourceStartDate IS NOT NULL AND SourceEndDate IS NOT NULL));
 
-IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name=N'CK_OperationalQuarterConfig_DerivedWindow')
+IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name=N'CK_OperationalQuarterConfig_MonthStart' AND parent_object_id=OBJECT_ID(N'bbva.OperationalQuarterConfig'))
+AND NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name=N'CK_OperationalQuarterConfig_DerivedWindow')
   ALTER TABLE bbva.OperationalQuarterConfig WITH CHECK ADD CONSTRAINT CK_OperationalQuarterConfig_DerivedWindow
   CHECK (
     SourceStartDate IS NULL OR SourceEndDate IS NULL OR

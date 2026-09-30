@@ -9,12 +9,12 @@ export type BBVAMetricTone = 'blue' | 'emerald' | 'amber' | 'rose' | 'orange' | 
 export type BBVAMetricDensity = 'default' | 'compact';
 
 const tones: Record<BBVAMetricTone, string> = {
-  blue: 'border-blue-100 bg-blue-50 text-blue-700 [.bbva-dark_&]:border-blue-400/20 [.bbva-dark_&]:bg-blue-400/10 [.bbva-dark_&]:text-blue-300',
-  emerald: 'border-emerald-100 bg-emerald-50 text-emerald-700 [.bbva-dark_&]:border-emerald-400/20 [.bbva-dark_&]:bg-emerald-400/10 [.bbva-dark_&]:text-emerald-300',
-  amber: 'border-amber-100 bg-amber-50 text-amber-700 [.bbva-dark_&]:border-amber-400/20 [.bbva-dark_&]:bg-amber-400/10 [.bbva-dark_&]:text-amber-300',
-  rose: 'border-rose-100 bg-rose-50 text-rose-700 [.bbva-dark_&]:border-rose-400/20 [.bbva-dark_&]:bg-rose-400/10 [.bbva-dark_&]:text-rose-300',
-  orange: 'border-orange-100 bg-orange-50 text-orange-700 [.bbva-dark_&]:border-orange-400/20 [.bbva-dark_&]:bg-orange-400/10 [.bbva-dark_&]:text-orange-300',
-  violet: 'border-violet-100 bg-violet-50 text-violet-700 [.bbva-dark_&]:border-violet-400/20 [.bbva-dark_&]:bg-violet-400/10 [.bbva-dark_&]:text-violet-300',
+  blue: 'border-blue-100 bg-blue-50 text-blue-700 [.bbva-dark_&]:border-blue-400/30 [.bbva-dark_&]:bg-blue-400/15 [.bbva-dark_&]:text-blue-200',
+  emerald: 'border-emerald-100 bg-emerald-50 text-emerald-700 [.bbva-dark_&]:border-emerald-400/30 [.bbva-dark_&]:bg-emerald-400/15 [.bbva-dark_&]:text-emerald-200',
+  amber: 'border-amber-100 bg-amber-50 text-amber-700 [.bbva-dark_&]:border-amber-400/30 [.bbva-dark_&]:bg-amber-400/15 [.bbva-dark_&]:text-amber-200',
+  rose: 'border-rose-100 bg-rose-50 text-rose-700 [.bbva-dark_&]:border-rose-400/30 [.bbva-dark_&]:bg-rose-400/15 [.bbva-dark_&]:text-rose-200',
+  orange: 'border-orange-100 bg-orange-50 text-orange-700 [.bbva-dark_&]:border-orange-400/30 [.bbva-dark_&]:bg-orange-400/15 [.bbva-dark_&]:text-orange-200',
+  violet: 'border-violet-100 bg-violet-50 text-violet-700 [.bbva-dark_&]:border-violet-400/30 [.bbva-dark_&]:bg-violet-400/15 [.bbva-dark_&]:text-violet-200',
   slate: 'border-slate-200 bg-slate-50 text-slate-700 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-800 [.bbva-dark_&]:text-slate-300',
 };
 

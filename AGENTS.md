@@ -837,3 +837,50 @@ BFS remains its own product, architecture and source of truth.
 - Las acciones permanecen integradas al extremo derecho del mismo header, sin una card de contexto adicional.
 - Paneles, dashboards, métricas y exploradores operativos muestran siempre `Actualizar` y `Limpiar`; `Limpiar` puede estar deshabilitado cuando el contexto ya está en default, pero no desaparece.
 - `Limpiar` devuelve los filtros visibles a sus valores default; el periodo vuelve al periodo operativo actual cuando corresponda.
+
+
+### V31.13 — eliminación segura de periodos operativos
+
+- Los periodos operativos sólo se eliminan desde el final del calendario para preservar continuidad sin huecos.
+- El periodo actual, periodos históricos y los periodos base del calendario BBVA están protegidos contra eliminación.
+- Los años agregados manualmente pueden eliminarse completos únicamente cuando son el año futuro más reciente.
+- Eliminar un periodo/año también elimina sus snapshots de dashboard asociados dentro de la misma transacción.
+- Toda eliminación exige confirmación visual destructiva. No reutilizar DELETE como “sincronizar”; la sincronización tiene endpoint POST explícito.
+
+
+### V31.14 — Vendors vs ventana operativa + Banco de talento
+
+- Las ventanas Vendors son referencias reales del negocio y pueden traslaparse entre periodos.
+- La ventana operativa es editable e independiente; ella gobierna KPIs, Seguimiento, Métricas, Panel y readiness.
+- Las ventanas operativas mantienen meses completos, continuidad y ausencia de traslapes. La sugerencia derivada de Vendors es sólo referencia, no una imposición automática.
+- En Banco de talento la columna de identidad se llama `Nombre`.
+- La urgencia por permanencia >60 días se comunica con su badge; no remarcar toda la fila con fondo/ring amarillo.
+
+
+### V31.15 — preview temporal de tema oscuro
+
+- Existe un selector temporal Light/Dark en el Header global de BaseBFS para validar visualmente toda la plataforma antes de integración productiva.
+- El estado es global: aplica al template BaseBFS, Header/Sidebar global y BBVA Workspace.
+- El tema se persiste únicamente en `localStorage` con la clave `basebfs.theme.preview`; no requiere backend ni SQL.
+- BBVA consume el estado global mediante la clase raíz y conserva sus variantes `bbva-dark`; no crear un segundo selector dentro de BBVA.
+- Esta funcionalidad está marcada explícitamente como TEMPORAL y debe retirarse durante la integración a producción.
+
+
+### V31.15a — polish visual Dark BBVA
+
+- El estado global Light/Dark debe pasarse explícitamente a `BBVALayout`; no volver a resolver el tema únicamente leyendo la clase del DOM durante render porque puede dejar el workspace con una clase stale al alternar.
+- En Dark, el header/contexto BBVA usa la banda `#020617`; el main queda un nivel arriba (`#07111f`) para conservar jerarquía visual.
+- Dark BBVA debe mantener contraste AA práctico en textos secundarios y conservar color semántico visible en azul/cyan, verde, ámbar, rose, naranja y violeta.
+- Selects portaleados, multiselect, estructura y diálogos deben cambiar de tema junto con el shell.
+- Las tablas BBVA usan densidad vertical compacta: reducir padding superior/inferior de celdas y del paginador, sin reducir legibilidad ni hit-area de acciones.
+- V31.15/V31.15a siguen siendo PREVIEW TEMPORAL y deben retirarse durante integración productiva.
+
+
+### V31.15b — estabilidad del preview Dark BBVA
+
+- El header/context bar de BBVA debe usar `#020617` en Dark, igual que la banda oscura global; el main BBVA usa `#07111f` para conservar jerarquía visual. No permitir que overrides globales `bg-white/*` igualen ambos tonos.
+- Todo overlay portaleado a `document.body` debe reaccionar al estado global `html.dark`; no depender únicamente de un ancestro `.bbva-dark` porque el portal queda fuera del árbol BBVA.
+- Light/Dark debe ser reversible sin componentes stale: al regresar a Light, overlays, selects, dialogs, cards y tablas recuperan sus superficies claras.
+- Las tablas BBVA conservan hit-area de acciones, pero reducen aire vertical: padding inferior de celdas más compacto que el estándar previo.
+- La prueba de persistencia de filtros debe tolerar props en `BBVALayout`; validar estructura semántica, no una etiqueta JSX sin atributos.
+- V31.15/V31.15a/V31.15b siguen siendo PREVIEW TEMPORAL y deben retirarse durante integración productiva.

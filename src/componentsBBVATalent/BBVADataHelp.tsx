@@ -91,29 +91,29 @@ export const BBVADataHelp: React.FC<BBVADataHelpProps> = ({ label, content }) =>
 
   const panel = open && typeof document !== 'undefined'
     ? createPortal(
-      <div ref={panelRef} style={style} className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-[0_18px_50px_rgba(15,23,42,0.20)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900">
-        <div className="text-[10px] font-semibold text-slate-900 [.bbva-dark_&]:text-slate-100">{label}</div>
+      <div ref={panelRef} style={style} className="rounded-xl border border-slate-200 bg-white p-3 text-left shadow-[0_18px_50px_rgba(15,23,42,0.20)] dark:border-slate-700 dark:bg-[#0b1728] dark:shadow-[0_22px_55px_rgba(0,0,0,0.42)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900">
+        <div className="text-[10px] font-semibold text-slate-900 dark:text-slate-100 [.bbva-dark_&]:text-slate-100">{label}</div>
         <dl className="mt-2 space-y-2 text-[9.5px] leading-4">
           <div>
             <dt className="font-semibold uppercase tracking-[0.04em] text-slate-400">Qué mide</dt>
-            <dd className="mt-0.5 text-slate-600 [.bbva-dark_&]:text-slate-300">{content.what}</dd>
+            <dd className="mt-0.5 text-slate-600 dark:text-slate-300 [.bbva-dark_&]:text-slate-300">{content.what}</dd>
           </div>
           {content.calculation ? (
             <div>
               <dt className="font-semibold uppercase tracking-[0.04em] text-slate-400">Cómo se calcula</dt>
-              <dd className="mt-0.5 text-slate-600 [.bbva-dark_&]:text-slate-300">{content.calculation}</dd>
+              <dd className="mt-0.5 text-slate-600 dark:text-slate-300 [.bbva-dark_&]:text-slate-300">{content.calculation}</dd>
             </div>
           ) : null}
           {content.interpretation ? (
             <div>
               <dt className="font-semibold uppercase tracking-[0.04em] text-slate-400">Cómo interpretarlo</dt>
-              <dd className="mt-0.5 text-slate-600 [.bbva-dark_&]:text-slate-300">{content.interpretation}</dd>
+              <dd className="mt-0.5 text-slate-600 dark:text-slate-300 [.bbva-dark_&]:text-slate-300">{content.interpretation}</dd>
             </div>
           ) : null}
           {content.scope ? (
             <div>
               <dt className="font-semibold uppercase tracking-[0.04em] text-slate-400">Qué afecta el valor</dt>
-              <dd className="mt-0.5 text-slate-600 [.bbva-dark_&]:text-slate-300">{content.scope}</dd>
+              <dd className="mt-0.5 text-slate-600 dark:text-slate-300 [.bbva-dark_&]:text-slate-300">{content.scope}</dd>
             </div>
           ) : null}
         </dl>

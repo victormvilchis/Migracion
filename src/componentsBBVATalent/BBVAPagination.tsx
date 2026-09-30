@@ -22,7 +22,7 @@ export const BBVAPagination: React.FC<BBVAPaginationProps> = ({ total, page, siz
   const pagesToRender = Array.from({ length: visibleCount }, (_, index) => start + index);
 
   return (
-    <div className="flex flex-col gap-2 border-t border-slate-200 px-3 py-2 [.bbva-dark_&]:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 border-t border-slate-200 px-3 py-1.5 [.bbva-dark_&]:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-[10px] text-slate-500 [.bbva-dark_&]:text-slate-400">{total} registro{total === 1 ? '' : 's'}</div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <div className="flex items-center gap-1">

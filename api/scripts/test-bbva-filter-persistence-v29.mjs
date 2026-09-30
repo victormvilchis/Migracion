@@ -40,7 +40,7 @@ assert.match(query, /\{ replace: true \}/);
 
 // El boundary existe tanto dentro como fuera de BBVA: salir del workspace también cierra la visita previa.
 assert.equal((app.match(/<BBVAFilterPersistenceBoundary pathname=\{location\.pathname\}>/g) ?? []).length, 2);
-assert.match(app, /<BBVALayout>[\s\S]*?<BBVAFilterPersistenceBoundary pathname=\{location\.pathname\}>/);
+assert.match(app, /<BBVALayout(?:\s+[^>]*)?>[\s\S]*?<BBVAFilterPersistenceBoundary pathname=\{location\.pathname\}>/);
 assert.match(app, /<main className="flex-1 overflow-y-auto[\s\S]*?<BBVAFilterPersistenceBoundary pathname=\{location\.pathname\}>/);
 
 // El estándar queda documentado para módulos presentes y futuros.

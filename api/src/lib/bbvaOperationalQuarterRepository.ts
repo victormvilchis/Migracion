@@ -36,7 +36,7 @@ export class BbvaOperationalQuarterRepository {
   private async assertReady():Promise<void>{
     const pool=await getDbConnection();
     const exists=await pool.request().query(`SELECT CASE WHEN OBJECT_ID(N'bbva.OperationalQuarterConfig',N'U') IS NOT NULL AND COL_LENGTH(N'bbva.OperationalQuarterConfig',N'SourceStartDate') IS NOT NULL THEN 1 ELSE 0 END AS ready;`);
-    if(!Number(exists.recordset[0]?.ready??0)) throw Object.assign(new Error('Falta aplicar la migración V31.9 de periodos multiaño.'),{statusCode:409});
+    if(!Number(exists.recordset[0]?.ready??0)) throw Object.assign(new Error('Falta aplicar la migración de periodos multiaño.'),{statusCode:409});
   }
 
   async upsertConfiguration(input:BbvaOperationalQuarterWrite, actorEmail:string):Promise<void>{
@@ -88,11 +88,9 @@ export class BbvaOperationalQuarterRepository {
       .query(`IF OBJECT_ID(N'bbva.OperationalQuarterConfig',N'U') IS NOT NULL UPDATE bbva.OperationalQuarterConfig SET OperationalStartDate=@startDate,OperationalEndDate=@endDate,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail WHERE QuarterCode=@quarterCode;`);
   }
 
-
   async invalidateMetricSnapshots(quarterCode:string):Promise<void>{
     const pool=await getDbConnection();
-    await pool.request()
-      .input('quarterCode',sql.NVarChar(16),quarterCode)
+    await pool.request().input('quarterCode',sql.NVarChar(16),quarterCode)
       .query(`IF OBJECT_ID(N'bbva.DashboardMetricSnapshot',N'U') IS NOT NULL DELETE FROM bbva.DashboardMetricSnapshot WHERE QuarterCode=@quarterCode;`);
   }
 
@@ -102,8 +100,32 @@ export class BbvaOperationalQuarterRepository {
     await this.upsertConfiguration({quarterCode,sourceStartDate:existing?.sourceStartDate??null,sourceEndDate:existing?.sourceEndDate??null,sourceConfigured:existing?.sourceConfigured??false,operationalStartDate,operationalEndDate},actorEmail);
   }
 
-  async delete(quarterCode:string):Promise<void>{
+  async deletePeriod(quarterCode:string):Promise<void>{
+    await this.assertReady();
     const pool=await getDbConnection();
-    await pool.request().input('quarterCode',sql.NVarChar(16),quarterCode).query(`IF OBJECT_ID(N'bbva.OperationalQuarterConfig',N'U') IS NOT NULL DELETE FROM bbva.OperationalQuarterConfig WHERE QuarterCode=@quarterCode;`);
+    const transaction=new sql.Transaction(pool);await transaction.begin();
+    try{
+      await new sql.Request(transaction).input('quarterCode',sql.NVarChar(16),quarterCode)
+        .query(`IF OBJECT_ID(N'bbva.DashboardMetricSnapshot',N'U') IS NOT NULL DELETE FROM bbva.DashboardMetricSnapshot WHERE QuarterCode=@quarterCode;`);
+      await new sql.Request(transaction).input('quarterCode',sql.NVarChar(16),quarterCode)
+        .query(`DELETE FROM bbva.OperationalQuarterConfig WHERE QuarterCode=@quarterCode;`);
+      await transaction.commit();
+    }catch(error){await transaction.rollback();throw error;}
   }
+
+  async deleteYear(year:number):Promise<void>{
+    await this.assertReady();
+    const pool=await getDbConnection();
+    const transaction=new sql.Transaction(pool);await transaction.begin();
+    const prefix=`${year}Q%`;
+    try{
+      await new sql.Request(transaction).input('prefix',sql.NVarChar(16),prefix)
+        .query(`IF OBJECT_ID(N'bbva.DashboardMetricSnapshot',N'U') IS NOT NULL DELETE FROM bbva.DashboardMetricSnapshot WHERE QuarterCode LIKE @prefix;`);
+      await new sql.Request(transaction).input('prefix',sql.NVarChar(16),prefix)
+        .query(`DELETE FROM bbva.OperationalQuarterConfig WHERE QuarterCode LIKE @prefix;`);
+      await transaction.commit();
+    }catch(error){await transaction.rollback();throw error;}
+  }
+
+  async delete(quarterCode:string):Promise<void>{return this.deletePeriod(quarterCode);}
 }

@@ -14,7 +14,7 @@ export const BBVAContextBar: React.FC<BBVAContextBarProps> = ({ collapsed, onTog
   const ToggleIcon = collapsed ? PanelLeftOpen : PanelLeftClose;
 
   return (
-    <div className="sticky top-16 z-20 flex h-10 w-full items-center border-b border-slate-200/90 bg-white/95 px-3 backdrop-blur-xl transition-colors duration-300 [.bbva-dark_&]:border-white/10 [.bbva-dark_&]:bg-slate-950/90 sm:px-4">
+    <div className="bbva-context-bar sticky top-16 z-20 flex h-10 w-full items-center border-b border-slate-200/90 bg-white/95 px-3 backdrop-blur-xl transition-colors duration-300 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-[#020617]/[0.98] [.bbva-dark_&]:shadow-[0_8px_20px_rgba(0,0,0,0.18)] sm:px-4">
       <button
         type="button"
         onClick={onToggleSidebar}
@@ -25,7 +25,7 @@ export const BBVAContextBar: React.FC<BBVAContextBarProps> = ({ collapsed, onTog
         <ToggleIcon className="h-4 w-4" />
       </button>
 
-      <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-slate-400 [.bbva-dark_&]:text-slate-500" aria-label="Ruta de navegación">
+      <nav className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-slate-400 [.bbva-dark_&]:text-slate-400" aria-label="Ruta de navegación">
         {parts.map((part, index) => {
           const current = index === parts.length - 1;
           return (

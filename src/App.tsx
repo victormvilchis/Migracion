@@ -59,12 +59,16 @@ const modulePage = (page: React.ReactNode) => (
   </React.Suspense>
 );
 
+export type AppThemeMode = 'light' | 'dark';
+
 interface RoutedAppProps {
   userKey: number;
   onUserChanged: () => void;
+  themeMode: AppThemeMode;
+  onToggleTheme: () => void;
 }
 
-const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
+const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged, themeMode, onToggleTheme }) => {
   const location = useLocation();
   const isBbvaRoute = location.pathname.startsWith('/bbva/');
 
@@ -78,12 +82,12 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
   }, [isBbvaRoute]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900 selection:bg-blue-600 selection:text-white">
+    <div className="flex min-h-screen flex-col bg-[#f8fafc] text-slate-900 transition-colors duration-300 selection:bg-blue-600 selection:text-white dark:bg-[#020617] dark:text-slate-100">
       {/* Header BFS corporativo/global: obligatorio en todos los módulos. */}
-      <Header onUserChanged={onUserChanged} />
+      <Header onUserChanged={onUserChanged} themeMode={themeMode} onToggleTheme={onToggleTheme} />
 
       {isBbvaRoute ? (
-        <BBVALayout>
+        <BBVALayout themeMode={themeMode}>
           <BBVAFilterPersistenceBoundary pathname={location.pathname}>
             <div key={userKey} className="w-full min-w-0">
               <Routes>
@@ -172,7 +176,7 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
       ) : (
         <div className="flex flex-1 overflow-hidden">
           <Sidebar />
-          <main className="flex-1 overflow-y-auto bg-[#f8fafc] p-4 sm:p-8">
+          <main className="flex-1 overflow-y-auto bg-[#f8fafc] p-4 transition-colors duration-300 dark:bg-[#020617] sm:p-8">
             <BBVAFilterPersistenceBoundary pathname={location.pathname}>
               <div key={userKey} className="mx-auto max-w-7xl">
                 <Routes>
@@ -192,8 +196,31 @@ const RoutedApp: React.FC<RoutedAppProps> = ({ userKey, onUserChanged }) => {
   );
 };
 
+const THEME_STORAGE_KEY = 'basebfs.theme.preview';
+
+const readInitialTheme = (): AppThemeMode => {
+  if (typeof window === 'undefined') return 'light';
+  try {
+    return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+};
+
 export const App: React.FC = () => {
   const [userKey, setUserKey] = useState(0);
+  // TEMPORAL: este selector de tema se retirará al integrar a producción.
+  const [themeMode, setThemeMode] = useState<AppThemeMode>(readInitialTheme);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const dark = themeMode === 'dark';
+    root.classList.toggle('dark', dark);
+    root.classList.toggle('bbva-dark', dark);
+    root.dataset.appTheme = themeMode;
+    root.style.colorScheme = themeMode;
+    try { window.localStorage.setItem(THEME_STORAGE_KEY, themeMode); } catch { /* preview local only */ }
+  }, [themeMode]);
 
   const handleUserChanged = () => {
     setUserKey((previous) => previous + 1);
@@ -203,7 +230,12 @@ export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <RoutedApp userKey={userKey} onUserChanged={handleUserChanged} />
+        <RoutedApp
+          userKey={userKey}
+          onUserChanged={handleUserChanged}
+          themeMode={themeMode}
+          onToggleTheme={() => setThemeMode((current) => current === 'dark' ? 'light' : 'dark')}
+        />
       </BrowserRouter>
     </QueryClientProvider>
   );

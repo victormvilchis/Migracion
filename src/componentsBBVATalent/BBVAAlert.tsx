@@ -121,7 +121,7 @@ export const BBVAAlert: React.FC<BBVAAlertProps> = ({
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <div className="relative overflow-hidden rounded-xl border border-slate-200/90 bg-white/98 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/98 shadow-[0_10px_30px_-14px_rgba(15,23,42,0.28)] backdrop-blur-lg">
+      <div className="relative overflow-hidden rounded-xl border border-slate-200/90 bg-white/98 dark:border-slate-700 dark:bg-[#0b1728]/98 dark:shadow-[0_18px_40px_-18px_rgba(0,0,0,0.55)] [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-slate-900/98 shadow-[0_10px_30px_-14px_rgba(15,23,42,0.28)] backdrop-blur-lg">
         <span className={`absolute inset-y-0 left-0 w-0.5 ${config.accent}`} aria-hidden="true" />
 
         <div className="flex items-start gap-2.5 px-3 py-2.5 pl-3.5">
@@ -134,11 +134,11 @@ export const BBVAAlert: React.FC<BBVAAlertProps> = ({
 
           <div className="min-w-0 flex-1">
             {title && (
-              <div className="mb-0.5 break-words text-[11.5px] font-semibold leading-4 tracking-[-0.01em] text-slate-900 [.bbva-dark_&]:text-slate-100">
+              <div className="mb-0.5 break-words text-[11.5px] font-semibold leading-4 tracking-[-0.01em] text-slate-900 dark:text-slate-100 [.bbva-dark_&]:text-slate-100">
                 {title}
               </div>
             )}
-            <div className="whitespace-pre-wrap break-words text-[11.5px] leading-[1.45] text-slate-600 [.bbva-dark_&]:text-slate-300">{children}</div>
+            <div className="whitespace-pre-wrap break-words text-[11.5px] leading-[1.45] text-slate-600 dark:text-slate-300 [.bbva-dark_&]:text-slate-300">{children}</div>
           </div>
 
           <button
