@@ -71,6 +71,8 @@ export const EngineeringSpecialtyExplorerPage: React.FC = () => {
   const [selected, setSelected] = useState<SelectedNode | null>(null);
   const [pending, setPending] = useState<PendingStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasExplorerFilters = Boolean(search || level2Id || staffer || status !== 'ACTIVE');
+  const clearExplorerFilters = () => { setSearch(''); setLevel2Id(''); setStaffer(''); setStatus('ACTIVE'); };
 
   const rawHierarchy = query.data?.hierarchy ?? [];
   const level2Options = useMemo(() => [...rawHierarchy].sort((a,b)=>b.collaboratorCount-a.collaboratorCount || b.specialtyCount-a.specialtyCount || a.name.localeCompare(b.name,'es-MX',{sensitivity:'base'})).map((item) => ({ value: item.id, label: item.name.toUpperCase(), description: `${item.collaboratorCount} colaboradores` })), [rawHierarchy]);
@@ -183,7 +185,7 @@ export const EngineeringSpecialtyExplorerPage: React.FC = () => {
 
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
 
-      <BBVAFilterBar actions={<BBVAButton size="sm" variant="secondary" icon={<RefreshCw className="h-3.5 w-3.5" />} onClick={() => void query.refetch()}>Actualizar</BBVAButton>}>
+      <BBVAFilterBar actions={<><BBVAButton size="sm" variant="secondary" icon={<RefreshCw className="h-3.5 w-3.5" />} onClick={() => void query.refetch()}>Actualizar</BBVAButton><BBVAButton size="sm" variant="secondary" onClick={clearExplorerFilters} disabled={!hasExplorerFilters}>Limpiar</BBVAButton></>}>
         <div className="relative w-full sm:w-[300px]"><Search className="pointer-events-none absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400"/><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar estructura, gremio, especialidad o persona" className="h-9 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-[11px] outline-none focus:border-blue-500"/></div>
         <div className="w-full sm:w-[205px]"><BBVASearchableSelect value={level2Id} onChange={setLevel2Id} options={[{ value: '', label: 'TODAS LAS ESTRUCTURAS' }, ...level2Options]} ariaLabel="Estructura nivel 2" searchPlaceholder="Buscar estructura" /></div>
         <div className="w-full sm:w-[190px]"><BBVASearchableSelect value={staffer} onChange={setStaffer} options={[{ value: '', label: 'TODOS LOS STAFFER' }, ...query.data.filters.staffers.map((value) => ({ value, label: value.toUpperCase() }))]} ariaLabel="Staffer" searchPlaceholder="Buscar staffer" /></div>

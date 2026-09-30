@@ -828,3 +828,12 @@ BFS remains its own product, architecture and source of truth.
 - Seguimiento, Métricas, Panel, readiness, asignación quarterCode y vencimientos por periodo deben consumir bbvaVendorCalendar/configuredVendorQuarters; no duplicar fechas ni fórmulas en frontend.
 - Cambiar una ventana Vendors invalida snapshots históricos del Q afectado para evitar comparar métricas calculadas con fronteras distintas.
 - El frontend puede mostrar una previsualización de la ventana operativa, pero no puede editarla ni enviarla como fuente de verdad.
+
+
+### V31.12 — header de filtros y acciones de panel
+
+- Toda barra de filtros BBVA ocupa y distribuye el 100% del ancho disponible; no deja huecos grandes entre el último filtro y las acciones.
+- Los controles se adaptan al ancho disponible. Si existe buscador, éste absorbe más espacio; si no existe, los filtros se reparten el espacio de forma homogénea y responsiva.
+- Las acciones permanecen integradas al extremo derecho del mismo header, sin una card de contexto adicional.
+- Paneles, dashboards, métricas y exploradores operativos muestran siempre `Actualizar` y `Limpiar`; `Limpiar` puede estar deshabilitado cuando el contexto ya está en default, pero no desaparece.
+- `Limpiar` devuelve los filtros visibles a sus valores default; el periodo vuelve al periodo operativo actual cuando corresponda.

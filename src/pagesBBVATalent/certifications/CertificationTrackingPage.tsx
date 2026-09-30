@@ -56,20 +56,10 @@ const filterDefaults = {
 type SortField = 'collaboratorName' | 'certificationName' | 'status' | 'expirationDate' | 'scheduledDate' | 'attempt';
 
 const metricHelp = {
-  attention: {
-    what: 'Certificaciones aplicables de colaboradores activos que requieren una acción o seguimiento en su estado actual.',
-    calculation: 'Total de registros entregados por Seguimiento, excluyendo Vigente y No aplica.',
-    interpretation: 'Es el universo operativo de esta pantalla, no un score de riesgo.',
-  },
   expired: {
     what: 'Certificaciones cuya vigencia calculada ya terminó.',
     calculation: 'Registros cuyo estado de dominio actual es Vencida.',
     interpretation: 'Requieren revisión de vigencia y, cuando corresponda, iniciar recertificación.',
-  },
-  recertification: {
-    what: 'Certificaciones cuyo estado actual requiere un nuevo ciclo de recertificación.',
-    calculation: 'Registros con estado Recertificación pendiente.',
-    interpretation: 'La condición proviene de las reglas configuradas de la certificación.',
   },
   expiring: {
     what: 'Certificaciones dentro del periodo de alerta previo a su fecha de vencimiento.',
@@ -174,7 +164,6 @@ export const CertificationTrackingPage: React.FC = () => {
     .sort((a, b) => (direction === 'asc' ? 1 : -1) * compare(a, b, sort)), [contextItems, direction, filters.attemptCriticality, filters.certificationStatus, filters.critical, sort]);
 
   const summary = useMemo(() => buildTrackingSummary(contextItems), [contextItems]);
-  const attentionRequired=useMemo(()=>contextItems.filter((item)=>!['VALID','NOT_APPLICABLE'].includes(item.status)).length,[contextItems]);
   const safePage=Math.min(page,Math.max(0,Math.ceil(filtered.length/size)-1));
   const paged=useMemo(()=>filtered.slice(safePage*size,safePage*size+size),[filtered,safePage,size]);
   React.useEffect(()=>{patchSort({page:0});},[filters.certificationStatus,filters.profile,filters.technology,filters.certification,filters.critical,filters.attemptCriticality,filters.quarterCode]);
@@ -249,7 +238,7 @@ export const CertificationTrackingPage: React.FC = () => {
     <div className="space-y-2 animate-fade-in">
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
 
-      <BBVAFilterBar actions={<><BBVAButton variant="secondary" size="sm" icon={<RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />} onClick={() => void query.refetch()}>Actualizar</BBVAButton>{activeFilters.length ? <BBVAButton variant="secondary" size="sm" onClick={reset}>Limpiar</BBVAButton> : null}</>}>
+      <BBVAFilterBar actions={<><BBVAButton variant="secondary" size="sm" icon={<RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />} onClick={() => void query.refetch()}>Actualizar</BBVAButton><BBVAButton variant="secondary" size="sm" onClick={reset} disabled={!activeFilters.length}>Limpiar</BBVAButton></>}>
         
         <BBVAMultiSelect className="w-full sm:w-[190px]" values={selectedTechnologies} onChange={(values) => update({ technology: encodeMultiValue(values) })} options={options.technologies.map((option)=>({ ...option, label: upperDisplay(option.label) }))} placeholder="Todas las tecnologías" selectedLabel="tecnologías" ariaLabel="Tecnología" />
         <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={filters.profile} onChange={(value) => update({ profile: value })} options={[{ value: '', label: 'Todos los perfiles' }, ...options.profiles.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Perfil" /></div>
@@ -263,13 +252,11 @@ export const CertificationTrackingPage: React.FC = () => {
         <section aria-label="Resumen operativo de seguimiento" className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(125px,1fr))] items-stretch gap-1.5">
             <BBVAMetricCard density="compact" label={`Vencen en ${formatPeriodCode(effectiveQuarterCode)}`} value={dueInPeriodCount} icon={<CalendarRange className="h-3.5 w-3.5" />} tone={dueInPeriodCount ? 'amber' : 'emerald'} supportingText="Vigencia dentro del periodo" active={filters.certificationStatus === 'DUE_IN_PERIOD'} onAction={() => update({ certificationStatus: filters.certificationStatus === 'DUE_IN_PERIOD' ? '' : 'DUE_IN_PERIOD' })} actionLabel={filters.certificationStatus === 'DUE_IN_PERIOD' ? 'Quitar filtro' : 'Filtrar'} />
-            <BBVAMetricCard density="compact" label="Atención requerida" value={attentionRequired} icon={<AlertCircle className="h-3.5 w-3.5" />} tone="blue" help={metricHelp.attention} supportingText={`${summary.scheduled} con fecha programada`} active={!filters.certificationStatus} onAction={() => filterStatus('')} actionLabel="Todas" />
-            <BBVAMetricCard density="compact" label="Críticos 2/2" value={summary.criticalExit} icon={<ShieldAlert className="h-3.5 w-3.5" />} tone={summary.criticalExit ? 'rose' : 'emerald'} supportingText={summary.criticalExit ? 'Resolver baja / becario' : 'Sin casos críticos'} active={filters.critical === 'OPEN'} onAction={() => update({ critical: filters.critical === 'OPEN' ? '' : 'OPEN' })} actionLabel={filters.critical === 'OPEN' ? 'Quitar filtro' : 'Filtrar'} />
-            <BBVAMetricCard density="compact" label="Vencidas" value={summary.expired} icon={<ShieldAlert className="h-3.5 w-3.5" />} tone={summary.expired ? 'rose' : 'emerald'} help={metricHelp.expired} supportingText={summary.expired ? 'Fuera de vigencia' : 'Sin vencidas'} active={filters.certificationStatus === 'EXPIRED'} onAction={() => filterStatus('EXPIRED')} actionLabel="Filtrar" />
-            <BBVAMetricCard density="compact" label="Recertificación" value={summary.recertificationPending} icon={<RefreshCw className="h-3.5 w-3.5" />} tone={summary.recertificationPending ? 'orange' : 'emerald'} help={metricHelp.recertification} supportingText={summary.recertificationPending ? 'Nuevo ciclo requerido' : 'Sin pendientes'} active={filters.certificationStatus === 'RECERTIFICATION_PENDING'} onAction={() => filterStatus('RECERTIFICATION_PENDING')} actionLabel="Filtrar" />
             <BBVAMetricCard density="compact" label="Próximas a vencer" value={summary.expiring} icon={<Clock3 className="h-3.5 w-3.5" />} tone={summary.expiring ? 'amber' : 'emerald'} help={metricHelp.expiring} supportingText={summary.expiring ? 'Periodo de alerta' : 'Sin próximas'} active={filters.certificationStatus === 'EXPIRING'} onAction={() => filterStatus('EXPIRING')} actionLabel="Filtrar" />
-            <BBVAMetricCard density="compact" label="Reprobadas" value={summary.failed} icon={<AlertCircle className="h-3.5 w-3.5" />} tone={summary.failed ? 'rose' : 'emerald'} help={metricHelp.failed} supportingText={summary.limitReached ? `${summary.limitReached} sin intentos` : 'Ciclo actual'} active={filters.certificationStatus === 'FAILED'} onAction={() => filterStatus('FAILED')} actionLabel="Filtrar" />
             <BBVAMetricCard density="compact" label="Pendientes" value={summary.pending} icon={<CalendarClock className="h-3.5 w-3.5" />} tone={summary.pending ? 'slate' : 'emerald'} help={metricHelp.pending} supportingText={`${summary.applied} aplicadas · ${summary.scheduled} programadas`} active={filters.certificationStatus === 'PENDING'} onAction={() => filterStatus('PENDING')} actionLabel="Filtrar" />
+            <BBVAMetricCard density="compact" label="Vencidas" value={summary.expired} icon={<ShieldAlert className="h-3.5 w-3.5" />} tone={summary.expired ? 'rose' : 'emerald'} help={metricHelp.expired} supportingText={summary.expired ? 'Fuera de vigencia' : 'Sin vencidas'} active={filters.certificationStatus === 'EXPIRED'} onAction={() => filterStatus('EXPIRED')} actionLabel="Filtrar" />
+            <BBVAMetricCard density="compact" label="Reprobadas" value={summary.failed} icon={<AlertCircle className="h-3.5 w-3.5" />} tone={summary.failed ? 'rose' : 'emerald'} help={metricHelp.failed} supportingText={summary.limitReached ? `${summary.limitReached} sin intentos` : 'Ciclo actual'} active={filters.certificationStatus === 'FAILED'} onAction={() => filterStatus('FAILED')} actionLabel="Filtrar" />
+            <BBVAMetricCard density="compact" label="Críticos 2/2" value={summary.criticalExit} icon={<ShieldAlert className="h-3.5 w-3.5" />} tone={summary.criticalExit ? 'rose' : 'emerald'} supportingText={summary.criticalExit ? 'Resolver baja / becario' : 'Sin casos críticos'} active={filters.critical === 'OPEN'} onAction={() => update({ critical: filters.critical === 'OPEN' ? '' : 'OPEN' })} actionLabel={filters.critical === 'OPEN' ? 'Quitar filtro' : 'Filtrar'} />
           </div>
         </section>
       ) : null}

@@ -29,7 +29,8 @@ assert.match(certificationService,/vendorQuarterContext\(new Date\(\), null, ope
 assert.doesNotMatch(certificationRepo,/return rows\.filter\(\(row\) => row\.status !== 'VALID'/);
 assert.match(tracking,/matchesTrackingStatusFilter/);
 assert.match(tracking,/DUE_IN_PERIOD/);
-assert.match(tracking,/attentionRequired/);
+assert.match(tracking,/Próximas a vencer/);
+assert.doesNotMatch(tracking,/const attentionRequired=/);
 assert.match(metrics,/DUE_IN_PERIOD/);
 assert.match(metrics,/Próximas a vencer/);
 assert.match(dashboard,/DUE_IN_PERIOD/);
