@@ -47,12 +47,15 @@ for (const rel of [
 // Filtros compactos, sin card contenedora y con acciones integradas.
 assert.match(filterBar,/flex flex-wrap items-center gap-2/);
 assert.doesNotMatch(filterBar,/border-slate|rounded-2xl|bg-slate-50/);
-for (const source of [dashboard,metrics,tracking,reports,users,roles,collaboratorCerts]) assert.match(source,/BBVAFilterBar/);
+for (const source of [dashboard,metrics,reports,users,roles,collaboratorCerts]) assert.match(source,/BBVAFilterBar/);
+assert.match(tracking,/placeholder=\"Buscar colaborador\.\.\.\"/);
+assert.match(tracking,/ariaLabel=\"Tecnología o certificación\"/);
 assert.doesNotMatch(dashboard,/Vista operativa|VISTA OPERATIVA|Preparación Vendors\. El periodo seleccionado/);
 assert.doesNotMatch(metrics,/Métricas por periodo|Vigencia, cobertura y vencimientos responden/);
 assert.match(dashboard,/actions=\{<>.*Actualizar.*Limpiar/s);
 assert.match(metrics,/actions=\{<>.*Actualizar.*Limpiar/s);
-assert.match(tracking,/actions=\{<>.*Actualizar/s);
+assert.match(tracking,/>Actualizar<\/BBVAButton>/s);
+assert.match(tracking,/>Limpiar<\/BBVAButton>/s);
 
 // Tablas separadas de filtros y sin headers descriptivos redundantes.
 assert.doesNotMatch(reports,/Snapshots del periodo|Una fila por día capturado/);

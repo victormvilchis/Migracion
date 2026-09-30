@@ -20,7 +20,7 @@ export const Header: React.FC<HeaderProps> = ({ onUserChanged, themeMode, onTogg
   };
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-6 backdrop-blur transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950/95">
+    <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-6 backdrop-blur transition-colors duration-300 dark:border-slate-800 dark:bg-[#020617]">
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-500 font-bold text-white shadow-md shadow-blue-500/20">
           <Cpu className="h-5 w-5 text-white" />

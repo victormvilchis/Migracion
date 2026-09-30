@@ -22,22 +22,26 @@ const certRepo = read('api/src/lib/bbvaCollaboratorCertificationRepository.ts');
 const certService = read('api/src/lib/bbvaCollaboratorCertificationService.ts');
 
 // Todo tablero con KPIs filtra primero y luego muestra las tarjetas.
-for (const [name, source] of [['Seguimiento', tracking], ['Métricas', metrics], ['Panel', dashboard], ['Reportes', reports]]) {
+for (const [name, source] of [['Métricas', metrics], ['Panel', dashboard], ['Reportes', reports]]) {
   const filterIndex = source.indexOf('<BBVAFilterBar');
   const metricIndex = source.indexOf('<BBVAMetricCard');
   assert.ok(filterIndex >= 0 && metricIndex >= 0 && filterIndex < metricIndex, `${name}: los filtros deben estar antes de los KPI.`);
 }
+const trackingFilterIndex = tracking.indexOf('placeholder=\"Buscar colaborador...\"');
+const trackingMetricIndex = tracking.indexOf('<BBVAMetricCard');
+assert.ok(trackingFilterIndex >= 0 && trackingMetricIndex > trackingFilterIndex, 'Seguimiento: los filtros compactos deben estar antes de los KPI.');
 assert.ok(collaboratorCerts.indexOf('<BBVAFilterBar') < collaboratorCerts.indexOf('>Cobertura<'), 'Certificaciones del colaborador: filtros antes del resumen KPI.');
 
 // Seguimiento ya no duplica el corte Vendors como tarjeta independiente.
 assert.doesNotMatch(tracking, /Preparación Vendors|PREPARACIÓN VENDORS|Preparación para corte Vendors/);
 
 // Tecnología es multiselect en los contextos operativos principales.
-for (const [name, source] of [['Colaboradores', collaborators], ['Banco de talento', talent], ['Panel', dashboard], ['Métricas', metrics], ['Seguimiento', tracking]]) {
+for (const [name, source] of [['Colaboradores', collaborators], ['Banco de talento', talent], ['Panel', dashboard], ['Métricas', metrics]]) {
   assert.match(source, /BBVAMultiSelect/, `${name}: tecnología debe usar multiselect.`);
 }
 assert.match(tracking, /decodeMultiValue\(filters\.technology\)/);
-assert.match(tracking, /encodeMultiValue\(values\)/);
+assert.match(tracking, /encodeMultiValue\(\[value\.slice\(6\)\]\)/);
+assert.match(tracking, /ariaLabel=\"Tecnología o certificación\"/);
 
 // Estructuras BBVA: un solo control compacto y jerárquico N2 -> N3.
 for (const source of [collaborators, talent, dashboard, metrics]) assert.match(source, /BBVAStructureFilter/);
@@ -92,4 +96,4 @@ console.log('- score condicionado por TracksScore y persistido: OK');
 console.log('- niveles JR -> STD -> SR: OK');
 console.log('- Estado/Estatus terminal antes de Acciones: OK');
 console.log('- Seguimiento sin tarjeta Vendors redundante: OK');
-console.log('- Tecnología multiselect + estructura jerárquica compacta: OK');
+console.log('- Tecnología multiselect donde aplica; Seguimiento usa selector unificado tecnología/certificación: OK');

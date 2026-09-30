@@ -52,7 +52,7 @@ export const BBVALayout: React.FC<BBVALayoutProps> = ({ children, themeMode }) =
           </div>
         )}
 
-        <div className="bbva-main-shell min-w-0 flex-1 bg-white transition-colors duration-300">
+        <div className="bbva-main-shell min-w-0 flex-1 bg-white transition-colors duration-300 [.bbva-dark_&]:bg-[#020617]">
           <BBVAContextBar
             collapsed={collapsed}
             onToggleSidebar={() => {
@@ -64,7 +64,7 @@ export const BBVALayout: React.FC<BBVALayoutProps> = ({ children, themeMode }) =
             }}
           />
 
-          <main className="bbva-main-surface w-full min-w-0 overflow-x-auto bg-white px-3 py-3 transition-colors duration-300 sm:px-4 sm:py-4">
+          <main className="bbva-main-surface w-full min-w-0 overflow-x-auto bg-white px-3 py-3 transition-colors duration-300 [.bbva-dark_&]:bg-[#020617] sm:px-4 sm:py-4">
             {children}
           </main>
         </div>

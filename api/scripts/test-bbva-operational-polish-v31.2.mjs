@@ -16,6 +16,8 @@ assert.match(explorer,/description: `\$\{item\.collaboratorCount\} colaboradores
 const collaborators=read('src/pagesBBVATalent/collaborators/CollaboratorsPage.tsx');
 assert.match(collaborators,/label="Perfil \/ tecnología"/);
 assert.doesNotMatch(collaborators,/label="Rol"[\s\S]*label="Tecnología actual"/);
+assert.doesNotMatch(collaborators,/compactRoleDisplayForTable/);
+assert.match(collaborators,/line-clamp-2[\s\S]*displayRoleName\(roleDisplay\(item\.profile,item\.technologyProfile\)\)/);
 assert.match(collaborators, /table-auto/);
 assert.match(collaborators,/colSpan=\{7\}/);
 
@@ -38,6 +40,6 @@ assert.doesNotMatch(certs,/>Agregar<\/button>/);
 
 console.log('Pulido operativo BBVA V31.2: OK');
 console.log('- estructuras ordenadas por colaboradores desc: OK');
-console.log('- Colaboradores compacta Perfil / tecnología: OK');
+console.log('- Colaboradores muestra perfil completo en Perfil / tecnología: OK');
 console.log('- selects posicionados antes de renderizar portal: OK');
 console.log('- alta de certificación en barra de filtros + KPIs reforzados: OK');

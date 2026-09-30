@@ -1,14 +1,12 @@
 import React, { Fragment, useMemo, useState } from 'react';
-import { AlertCircle, ArrowRightLeft, CalendarClock, CheckCircle2, Clock3, Eye, RefreshCw, ShieldAlert, CalendarRange } from 'lucide-react';
+import { AlertCircle, ArrowRightLeft, CalendarClock, CheckCircle2, Clock3, Eye, RefreshCw, Search, ShieldAlert, CalendarRange } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
 import { BBVAButton } from '../../componentsBBVATalent/BBVAButton';
 import { BBVACertificationStatusBadge } from '../../componentsBBVATalent/BBVACertificationStatusBadge';
 import { BBVAEmptyState } from '../../componentsBBVATalent/BBVAEmptyState';
 import type { BBVAFilterSummaryItem } from '../../componentsBBVATalent/BBVAFilterSummary';
-import { BBVAFilterBar } from '../../componentsBBVATalent/BBVAFilterBar';
 import { BBVAMetricCard } from '../../componentsBBVATalent/BBVAMetricCard';
-import { BBVAMultiSelect } from '../../componentsBBVATalent/BBVAMultiSelect';
 import { BBVAPagination } from '../../componentsBBVATalent/BBVAPagination';
 import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableSelect';
 import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHeader';
@@ -45,13 +43,15 @@ import {
 
 const filterDefaults = {
   certificationStatus: '',
-  profile: '',
   technology: '',
   certification: '',
   critical: '',
   attemptCriticality: '',
   quarterCode: '',
+  search: '',
 };
+
+const TECHNOLOGICAL_CERTIFICATION_FILTER = '__TECHNOLOGICAL__';
 
 type SortField = 'collaboratorName' | 'certificationName' | 'status' | 'expirationDate' | 'scheduledDate' | 'attempt';
 
@@ -117,6 +117,17 @@ function trackingStatusFilterLabel(status: string): string {
   return COLLABORATOR_CERTIFICATION_STATUS_LABELS[status as CollaboratorCertificationStatus] ?? status;
 }
 
+function matchesCertificationFilter(item: CertificationTrackingItem, certification: string): boolean {
+  if (!certification) return true;
+  if (certification === TECHNOLOGICAL_CERTIFICATION_FILTER) return item.certificationType === 'TECHNOLOGICAL';
+  return item.certificationName === certification;
+}
+
+function certificationFilterLabel(certification: string): string {
+  if (certification === TECHNOLOGICAL_CERTIFICATION_FILTER) return 'Solo tecnológicas';
+  return displayCertificationName(certification);
+}
+
 export const CertificationTrackingPage: React.FC = () => {
   const query = useCertificationTracking();
   const navigate = useNavigate();
@@ -132,21 +143,42 @@ export const CertificationTrackingPage: React.FC = () => {
   const items = query.data?.items ?? [];
 
   const options = useMemo(() => ({
-    profiles: uniqueOptions(items, (item) => item.profile),
     technologies: uniqueOptions(items, (item) => item.technology),
     certifications: uniqueOptions(items, (item) => item.certificationName),
   }), [items]);
 
-  const selectedTechnologies = useMemo(() => decodeMultiValue(filters.technology), [filters.technology]);
+  const selectedTechnologies = useMemo(() => decodeMultiValue(filters.technology).slice(0, 1), [filters.technology]);
+
+  const combinedScopeValue = useMemo(() => {
+    if (filters.certification) return `cert::${filters.certification}`;
+    if (selectedTechnologies.length === 1) return `tech::${selectedTechnologies[0]}`;
+    return '';
+  }, [filters.certification, selectedTechnologies]);
+
+  const combinedScopeOptions = useMemo(() => [
+    { value: '', label: 'Todas las tecnologías y certificaciones' },
+    { value: `cert::${TECHNOLOGICAL_CERTIFICATION_FILTER}`, label: 'Certificaciones · Solo tecnológicas' },
+    ...options.technologies.map((option) => ({ value: `tech::${option.value}`, label: `Tecnología · ${upperDisplay(option.label)}` })),
+    ...options.certifications.map((option) => ({ value: `cert::${option.value}`, label: `Certificación · ${displayCertificationName(option.label)}` })),
+  ], [options.certifications, options.technologies]);
+
+  const updateCombinedScope = (value: string) => {
+    if (!value) { update({ technology: '', certification: '' }); return; }
+    if (value.startsWith('tech::')) { update({ technology: encodeMultiValue([value.slice(6)]), certification: '' }); return; }
+    if (value.startsWith('cert::')) { update({ certification: value.slice(6), technology: '' }); }
+  };
 
   const contextItems = useMemo(() => {
     return items.filter((item) => {
-      return (!filters.profile || item.profile === filters.profile)
+      const search = filters.search.trim().toLocaleUpperCase('es-MX');
+      const matchesSearch = !search || [item.collaboratorName, item.certificationName, item.technology, item.technologyName, item.profile]
+        .some((value) => String(value ?? '').toLocaleUpperCase('es-MX').includes(search));
+      return matchesSearch
         && (!selectedTechnologies.length || Boolean(item.technology && selectedTechnologies.includes(item.technology)))
-        && (!filters.certification || item.certificationName === filters.certification)
+        && matchesCertificationFilter(item, filters.certification)
         && (!filters.quarterCode || (filters.quarterCode === 'NO_QUARTER' ? !item.quarterCode : item.quarterCode === filters.quarterCode));
     });
-  }, [filters.certification, filters.profile, filters.quarterCode, items, selectedTechnologies]);
+  }, [filters.certification, filters.quarterCode, filters.search, items, selectedTechnologies]);
 
   const effectiveQuarterCode=filters.quarterCode || query.data?.vendorQuarter.currentCode || '';
 
@@ -166,21 +198,21 @@ export const CertificationTrackingPage: React.FC = () => {
   const summary = useMemo(() => buildTrackingSummary(contextItems), [contextItems]);
   const safePage=Math.min(page,Math.max(0,Math.ceil(filtered.length/size)-1));
   const paged=useMemo(()=>filtered.slice(safePage*size,safePage*size+size),[filtered,safePage,size]);
-  React.useEffect(()=>{patchSort({page:0});},[filters.certificationStatus,filters.profile,filters.technology,filters.certification,filters.critical,filters.attemptCriticality,filters.quarterCode]);
+  React.useEffect(()=>{patchSort({page:0});},[filters.certificationStatus,filters.technology,filters.certification,filters.critical,filters.attemptCriticality,filters.quarterCode,filters.search]);
   const currentYearPeriods=useMemo(()=>periodOptions(query.data?.vendorQuarter.quarters??[],query.data?.vendorQuarter.currentCode,query.data?.vendorQuarter.referenceDate,true),[query.data?.vendorQuarter.quarters,query.data?.vendorQuarter.currentCode,query.data?.vendorQuarter.referenceDate]);
   const dueInPeriodCount=useMemo(()=>contextItems.filter((item)=>Boolean(effectiveQuarterCode&&item.quarterCode===effectiveQuarterCode)).length,[contextItems,effectiveQuarterCode]);
 
   const activeFilters = useMemo<BBVAFilterSummaryItem[]>(() => {
     const active: BBVAFilterSummaryItem[] = [];
+    if (filters.search.trim()) active.push({ key: 'search', label: `Búsqueda: ${filters.search.trim()}`, onRemove: () => update({ search: '' }) });
     if (filters.certificationStatus) active.push({ key: 'certificationStatus', label: `Estado: ${trackingStatusFilterLabel(filters.certificationStatus)}`, onRemove: () => update({ certificationStatus: '' }) });
-    if (filters.profile) active.push({ key: 'profile', label: `Perfil: ${sentenceCaseData(filters.profile)}`, onRemove: () => update({ profile: '' }) });
     if (selectedTechnologies.length) active.push({ key: 'technology', label: selectedTechnologies.length === 1 ? `Tecnología: ${upperDisplay(selectedTechnologies[0])}` : `Tecnologías: ${selectedTechnologies.length}`, onRemove: () => update({ technology: '' }) });
-    if (filters.certification) active.push({ key: 'certification', label: `Certificación: ${displayCertificationName(filters.certification)}`, onRemove: () => update({ certification: '' }) });
+    if (filters.certification) active.push({ key: 'certification', label: `Certificación: ${certificationFilterLabel(filters.certification)}`, onRemove: () => update({ certification: '' }) });
     if (filters.quarterCode) active.push({ key: 'quarterCode', label: `Periodo: ${filters.quarterCode === 'NO_QUARTER' ? 'Sin periodo' : formatPeriodCode(filters.quarterCode)}`, onRemove: () => update({ quarterCode: '' }) });
     if (filters.critical) active.push({ key: 'critical', label: `Intentos: ${filters.critical === 'OPEN' ? 'Críticos 2/2 abiertos' : filters.critical === 'NO_ATTEMPT' ? 'Sin intentos' : filters.critical === 'ONE_ATTEMPT' ? '1 intento' : 'Límite agotado'}`, onRemove: () => update({ critical: '' }) });
     if (filters.attemptCriticality) active.push({ key: 'attemptCriticality', label: `Intentos: ${{NO_ATTEMPTS:'Sin intentos',ONE_ATTEMPT:'1 intento',LAST_AVAILABLE:'Último disponible',LIMIT_REACHED:'Agotados'}[filters.attemptCriticality] ?? filters.attemptCriticality}`, onRemove: () => update({ attemptCriticality: '' }) });
     return active;
-  }, [filters.attemptCriticality, filters.certification, filters.certificationStatus, filters.critical, filters.profile, filters.quarterCode, selectedTechnologies, update]);
+  }, [filters.attemptCriticality, filters.certification, filters.certificationStatus, filters.critical, filters.quarterCode, filters.search, selectedTechnologies, update]);
 
   const changeSort = (field: SortField) => {
     if (sort === field) patchSort({ direction: direction === 'asc' ? 'desc' : 'asc' });
@@ -238,15 +270,28 @@ export const CertificationTrackingPage: React.FC = () => {
     <div className="space-y-2 animate-fade-in">
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
 
-      <BBVAFilterBar actions={<><BBVAButton variant="secondary" size="sm" icon={<RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />} onClick={() => void query.refetch()}>Actualizar</BBVAButton><BBVAButton variant="secondary" size="sm" onClick={reset} disabled={!activeFilters.length}>Limpiar</BBVAButton></>}>
-        
-        <BBVAMultiSelect className="w-full sm:w-[190px]" values={selectedTechnologies} onChange={(values) => update({ technology: encodeMultiValue(values) })} options={options.technologies.map((option)=>({ ...option, label: upperDisplay(option.label) }))} placeholder="Todas las tecnologías" selectedLabel="tecnologías" ariaLabel="Tecnología" />
-        <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={filters.profile} onChange={(value) => update({ profile: value })} options={[{ value: '', label: 'Todos los perfiles' }, ...options.profiles.map((option)=>({ ...option, label: sentenceCaseData(option.label) }))]} ariaLabel="Perfil" /></div>
-        <div className="w-full sm:w-[205px]"><BBVASearchableSelect value={filters.certification} onChange={(value) => update({ certification: value })} options={[{ value: '', label: 'Todas las certificaciones' }, ...options.certifications.map((option)=>({ ...option, label: displayCertificationName(option.label) }))]} ariaLabel="Certificación" /></div>
-        <div className="w-full sm:w-[190px]"><BBVASearchableSelect value={filters.quarterCode} onChange={(value) => update({ quarterCode: value })} options={[...currentYearPeriods, { value: 'NO_QUARTER', label: 'Sin periodo configurado' }]} ariaLabel="Periodo de vencimiento" searchPlaceholder="Buscar periodo" /></div>
-        <div className="w-full sm:w-[190px]"><BBVASearchableSelect value={filters.critical} onChange={(value) => update({ critical: value })} options={[{value:'',label:'Todos los intentos'},{value:'NO_ATTEMPT',label:'Sin intentos'},{value:'ONE_ATTEMPT',label:'1 intento'},{value:'LIMIT_REACHED',label:'Límite de intentos agotado'},{value:'OPEN',label:'Críticos 2/2 abiertos'}]} ariaLabel="Intentos o criticidad" /></div>
-        <div className="w-full sm:w-[185px]"><BBVASearchableSelect value={filters.certificationStatus} onChange={(value) => update({ certificationStatus: value })} options={[{ value: '', label: 'Todos los estados' }, { value: 'DUE_IN_PERIOD', label: 'Vence en el periodo' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([key]) => key !== 'NOT_APPLICABLE').map(([value, label]) => ({ value, label }))]} ariaLabel="Estado" /></div>
-      </BBVAFilterBar>
+      <section className="w-full rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-sm backdrop-blur-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-[#020617]">
+        <div className="grid w-full grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-[minmax(210px,1.1fr)_minmax(360px,1.8fr)_minmax(180px,0.95fr)_minmax(180px,0.95fr)_minmax(180px,0.95fr)_auto] 2xl:items-center">
+          <label className="relative min-w-0 w-full">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              value={filters.search}
+              onChange={(event) => update({ search: event.target.value })}
+              placeholder="Buscar colaborador..."
+              aria-label="Buscar colaborador, tecnología o certificación"
+              className="h-9 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-3 text-[11px] text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] outline-none transition placeholder:text-slate-400 hover:border-blue-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 [.bbva-dark_&]:border-slate-700 [.bbva-dark_&]:bg-[#111c2e] [.bbva-dark_&]:text-slate-100 [.bbva-dark_&]:placeholder:text-slate-500 [.bbva-dark_&]:hover:border-cyan-500/50"
+            />
+          </label>
+          <div className="min-w-0 w-full"><BBVASearchableSelect value={combinedScopeValue} onChange={updateCombinedScope} options={combinedScopeOptions} ariaLabel="Tecnología o certificación" searchPlaceholder="Buscar tecnología o certificación" /></div>
+          <div className="min-w-0 w-full"><BBVASearchableSelect value={filters.quarterCode} onChange={(value) => update({ quarterCode: value })} options={[...currentYearPeriods, { value: 'NO_QUARTER', label: 'Sin periodo configurado' }]} ariaLabel="Periodo de vencimiento" searchPlaceholder="Buscar periodo" /></div>
+          <div className="min-w-0 w-full"><BBVASearchableSelect value={filters.critical} onChange={(value) => update({ critical: value })} options={[{value:'',label:'Todos los intentos'},{value:'NO_ATTEMPT',label:'Sin intentos'},{value:'ONE_ATTEMPT',label:'1 intento'},{value:'LIMIT_REACHED',label:'Límite de intentos agotado'},{value:'OPEN',label:'Críticos 2/2 abiertos'}]} ariaLabel="Intentos o criticidad" /></div>
+          <div className="min-w-0 w-full"><BBVASearchableSelect value={filters.certificationStatus} onChange={(value) => update({ certificationStatus: value })} options={[{ value: '', label: 'Todos los estados' }, { value: 'DUE_IN_PERIOD', label: 'Vence en el periodo' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([key]) => key !== 'NOT_APPLICABLE').map(([value, label]) => ({ value, label }))]} ariaLabel="Estado" /></div>
+          <div className="flex w-full items-center justify-end gap-1.5 md:col-span-2 2xl:col-span-1">
+            <BBVAButton variant="secondary" size="sm" icon={<RefreshCw className={`h-3.5 w-3.5 ${query.isFetching ? 'animate-spin' : ''}`} />} onClick={() => void query.refetch()}>Actualizar</BBVAButton>
+            <BBVAButton variant="secondary" size="sm" onClick={reset} disabled={!activeFilters.length}>Limpiar</BBVAButton>
+          </div>
+        </div>
+      </section>
 
       {!query.isLoading ? (
         <section aria-label="Resumen operativo de seguimiento" className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
@@ -261,7 +306,7 @@ export const CertificationTrackingPage: React.FC = () => {
         </section>
       ) : null}
 
-      <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+      <div className="bbva-table-shell overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800">
         <div className="overflow-x-auto overflow-y-visible">
           <table className="w-full min-w-[1360px] text-left text-[10.5px]">
             <thead className="bg-slate-50 text-[9px] font-semibold uppercase tracking-[0.04em] text-slate-500 [.bbva-dark_&]:bg-slate-950/40"><tr>

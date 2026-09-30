@@ -869,7 +869,7 @@ BFS remains its own product, architecture and source of truth.
 ### V31.15a — polish visual Dark BBVA
 
 - El estado global Light/Dark debe pasarse explícitamente a `BBVALayout`; no volver a resolver el tema únicamente leyendo la clase del DOM durante render porque puede dejar el workspace con una clase stale al alternar.
-- En Dark, el header/contexto BBVA usa la banda `#020617`; el main queda un nivel arriba (`#07111f`) para conservar jerarquía visual.
+- En Dark, el header/contexto BBVA y todo el main usan `#020617` para mantener una superficie continua; las tarjetas conservan `#111c2e` para aportar jerarquía visual.
 - Dark BBVA debe mantener contraste AA práctico en textos secundarios y conservar color semántico visible en azul/cyan, verde, ámbar, rose, naranja y violeta.
 - Selects portaleados, multiselect, estructura y diálogos deben cambiar de tema junto con el shell.
 - Las tablas BBVA usan densidad vertical compacta: reducir padding superior/inferior de celdas y del paginador, sin reducir legibilidad ni hit-area de acciones.
@@ -878,9 +878,10 @@ BFS remains its own product, architecture and source of truth.
 
 ### V31.15b — estabilidad del preview Dark BBVA
 
-- El header/context bar de BBVA debe usar `#020617` en Dark, igual que la banda oscura global; el main BBVA usa `#07111f` para conservar jerarquía visual. No permitir que overrides globales `bg-white/*` igualen ambos tonos.
+- El header/context bar, el nav y todo el main BBVA deben usar `#020617` en Dark. La jerarquía visual se mantiene mediante tarjetas/superficies `#111c2e`, no cambiando el fondo general del main.
 - Todo overlay portaleado a `document.body` debe reaccionar al estado global `html.dark`; no depender únicamente de un ancestro `.bbva-dark` porque el portal queda fuera del árbol BBVA.
 - Light/Dark debe ser reversible sin componentes stale: al regresar a Light, overlays, selects, dialogs, cards y tablas recuperan sus superficies claras.
 - Las tablas BBVA conservan hit-area de acciones, pero reducen aire vertical: padding inferior de celdas más compacto que el estándar previo.
+- En Dark, las tablas operativas usan `#020617` en el cuerpo para integrarse con el main; el `thead` usa `#111c2e` como superficie elevada. No usar `#0f172a` como fondo base de las tablas.
 - La prueba de persistencia de filtros debe tolerar props en `BBVALayout`; validar estructura semántica, no una etiqueta JSX sin atributos.
 - V31.15/V31.15a/V31.15b siguen siendo PREVIEW TEMPORAL y deben retirarse durante integración productiva.

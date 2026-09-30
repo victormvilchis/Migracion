@@ -47,12 +47,14 @@ assert.match(chart, /BBVADataHelp/);
 assert.match(insight, /BBVADataHelp/);
 assert.match(insight, /Insight determinístico/);
 
-// Colaboradores: abreviación sólo visual; el title mantiene el valor completo.
+// Colaboradores: el perfil se muestra completo como en Banco de talento.
 assert.match(display, /compactRoleDisplayForTable/);
 assert.match(display, /ANALISTA PROGRAMADOR/);
 assert.match(display, /DATA ENG\./);
 assert.match(display, /DEV/);
-assert.match(collaborators, /compactRoleDisplayForTable/);
+assert.doesNotMatch(collaborators, /compactRoleDisplayForTable/);
+assert.match(collaborators, /line-clamp-2[\s\S]*displayRoleName\(roleDisplay\(item\.profile,item\.technologyProfile\)\)/);
+assert.match(collaborators, /upperDisplay\(technologyDisplay\(item\.currentTechnology,item\.expertise\)\)/);
 assert.match(collaborators, /title=\{`\$\{displayRoleName/);
 
 // Esquina de BBVA Workspace y breadcrumb: misma altura de 40px.
@@ -63,5 +65,5 @@ console.log('Claridad operativa BBVA V31.4: OK');
 console.log('- selects alineados al trigger con altura real: OK');
 console.log('- filtros ocupan todo el ancho y buscador crece: OK');
 console.log('- KPI, gráficas e insights con ayuda informativa transversal: OK');
-console.log('- Perfil / tecnología compacto sólo en vista de tabla: OK');
+console.log('- Perfil completo en Colaboradores alineado a Banco de talento: OK');
 console.log('- BBVA Workspace alineado con header/breadcrumb: OK');

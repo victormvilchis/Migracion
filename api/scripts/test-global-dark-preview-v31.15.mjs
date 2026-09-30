@@ -27,7 +27,7 @@ assert.match(header,/Tema actual:/);
 assert.match(header,/Cambiar a tema oscuro/);
 assert.match(header,/Cambiar a tema claro/);
 assert.match(header,/TEMPORAL: retirar este control al integrar a producción/);
-assert.match(header,/dark:bg-slate-950\/95/);
+assert.match(header,/dark:bg-\[#020617\]/);
 assert.match(sidebar,/dark:bg-slate-950/);
 assert.match(sidebar,/dark:hover:bg-slate-800/);
 

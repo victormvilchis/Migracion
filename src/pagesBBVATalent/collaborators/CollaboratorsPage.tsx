@@ -12,7 +12,7 @@ import { useCatalogOptions } from '../hooks/useCatalog';
 import { useStructureOptions } from '../hooks/useStructureCatalog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
 import { useCollaborators } from '../hooks/useCollaborators';
-import { compactRoleDisplayForTable, compactTechnologyDisplayForTable, displayPersonName, displayRoleName, displayStructure, sentenceCaseData, upperDisplay, upperIdentity } from '../lib/bbvaDisplayFormat';
+import { displayPersonName, displayRoleName, displayStructure, sentenceCaseData, upperDisplay, upperIdentity } from '../lib/bbvaDisplayFormat';
 import { decodeMultiValue, encodeMultiValue } from '../lib/multiValueFilter';
 import type { Collaborator } from '../types/collaborator';
 
@@ -36,7 +36,15 @@ function certificationStatus(item: Pick<Collaborator, 'certificationExpiring'|'c
   return 'NA';
 }
 const certificationLabels: Record<string, string> = { CRITICAL: 'Crítico · resolver 2/2', VALID: 'En regla', DOUBLE_TECH: 'Doble certificación', EXPIRING: 'Cubierta · próxima a vencer', EXPIRED: 'Atención requerida', PENDING: 'Pendientes', NA: 'Sin aplicables' };
-const certificationTone: Record<string, string> = { CRITICAL: 'bg-rose-100 text-rose-800 ring-1 ring-rose-200', VALID: 'bg-emerald-50 text-emerald-700', DOUBLE_TECH: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200', EXPIRING: 'bg-amber-50 text-amber-700', EXPIRED: 'bg-rose-50 text-rose-700', PENDING: 'bg-blue-50 text-blue-700', NA: 'bg-slate-100 text-slate-500' };
+const certificationTone: Record<string, string> = {
+  CRITICAL: 'bg-rose-100 text-rose-800 ring-1 ring-rose-200 [.bbva-dark_&]:bg-rose-400/15 [.bbva-dark_&]:text-rose-200 [.bbva-dark_&]:ring-rose-400/25',
+  VALID: 'bg-emerald-50 text-emerald-700 [.bbva-dark_&]:bg-emerald-400/10 [.bbva-dark_&]:text-emerald-200',
+  DOUBLE_TECH: 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200 [.bbva-dark_&]:bg-emerald-400/15 [.bbva-dark_&]:text-emerald-200 [.bbva-dark_&]:ring-emerald-400/25',
+  EXPIRING: 'bg-amber-50 text-amber-700 [.bbva-dark_&]:bg-amber-400/10 [.bbva-dark_&]:text-amber-200',
+  EXPIRED: 'bg-rose-50 text-rose-700 [.bbva-dark_&]:bg-rose-400/10 [.bbva-dark_&]:text-rose-200',
+  PENDING: 'bg-blue-50 text-blue-700 [.bbva-dark_&]:bg-blue-400/10 [.bbva-dark_&]:text-blue-200',
+  NA: 'bg-slate-100 text-slate-500 [.bbva-dark_&]:bg-slate-800 [.bbva-dark_&]:text-slate-300',
+};
 type SortField = 'name'|'role'|'technology'|'dm'|'startDate'|'certifications'|'status';
 const defaults = { search:'', roleFilter:'ALL', technologyFilter:'', structure2Filter:'ALL', structure3Filter:'ALL', deliveryManagerFilter:'ALL', statusFilter:'ALL', page:0, size:10, sort:'name' as SortField, direction:'asc' as 'asc'|'desc' };
 const unique=(values:Array<string|null|undefined>)=>[...new Set(values.map((value)=>String(value??'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es-MX',{sensitivity:'base'}));
@@ -94,11 +102,11 @@ export const CollaboratorsPage: React.FC = () => {
       <div className="hidden"><BBVASearchableSelect value={roleFilter} onChange={(v)=>memory.patch({roleFilter:v,page:0})} options={[{value:'ALL',label:'Todos los roles'},...(profilesQuery.data?.items??[]).map((o)=>({value:o.id,label:String(o.name).toUpperCase()}))]} ariaLabel="Filtrar por rol" /></div>
     </div>
     {(search||selectedTechnologies.length||deliveryManagerFilter!=='ALL'||statusFilter!=='ALL'||structure2Filter!=='ALL'||structure3Filter!=='ALL')?<div className="flex justify-end"><button type="button" onClick={()=>memory.reset()} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">Limpiar filtros</button></div>:null}
-    {query.isLoading ? <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando colaboradores...</div> : query.error ? <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert> : <div className="overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
+    {query.isLoading ? <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando colaboradores...</div> : query.error ? <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert> : <div className="bbva-table-shell overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto overflow-y-visible"><table className="w-full min-w-[900px] table-auto text-left text-[10.5px]">
         <thead className="border-b border-slate-200 bg-slate-50/90 text-[9px] font-semibold uppercase tracking-[.035em] text-slate-600"><tr>
           <th className="min-w-[220px] px-2 py-1.5"><BBVATableSortHeader label="Colaborador" active={sort==='name'} direction={direction} onClick={()=>changeSort('name')} /></th>
-          <th className="min-w-[210px] px-2 py-1.5"><BBVATableSortHeader label="Perfil / tecnología" active={sort==='role'||sort==='technology'} direction={direction} onClick={()=>changeSort(sort==='role'?'technology':'role')} /></th>
+          <th className="min-w-[260px] px-2 py-1.5"><BBVATableSortHeader label="Perfil / tecnología" active={sort==='role'||sort==='technology'} direction={direction} onClick={()=>changeSort(sort==='role'?'technology':'role')} /></th>
           <th className="min-w-[205px] px-2 py-1.5">Estructura BBVA</th>
           <th className="w-px whitespace-nowrap px-2 py-1.5"><BBVATableSortHeader label="DM" active={sort==='dm'} direction={direction} onClick={()=>changeSort('dm')} /></th>
           <th className="w-px whitespace-nowrap px-2 py-1.5"><BBVATableSortHeader label="Alta BBVA" active={sort==='startDate'} direction={direction} onClick={()=>changeSort('startDate')} /></th>
@@ -113,7 +121,7 @@ export const CollaboratorsPage: React.FC = () => {
             title="Clic para ver contexto del colaborador"
           >
             <td className="px-2 py-1.5"><div className="min-w-0"><div className="truncate font-semibold text-slate-900">{displayPersonName(item.fullName)}</div><div className="truncate text-[9.5px] text-slate-500">{item.softtekEmail||item.email}</div></div></td>
-            <td className="px-2 py-1.5" title={`${displayRoleName(roleDisplay(item.profile,item.technologyProfile))} · ${upperDisplay(technologyDisplay(item.currentTechnology,item.expertise))}`}><div className="truncate leading-[1.15] font-semibold text-slate-700">{compactRoleDisplayForTable(item.profile,item.technologyProfile)}</div><div className="mt-1 truncate text-[9px] font-semibold text-blue-700">{compactTechnologyDisplayForTable(item.currentTechnology,item.expertise)}</div></td>
+            <td className="px-2 py-1.5" title={`${displayRoleName(roleDisplay(item.profile,item.technologyProfile))} · ${upperDisplay(technologyDisplay(item.currentTechnology,item.expertise))}`}><div className="line-clamp-2 leading-[1.2] font-semibold text-slate-700">{displayRoleName(roleDisplay(item.profile,item.technologyProfile))}</div><div className="mt-1 truncate text-[9px] font-semibold text-blue-700">{upperDisplay(technologyDisplay(item.currentTechnology,item.expertise))}</div></td>
             <td className="px-2 py-1.5"><div className="truncate font-medium text-slate-700">{displayStructure(item.bbvaStructureLevel2)}</div><div className="truncate text-[9px] text-slate-400">{displayStructure(item.bbvaStructureLevel3)}</div></td><td className="max-w-[170px] truncate whitespace-nowrap px-2 py-1.5 text-slate-600" title={item.deliveryManager??''}>{displayPersonName(item.deliveryManager)}</td>
             <td className="whitespace-nowrap px-2 py-1.5 text-slate-600">{formatDate(item.bbvaStartDate)}</td>
             <td className="whitespace-nowrap px-2 py-1.5"><span className={`rounded-full px-2 py-1 text-[8.5px] font-semibold ${certificationTone[cert]}`}>{certificationLabels[cert]}</span></td>
