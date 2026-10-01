@@ -33,6 +33,11 @@ export function useUpdateCollaboratorCertification(collaboratorId: string) {
   return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { scheduledDate: string; notes: string; mandatory: boolean } }) => collaboratorCertificationApi.update(collaboratorId, recordId, payload), onSuccess: invalidate });
 }
 
+export function useUpdateCollaboratorCertificationCoverage(collaboratorId: string) {
+  const invalidate = useInvalidate(collaboratorId);
+  return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { memberRecordIds: string[] } }) => collaboratorCertificationApi.updateCoverage(collaboratorId, recordId, payload), onSuccess: invalidate });
+}
+
 export function useAddCertificationAttempt(collaboratorId: string) {
   const invalidate = useInvalidate(collaboratorId);
   return useMutation({ mutationFn: ({ recordId, payload }: { recordId: string; payload: { applicationDate: string; result: CertificationAttemptResult; score10: number | null; notes: string } }) => collaboratorCertificationApi.addAttempt(collaboratorId, recordId, payload), onSuccess: invalidate });

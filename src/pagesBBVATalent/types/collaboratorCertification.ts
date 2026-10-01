@@ -42,6 +42,12 @@ export interface CollaboratorCertification {
   mandatory: boolean;
   applicable: boolean;
   source: 'AUTO' | 'MANUAL';
+  coverageGroupId: string | null;
+  coveragePriority: number;
+  metricActive: boolean;
+  coverageHandover: boolean;
+  coveragePreviousCertificationName: string | null;
+  coverageNoValidCertification: boolean;
   bbvaStartDate: string | null;
   initialCompletionDays: number | null;
   initialDueDate: string | null;
@@ -79,6 +85,7 @@ export interface CollaboratorCertification {
 export interface CollaboratorCertificationSummary {
   total: number;
   applicable: number;
+  reserve: number;
   valid: number;
   expiring: number;
   expired: number;
@@ -161,6 +168,12 @@ export interface CertificationTrackingItem {
   criticalResolutionStatus: CertificationCriticalResolutionStatus | null;
   criticalResolutionNotes: string | null;
   criticalResolutionAt: string | null;
+  coverageGroupId: string | null;
+  coveragePriority: number;
+  metricActive: boolean;
+  coverageHandover: boolean;
+  coveragePreviousCertificationName: string | null;
+  coverageNoValidCertification: boolean;
 }
 
 export type CertificationCommunicationContext = 'APPROVED' | 'FIRST_FAILED' | 'INTERMEDIATE_FAILED' | 'LAST_FAILED' | 'LOW' | 'DEFAULT';

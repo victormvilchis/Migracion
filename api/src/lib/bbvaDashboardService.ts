@@ -14,6 +14,7 @@ import { isCertificationReadyForTarget, isCriticalResolutionOpen, isCriticalTwoA
 import { vendorQuarterContext, type VendorQuarterDefinition } from './bbvaVendorCalendar.js';
 import { BbvaOperationalQuarterRepository } from './bbvaOperationalQuarterRepository.js';
 import { addBusinessDays, bbvaBusinessDate } from './bbvaBusinessTime.js';
+import { metricActiveCertificationIds } from './bbvaCertificationCoverage.js';
 
 const repository = new BbvaDashboardRepository();
 const operationalQuarterRepository = new BbvaOperationalQuarterRepository();
@@ -378,7 +379,7 @@ export class BbvaDashboardService {
     const historyDays = Math.max(comparisonDays + 7, boundedInteger(options.historyDays, 90, 7, 365));
     const activityDays = boundedInteger(options.activityDays, 30, 1, 365);
     const activityLimit = boundedInteger(options.activityLimit, 12, 1, 100);
-    const [allCollaborators, allTalent, allCertifications, allCertificationScores, filterOptions] = await Promise.all([
+    const [allCollaborators, allTalent, rawCertifications, allCertificationScores, filterOptions] = await Promise.all([
       repository.collaborators(),
       repository.talent(),
       repository.certifications(),
@@ -388,6 +389,16 @@ export class BbvaDashboardService {
 
     const now = new Date();
     const todayIso = bbvaBusinessDate(now);
+    const metricActiveIds = metricActiveCertificationIds(rawCertifications.map((item) => ({
+      recordId: item.id,
+      personId: item.personId,
+      applicable: item.applicable,
+      baseStatus: item.baseStatus,
+      coverageGroupId: item.coverageGroupId,
+      coveragePriority: item.coveragePriority,
+      expirationDate: item.expirationDate,
+    })), todayIso);
+    const allCertifications = rawCertifications.map((item) => ({ ...item, metricActive: metricActiveIds.has(item.id) }));
     const fromDate = normalizeDate(filters.fromDate);
     const toDate = normalizeDate(filters.toDate);
     const search = String(filters.search ?? '').trim().toLocaleLowerCase('es-MX');
@@ -415,6 +426,7 @@ export class BbvaDashboardService {
     if (filters.certificationStatus) {
       const personIds = new Set(
         allCertifications
+          .filter((cert) => cert.metricActive)
           .filter((cert) => filters.certificationStatus === 'DUE_IN_PERIOD'
             ? Boolean(selectedQuarter && cert.expirationDate && cert.expirationDate >= selectedQuarter.startDate && cert.expirationDate <= selectedQuarter.endDate)
             : certStatusById.get(cert.id) === filters.certificationStatus)
@@ -424,12 +436,12 @@ export class BbvaDashboardService {
     }
 
     if (filters.certificationId) {
-      const personIds = new Set(allCertifications.filter((cert) => cert.certificationId === filters.certificationId && cert.applicable).map((cert) => cert.personId));
+      const personIds = new Set(allCertifications.filter((cert) => cert.metricActive && cert.certificationId === filters.certificationId && cert.applicable).map((cert) => cert.personId));
       collaborators = collaborators.filter((row) => personIds.has(row.personId));
     }
 
     const collaboratorPersonIds = new Set(collaborators.map((row) => row.personId));
-    const certifications = allCertifications.filter((row) => collaboratorPersonIds.has(row.personId) && row.applicable && certStatusById.get(row.id) !== 'NOT_APPLICABLE' && (!filters.certificationId || row.certificationId === filters.certificationId) && (!filters.certificationStatus || (filters.certificationStatus === 'DUE_IN_PERIOD' ? Boolean(selectedQuarter && row.expirationDate && row.expirationDate >= selectedQuarter.startDate && row.expirationDate <= selectedQuarter.endDate) : certStatusById.get(row.id) === filters.certificationStatus)));
+    const certifications = allCertifications.filter((row) => row.metricActive && collaboratorPersonIds.has(row.personId) && row.applicable && certStatusById.get(row.id) !== 'NOT_APPLICABLE' && (!filters.certificationId || row.certificationId === filters.certificationId) && (!filters.certificationStatus || (filters.certificationStatus === 'DUE_IN_PERIOD' ? Boolean(selectedQuarter && row.expirationDate && row.expirationDate >= selectedQuarter.startDate && row.expirationDate <= selectedQuarter.endDate) : certStatusById.get(row.id) === filters.certificationStatus)));
 
     const certificationScoreRows = allCertificationScores.filter((row) => {
       if (!collaboratorPersonIds.has(row.personId)) return false;

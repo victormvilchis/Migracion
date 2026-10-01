@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRightLeft, Award, CalendarClock, Eye, Plus, RefreshCw, Search, ShieldAlert } from 'lucide-react';
+import { ArrowRightLeft, Award, CalendarClock, Eye, Layers3, Plus, RefreshCw, Search, ShieldAlert } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BBVAActionMenu } from '../../componentsBBVATalent/BBVAActionMenu';
 import { BBVAAlert } from '../../componentsBBVATalent/BBVAAlert';
@@ -10,6 +10,7 @@ import { BBVASearchableSelect } from '../../componentsBBVATalent/BBVASearchableS
 import { BBVATableSortHeader } from '../../componentsBBVATalent/BBVATableSortHeader';
 import { ConfirmDialog } from '../../componentsBBVATalent/ConfirmDialog';
 import { CertificationCriticalResolutionDialog } from '../../componentsBBVATalent/CertificationCriticalResolutionDialog';
+import { CertificationCoverageDialog } from '../../componentsBBVATalent/CertificationCoverageDialog';
 import { CertificationScheduleDialog } from '../../componentsBBVATalent/CertificationScheduleDialog';
 import { useCertificationCatalogOptions } from '../hooks/useCertificationCatalog';
 import { useBBVAListMemory } from '../hooks/useBBVAListMemory';
@@ -22,6 +23,7 @@ import {
   useRecertifyCollaboratorCertification,
   useResolveCriticalCertification,
   useUpdateCollaboratorCertification,
+  useUpdateCollaboratorCertificationCoverage,
 } from '../hooks/useCollaboratorCertifications';
 import { COLLABORATOR_CERTIFICATION_STATUS_LABELS, type CollaboratorCertification, type CollaboratorCertificationStatus } from '../types/collaboratorCertification';
 
@@ -69,6 +71,17 @@ function followUp(item: CollaboratorCertification) {
   return item.expirationDate ? `Vence ${formatDate(item.expirationDate)}` : 'Sin vencimiento';
 }
 
+function coverageRoleLabel(item: CollaboratorCertification) {
+  if (!item.coverageGroupId || item.certificationType !== 'TECHNOLOGICAL') return null;
+  return `Cobertura tecnológica · ${item.metricActive ? 'en métrica' : 'alterna'}`;
+}
+
+function coverageRoleTone(item: CollaboratorCertification) {
+  return item.metricActive
+    ? 'border-emerald-300 bg-emerald-50 text-emerald-700 [.bbva-dark_&]:border-emerald-500/30 [.bbva-dark_&]:bg-emerald-500/10 [.bbva-dark_&]:text-emerald-300'
+    : 'border-slate-300 bg-slate-100 text-slate-600 [.bbva-dark_&]:border-slate-600 [.bbva-dark_&]:bg-slate-800/70 [.bbva-dark_&]:text-slate-300';
+}
+
 export const CollaboratorCertificationsPage: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -82,6 +95,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const recertifyMutation = useRecertifyCollaboratorCertification(id ?? '');
   const notApplicableMutation = useMarkCertificationNotApplicable(id ?? '');
   const updateMutation = useUpdateCollaboratorCertification(id ?? '');
+  const coverageMutation = useUpdateCollaboratorCertificationCoverage(id ?? '');
   const resolveCriticalMutation = useResolveCriticalCertification(id ?? '');
   const listMemory = useBBVAListMemory('collaborator-certifications', { search:'', status:'ALL' as 'ALL' | CollaboratorCertificationStatus, sort:'certificationName' as 'certificationName'|'status'|'approvedDate'|'followUp', direction:'asc' as 'asc'|'desc', page:0, size:10 });
   const { search, status, sort, direction, page, size } = listMemory.state;
@@ -91,6 +105,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const [pendingNoApply, setPendingNoApply] = useState<CollaboratorCertification | null>(null);
   const [pendingSchedule, setPendingSchedule] = useState<CollaboratorCertification | null>(null);
   const [pendingCritical, setPendingCritical] = useState<CollaboratorCertification | null>(null);
+  const [coverageItem, setCoverageItem] = useState<CollaboratorCertification | null>(null);
   const [error, setError] = useState<string | null>(null);
   const collaborator = collaboratorQuery.data?.item;
   const items = query.data?.items ?? [];
@@ -135,7 +150,40 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   const selectedCatalogOption = availableOptions.find((option) => option.id === certificationId) ?? null;
   const needsLevel = selectedCatalogOption?.certificationType === 'TECHNOLOGICAL';
   const criticalItems = visibleItems.filter(isCriticalExitOpen);
+  const coverageHandoverItems = visibleItems.filter((item) => item.metricActive && item.coverageHandover);
+  const coverageWithoutValidityItems = visibleItems.filter((item) => item.metricActive && item.coverageNoValidCertification);
+  const coverageAlternateExpiringItems = visibleItems.filter((item) => Boolean(item.coverageGroupId) && !item.metricActive && item.status === 'EXPIRING');
   const attentionCount = (summary?.expired ?? 0) + (summary?.failed ?? 0) + (summary?.pending ?? 0) + (summary?.recertificationPending ?? 0);
+  const openCoverage = (item: CollaboratorCertification) => {
+    if (item.certificationType !== 'TECHNOLOGICAL') {
+      setError('Solo las certificaciones tecnológicas pueden configurarse como cobertura múltiple.');
+      return;
+    }
+    setError(null);
+    setCoverageItem(item);
+  };
+
+  const saveCoverage = async (memberRecordIds: string[]) => {
+    if (!coverageItem) return;
+    try {
+      setError(null);
+      await coverageMutation.mutateAsync({ recordId: coverageItem.id, payload: { memberRecordIds } });
+      setCoverageItem(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const clearCoverage = async () => {
+    if (!coverageItem) return;
+    try {
+      setError(null);
+      await coverageMutation.mutateAsync({ recordId: coverageItem.id, payload: { memberRecordIds: [coverageItem.id] } });
+      setCoverageItem(null);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
 
   const add = async () => {
     if (!certificationId) return;
@@ -153,7 +201,8 @@ export const CollaboratorCertificationsPage: React.FC = () => {
       <div className="flex justify-start"><BBVAFormBackButton onBack={() => navigate(returnTo)} /></div>
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
       {criticalItems.length ? <BBVAAlert tone="error" persistent title="Atención crítica">{criticalItems.length} certificación{criticalItems.length === 1 ? '' : 'es'} de Desarrollo Seguro, Tecnológica o Normativa agotaron 2/2 intentos. Revisa si corresponde solicitar baja o gestionar el caso como becario.</BBVAAlert> : null}
-      {(summary?.expiring ?? 0) > 0 ? <BBVAAlert tone="info">Una certificación aprobada no extiende su vigencia registrando otro intento en el mismo ciclo. Para renovarla utiliza <strong>Iniciar recertificación</strong> y registra el intento en el nuevo ciclo.</BBVAAlert> : null}
+      {coverageWithoutValidityItems.length ? <BBVAAlert tone="error" persistent title="Sin cobertura tecnológica vigente">Este colaborador tiene {coverageWithoutValidityItems.length} grupo{coverageWithoutValidityItems.length === 1 ? '' : 's'} de cobertura sin ninguna certificación tecnológica vigente.</BBVAAlert> : null}
+      {coverageHandoverItems.length || coverageAlternateExpiringItems.length ? <BBVAAlert tone="info" persistent title="Cobertura tecnológica">{coverageHandoverItems.length ? `${coverageHandoverItems.length} relevo${coverageHandoverItems.length === 1 ? '' : 's'} activo${coverageHandoverItems.length === 1 ? '' : 's'}. ` : ''}{coverageAlternateExpiringItems.length ? `${coverageAlternateExpiringItems.length} alterna${coverageAlternateExpiringItems.length === 1 ? '' : 's'} próxima${coverageAlternateExpiringItems.length === 1 ? '' : 's'} a vencer. ` : ''}Cada certificación mantiene su propia fecha de expiración.</BBVAAlert> : null}
 
       <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
         <div className="border-b border-slate-200 bg-slate-50/60 p-4 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-950/35">
@@ -169,8 +218,9 @@ export const CollaboratorCertificationsPage: React.FC = () => {
         {needsLevel ? <div className="w-full sm:w-[140px]"><BBVASearchableSelect value={certificationLevel} onChange={setCertificationLevel} options={[{value:'',label:'Nivel'},...(selectedCatalogOption?.allowedLevels ?? []).filter((level)=>level!=='GENERIC').sort((a,b)=>({JR:1,STD:2,SR:3}[a]??99)-({JR:1,STD:2,SR:3}[b]??99)).map((level)=>({value:level,label:level}))]} ariaLabel="Nivel de certificación" /></div> : null}
       </BBVAFilterBar>
 
+
           <div className="mt-3 grid overflow-hidden rounded-xl border border-slate-200 bg-white sm:grid-cols-3 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/70">
-            <div className="border-b border-slate-100 px-4 py-3.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Cobertura</div><div className="mt-1.5 text-[26px] font-semibold leading-none text-blue-700">{summary?.coveragePercent ?? 100}%</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">{(summary?.valid ?? 0) + (summary?.expiring ?? 0)} cubiertas de {summary?.applicable ?? 0} aplicables</div></div>
+            <div className="border-b border-slate-100 px-4 py-3.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Cobertura</div><div className="mt-1.5 text-[26px] font-semibold leading-none text-blue-700">{summary?.coveragePercent ?? 100}%</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">{(summary?.valid ?? 0) + (summary?.expiring ?? 0)} cubiertas de {summary?.applicable ?? 0} activas · {summary?.reserve ?? 0} alterna{(summary?.reserve ?? 0) === 1 ? '' : 's'}</div></div>
             <div className="border-b border-slate-100 px-4 py-3.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Atención</div><div className={`mt-1.5 text-[26px] font-semibold leading-none ${attentionCount ? 'text-amber-700' : 'text-emerald-700'}`}>{attentionCount}</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">pendientes, vencidas, reprobadas o por recertificar</div></div>
             <div className="px-4 py-3.5"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Próximas a vencer</div><div className="mt-1.5 text-[26px] font-semibold leading-none text-amber-700">{summary?.expiring ?? 0}</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">seguimiento preventivo</div></div>
           </div>
@@ -189,13 +239,14 @@ export const CollaboratorCertificationsPage: React.FC = () => {
                   const criticalDecision = isCriticalDecisionPending(item);
                   const criticalOpen = isCriticalExitOpen(item);
                   return <tr key={item.id} className={`transition ${criticalOpen ? 'bg-rose-50/70 ring-1 ring-inset ring-rose-200 hover:bg-rose-50' : 'hover:bg-slate-50/70'}`}>
-                    <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{displayCertificationName(item.certificationName)}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName ? sentenceCaseData(item.technologyName) : null, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider ? sentenceCaseData(item.provider) : null].filter(Boolean).join(' · ') || 'General'}</div></td>
+                    <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{displayCertificationName(item.certificationName)}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName ? sentenceCaseData(item.technologyName) : null, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider ? sentenceCaseData(item.provider) : null].filter(Boolean).join(' · ') || 'General'}</div>{coverageRoleLabel(item) ? <div className="mt-1 flex flex-wrap gap-1"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[8px] font-semibold ${coverageRoleTone(item)}`}>{coverageRoleLabel(item)}</span>{item.metricActive && item.coverageNoValidCertification ? <span className="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2 py-0.5 text-[8px] font-semibold text-rose-700 [.bbva-dark_&]:border-rose-500/30 [.bbva-dark_&]:bg-rose-500/10 [.bbva-dark_&]:text-rose-300">Sin cobertura vigente</span> : item.metricActive && item.coverageHandover ? <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[8px] font-semibold text-amber-700 [.bbva-dark_&]:border-amber-500/30 [.bbva-dark_&]:bg-amber-500/10 [.bbva-dark_&]:text-amber-300">Relevo activo{item.coveragePreviousCertificationName ? ` · ${displayCertificationName(item.coveragePreviousCertificationName)} → ${displayCertificationName(item.certificationName)}` : ''}</span> : !item.metricActive && item.status === 'EXPIRING' ? <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[8px] font-semibold text-amber-700 [.bbva-dark_&]:border-amber-500/30 [.bbva-dark_&]:bg-amber-500/10 [.bbva-dark_&]:text-amber-300">Alterna por vencer</span> : null}</div> : null}</td>
                     <td className="px-3 py-2.5"><div>{formatDate(item.approvedDate)}</div>{item.attemptCount > 0 ? <div className="mt-0.5 text-[9px] text-slate-400">{item.attemptCount} intento{item.attemptCount === 1 ? '' : 's'} en ciclo {item.currentCycle}</div> : null}</td>
                     <td className="px-3 py-2.5"><span className="text-[9.5px] font-medium text-slate-600">{followUp(item)}</span></td>
                     <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[8.5px] font-bold uppercase text-white">Crítico</span> : <span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>}</td>
                     <td className="px-3 py-2.5 text-right"><BBVAActionMenu items={[
                       ...(criticalDecision ? [{ id: 'critical-resolve', label: 'Resolver baja / becario', icon: ArrowRightLeft, tone: 'danger' as const, onClick: () => setPendingCritical(item) }] : []),
                       ...(item.criticalResolutionStatus === 'LOW_REQUESTED' ? [{ id: 'critical-low-continue', label: 'Continuar baja BBVA', icon: ArrowRightLeft, tone: 'danger' as const, onClick: () => navigate(`/bbva/collaborators/${id}/move-to-talent`, { state: { criticalCertification: item.certificationName, criticalMessage: 'Solicitud de baja registrada por agotamiento 2/2. Completa el movimiento para confirmar la salida de BBVA.', preferredReasonGroup: 'BBVA_EXIT' } }) }] : []),
+                      ...(item.certificationType === 'TECHNOLOGICAL' ? [{ id: 'coverage', label: 'Configurar cobertura tecnológica', icon: Layers3, onClick: () => openCoverage(item) }] : []),
                       { id: 'view', label: 'Ver detalle', icon: Eye, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },
                       { id: 'schedule', label: item.scheduledDate ? 'Reprogramar examen' : 'Programar examen', icon: CalendarClock, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle || attemptLimitReached, onClick: () => setPendingSchedule(item) },
                       { id: 'attempt', label: 'Registrar intento', icon: Award, disabled: item.status === 'NOT_APPLICABLE' || approvedCycle || attemptLimitReached, onClick: () => navigate(`/bbva/collaborators/${id}/certifications/${item.id}/attempt`, { state: { returnTo: listPath, rootReturnTo: returnTo } }) },
@@ -209,6 +260,15 @@ export const CollaboratorCertificationsPage: React.FC = () => {
         {filtered.length === 0 ? <div className="border-t border-slate-200 px-4 py-8 text-center text-xs text-slate-500">No hay certificaciones que coincidan con los filtros.</div> : <BBVAPagination total={filtered.length} page={safePage} size={size} onPageChange={(nextPage)=>listMemory.patch({page:nextPage})} onSizeChange={(nextSize)=>listMemory.patch({size:nextSize,page:0})}/>}
       </section>
 
+      <CertificationCoverageDialog
+        open={Boolean(coverageItem)}
+        anchor={coverageItem}
+        items={visibleItems}
+        busy={coverageMutation.isPending}
+        onCancel={() => setCoverageItem(null)}
+        onSave={saveCoverage}
+        onClear={clearCoverage}
+      />
       <CertificationCriticalResolutionDialog
         open={Boolean(pendingCritical)}
         collaboratorName={collaborator?.fullName ?? ''}

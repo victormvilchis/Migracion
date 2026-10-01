@@ -55,6 +55,21 @@ export async function collaboratorCertificationItemHandler(request: HttpRequest,
   }
 }
 
+export async function collaboratorCertificationCoverageHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
+  try {
+    const user = getCurrentUser(request);
+    assertBbvaPermission(user, 'COLLABORATOR_WRITE');
+    const collaboratorId = request.params.id;
+    const recordId = request.params.certificationRecordId;
+    if (!collaboratorId || !recordId) return { status: 400, jsonBody: { error: 'Identificadores requeridos.' } };
+    if (request.method !== 'PUT') return { status: 405, jsonBody: { error: 'Método no permitido.' } };
+    const item = await service.updateCoverage(collaboratorId, recordId, await readBbvaJson(request), user.email);
+    return item ? { status: 200, jsonBody: { item } } : { status: 404, jsonBody: { error: 'Certificación del colaborador no encontrada.' } };
+  } catch (error) {
+    return bbvaErrorResponse(error, context, 'CollaboratorCertifications');
+  }
+}
+
 export async function collaboratorCertificationAttemptHandler(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
   try {
     const user = getCurrentUser(request);
@@ -171,6 +186,13 @@ app.http('bbvaCollaboratorCertificationItem', {
   authLevel: 'anonymous',
   route: 'bbva/collaborators/{id}/certifications/{certificationRecordId}',
   handler: collaboratorCertificationItemHandler,
+});
+
+app.http('bbvaCollaboratorCertificationCoverage', {
+  methods: ['PUT'],
+  authLevel: 'anonymous',
+  route: 'bbva/collaborators/{id}/certifications/{certificationRecordId}/coverage',
+  handler: collaboratorCertificationCoverageHandler,
 });
 
 app.http('bbvaCollaboratorCertificationAttempt', {

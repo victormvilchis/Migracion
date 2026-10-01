@@ -43,6 +43,9 @@ export interface DashboardCertificationRow {
   applicable: boolean;
   mandatory: boolean;
   baseStatus: string;
+  coverageGroupId: string | null;
+  coveragePriority: number;
+  metricActive: boolean;
   expirationDate: string | null;
   recertificationEnabled: boolean;
   expiringSoonDays: number | null;
@@ -120,6 +123,7 @@ export class BbvaDashboardRepository {
              CAST(pc.CertificationId AS NVARCHAR(36)) AS certificationId,cc.Name AS certificationName,
              cc.CertificationType AS certificationType,
              pc.Applicable AS applicable,pc.Mandatory AS mandatory,pc.BaseStatus AS baseStatus,
+             CAST(pc.CoverageGroupId AS NVARCHAR(36)) AS coverageGroupId,pc.CoveragePriority AS coveragePriority,
              CONVERT(VARCHAR(10),effectiveDates.EffectiveExpirationDate,23) AS expirationDate,
              cc.RecertificationEnabled AS recertificationEnabled,cc.ExpiringSoonDays AS expiringSoonDays,
              cc.MaxAttempts AS maxAttempts,pc.CurrentCycle AS currentCycle,
@@ -160,6 +164,9 @@ export class BbvaDashboardRepository {
       ...row,
       applicable: Boolean(row.applicable),
       mandatory: Boolean(row.mandatory),
+      coverageGroupId: row.coverageGroupId ? String(row.coverageGroupId) : null,
+      coveragePriority: Math.min(255, Math.max(1, Number(row.coveragePriority) || 1)),
+      metricActive: false,
       recertificationEnabled: Boolean(row.recertificationEnabled),
       expiringSoonDays: row.expiringSoonDays === null ? null : Number(row.expiringSoonDays),
       maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),

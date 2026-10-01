@@ -3,6 +3,7 @@ import { getDbConnection } from './db.js';
 import { BBVA_SQL_BUSINESS_DATE, bbvaBusinessDate } from './bbvaBusinessTime.js';
 import { isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import { deriveInitialCertificationSchedule } from './bbvaInitialCertificationSchedule.js';
+import { certificationCoverageActivity } from './bbvaCertificationCoverage.js';
 import type {
   CertificationAttemptInput,
   CertificationAttemptUpdateInput,
@@ -15,6 +16,7 @@ import type {
   CollaboratorCertificationSummary,
   CertificationTrackingRecord,
   CertificationCriticalResolutionInput,
+  CertificationCoverageUpdateInput,
 } from './bbvaCollaboratorCertificationDomain.js';
 import type {
   ImportCertificationCatalogConfig,
@@ -52,6 +54,8 @@ const BASE_SELECT = `
     pc.Mandatory AS mandatory,
     pc.Applicable AS applicable,
     pc.Source AS source,
+    CAST(pc.CoverageGroupId AS NVARCHAR(36)) AS coverageGroupId,
+    pc.CoveragePriority AS coveragePriority,
     CONVERT(VARCHAR(10),c.StartDate,23) AS bbvaStartDate,
     cc.InitialCompletionDays AS initialCompletionDays,
     CONVERT(VARCHAR(10),pc.InitialDueDate,23) AS initialDueDate,
@@ -150,6 +154,12 @@ function toRecord(row: any): CollaboratorCertificationRecord {
     ...row,
     mandatory: Boolean(row.mandatory),
     applicable: Boolean(row.applicable),
+    coverageGroupId: row.coverageGroupId ? String(row.coverageGroupId) : null,
+    coveragePriority: Math.min(255, Math.max(1, Number(row.coveragePriority) || 1)),
+    metricActive: false,
+    coverageHandover: false,
+    coveragePreviousCertificationName: null,
+    coverageNoValidCertification: false,
     currentCycle,
     attemptCount,
     initialCompletionDays,
@@ -172,8 +182,32 @@ function toRecord(row: any): CollaboratorCertificationRecord {
   } as CollaboratorCertificationRecord;
 }
 
+function withMetricActivity(items: CollaboratorCertificationRecord[]): CollaboratorCertificationRecord[] {
+  const activity = certificationCoverageActivity(items.map((item) => ({
+    recordId: item.id,
+    personId: item.personId,
+    certificationName: item.certificationName,
+    applicable: item.applicable,
+    baseStatus: item.baseStatus,
+    coverageGroupId: item.coverageGroupId,
+    coveragePriority: item.coveragePriority,
+    expirationDate: item.expirationDate,
+  })), bbvaBusinessDate());
+  return items.map((item) => {
+    const coverage = activity.get(item.id);
+    return {
+      ...item,
+      metricActive: coverage?.metricActive ?? false,
+      coverageHandover: coverage?.handover ?? false,
+      coveragePreviousCertificationName: coverage?.previousCertificationName ?? null,
+      coverageNoValidCertification: coverage?.noValidCoverage ?? false,
+    };
+  });
+}
+
 function summary(items: CollaboratorCertificationRecord[]): CollaboratorCertificationSummary {
-  const applicableItems = items.filter((item) => item.applicable && item.status !== 'NOT_APPLICABLE');
+  const trackedItems = items.filter((item) => item.applicable && item.status !== 'NOT_APPLICABLE');
+  const applicableItems = trackedItems.filter((item) => item.metricActive);
   const valid = applicableItems.filter((item) => item.status === 'VALID').length;
   const expiring = applicableItems.filter((item) => item.status === 'EXPIRING').length;
   const expired = applicableItems.filter((item) => item.status === 'EXPIRED').length;
@@ -184,6 +218,7 @@ function summary(items: CollaboratorCertificationRecord[]): CollaboratorCertific
   return {
     total: items.length,
     applicable: applicableItems.length,
+    reserve: Math.max(0, trackedItems.length - applicableItems.length),
     valid,
     expiring,
     expired,
@@ -324,7 +359,7 @@ export class CollaboratorCertificationRepository {
       WHERE c.Id=@id
       ORDER BY pc.Applicable DESC, cc.Name ASC;
     `);
-    const items = (result.recordset as any[]).map(toRecord);
+    const items = withMetricActivity((result.recordset as any[]).map(toRecord));
     return { items, summary: summary(items) };
   }
 
@@ -336,7 +371,7 @@ export class CollaboratorCertificationRepository {
       .query(`${BASE_SELECT} WHERE c.Id=@collaboratorId AND pc.Id=@recordId;`);
     const raw = itemResult.recordset[0];
     if (!raw) return null;
-    const item = toRecord(raw);
+    const rawItem = toRecord(raw);
 
     const attempts = await pool.request().input('recordId', sql.UniqueIdentifier, recordId).query(`
       SELECT CAST(a.Id AS NVARCHAR(36)) AS id,
@@ -360,6 +395,9 @@ export class CollaboratorCertificationRepository {
       WHERE h.PersonCertificationId=@recordId
       ORDER BY h.CreatedAt DESC;
     `);
+
+    const resolvedList = await this.list(collaboratorId);
+    const item = resolvedList?.items.find((candidate) => candidate.id === recordId) ?? rawItem;
 
     return {
       item,
@@ -879,6 +917,131 @@ export class CollaboratorCertificationRepository {
     }
   }
 
+  async updateCoverage(collaboratorId: string, recordId: string, input: CertificationCoverageUpdateInput, actorEmail: string): Promise<CollaboratorCertificationRecord | null> {
+    const personId = await this.collaboratorPersonId(collaboratorId);
+    if (!personId) return null;
+    const pool = await getDbConnection();
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    try {
+      const targetResult = await new sql.Request(transaction)
+        .input('recordId', sql.UniqueIdentifier, recordId)
+        .input('personId', sql.UniqueIdentifier, personId)
+        .query(`SELECT CAST(pc.Id AS NVARCHAR(36)) AS id,CAST(pc.CoverageGroupId AS NVARCHAR(36)) AS coverageGroupId,
+                       pc.CoveragePriority AS coveragePriority,pc.Applicable AS applicable,pc.BaseStatus AS baseStatus,
+                       cc.CertificationType AS certificationType
+                FROM bbva.PersonCertification pc WITH (UPDLOCK,HOLDLOCK)
+                INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+                WHERE pc.Id=@recordId AND pc.PersonId=@personId;`);
+      const target = targetResult.recordset[0] as { id?: string; coverageGroupId?: string | null; coveragePriority?: number; applicable?: boolean; baseStatus?: string; certificationType?: string } | undefined;
+      if (!target?.id) {
+        await transaction.rollback();
+        return null;
+      }
+      if (!target.applicable || target.baseStatus === 'NOT_APPLICABLE') {
+        throw Object.assign(new Error('La certificación debe estar activa para configurar su cobertura tecnológica.'), { statusCode: 409 });
+      }
+      if (String(target.certificationType) !== 'TECHNOLOGICAL') {
+        throw Object.assign(new Error('Solo las certificaciones tecnológicas pueden formar grupos de cobertura.'), { statusCode: 400, code: 'TECHNOLOGICAL_COVERAGE_ONLY' });
+      }
+
+      const memberRecordIds = [...new Set(input.memberRecordIds)];
+      if (!memberRecordIds.includes(recordId)) {
+        throw Object.assign(new Error('La certificación desde la que configuras la cobertura debe permanecer dentro del grupo.'), { statusCode: 400 });
+      }
+      if (memberRecordIds.length > 255) {
+        throw Object.assign(new Error('Un grupo de cobertura admite hasta 255 certificaciones tecnológicas.'), { statusCode: 400 });
+      }
+
+      const oldGroupId = target.coverageGroupId ? String(target.coverageGroupId) : null;
+
+      // Un solo miembro significa quitar la agrupación actual. La certificación queda independiente.
+      if (memberRecordIds.length === 1) {
+        if (oldGroupId) {
+          await new sql.Request(transaction)
+            .input('personId', sql.UniqueIdentifier, personId)
+            .input('groupId', sql.UniqueIdentifier, oldGroupId)
+            .input('actorEmail', sql.NVarChar(255), actorEmail)
+            .query(`UPDATE bbva.PersonCertification
+                    SET CoverageGroupId=NULL,CoveragePriority=1,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+                    WHERE PersonId=@personId AND CoverageGroupId=@groupId;`);
+        }
+        await new sql.Request(transaction)
+          .input('recordId', sql.UniqueIdentifier, recordId)
+          .input('actorEmail', sql.NVarChar(255), actorEmail)
+          .query(`INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
+                  VALUES(@recordId,N'COVERAGE_GROUP_CHANGED',N'Grupo de cobertura tecnológica eliminado; la certificación vuelve a contabilizarse de forma independiente.',@actorEmail);`);
+        await transaction.commit();
+        return (await this.detail(collaboratorId, recordId))?.item ?? null;
+      }
+
+      const selectedRequest = new sql.Request(transaction).input('personId', sql.UniqueIdentifier, personId);
+      const placeholders = memberRecordIds.map((id, index) => {
+        selectedRequest.input(`member${index}`, sql.UniqueIdentifier, id);
+        return `@member${index}`;
+      });
+      const selectedResult = await selectedRequest.query(`
+        SELECT CAST(pc.Id AS NVARCHAR(36)) AS id,CAST(pc.CoverageGroupId AS NVARCHAR(36)) AS coverageGroupId,
+               pc.Applicable AS applicable,pc.BaseStatus AS baseStatus,cc.CertificationType AS certificationType
+        FROM bbva.PersonCertification pc WITH (UPDLOCK,HOLDLOCK)
+        INNER JOIN bbva.CertificationCatalog cc ON cc.Id=pc.CertificationId
+        WHERE pc.PersonId=@personId AND pc.Id IN (${placeholders.join(',')});
+      `);
+      const selected = selectedResult.recordset as Array<{ id: string; coverageGroupId: string | null; applicable: boolean; baseStatus: string; certificationType: string }>;
+      if (selected.length !== memberRecordIds.length) {
+        throw Object.assign(new Error('Una o más certificaciones seleccionadas no pertenecen al colaborador.'), { statusCode: 400 });
+      }
+      if (selected.some((item) => !item.applicable || item.baseStatus === 'NOT_APPLICABLE')) {
+        throw Object.assign(new Error('Todas las certificaciones del grupo deben estar activas.'), { statusCode: 409 });
+      }
+      if (selected.some((item) => String(item.certificationType) !== 'TECHNOLOGICAL')) {
+        throw Object.assign(new Error('Desarrollo Seguro, Normativa y otras certificaciones no tecnológicas no pueden formar parte de la cobertura tecnológica.'), { statusCode: 400, code: 'TECHNOLOGICAL_COVERAGE_ONLY' });
+      }
+      const foreignGroup = selected.find((item) => item.coverageGroupId && String(item.coverageGroupId) !== oldGroupId);
+      if (foreignGroup) {
+        throw Object.assign(new Error('Una de las certificaciones seleccionadas ya pertenece a otro grupo de cobertura tecnológica.'), { statusCode: 409, code: 'COVERAGE_GROUP_CONFLICT' });
+      }
+
+      const groupId = oldGroupId ?? String((await new sql.Request(transaction).query(`SELECT CONVERT(NVARCHAR(36),NEWID()) AS id;`)).recordset[0].id);
+
+      // Liberar el grupo antes de reordenarlo evita colisiones del índice único por posición.
+      if (oldGroupId) {
+        await new sql.Request(transaction)
+          .input('personId', sql.UniqueIdentifier, personId)
+          .input('groupId', sql.UniqueIdentifier, oldGroupId)
+          .input('actorEmail', sql.NVarChar(255), actorEmail)
+          .query(`UPDATE bbva.PersonCertification
+                  SET CoverageGroupId=NULL,CoveragePriority=1,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+                  WHERE PersonId=@personId AND CoverageGroupId=@groupId;`);
+      }
+
+      for (let index = 0; index < memberRecordIds.length; index += 1) {
+        await new sql.Request(transaction)
+          .input('recordId', sql.UniqueIdentifier, memberRecordIds[index])
+          .input('personId', sql.UniqueIdentifier, personId)
+          .input('groupId', sql.UniqueIdentifier, groupId)
+          .input('priority', sql.TinyInt, index + 1)
+          .input('actorEmail', sql.NVarChar(255), actorEmail)
+          .query(`UPDATE bbva.PersonCertification
+                  SET CoverageGroupId=@groupId,CoveragePriority=@priority,UpdatedAt=SYSUTCDATETIME(),UpdatedByEmail=@actorEmail
+                  WHERE Id=@recordId AND PersonId=@personId;`);
+      }
+
+      await new sql.Request(transaction)
+        .input('recordId', sql.UniqueIdentifier, recordId)
+        .input('memberCount', sql.Int, memberRecordIds.length)
+        .input('actorEmail', sql.NVarChar(255), actorEmail)
+        .query(`INSERT INTO bbva.PersonCertificationHistory(PersonCertificationId,EventType,Description,CreatedByEmail)
+                VALUES(@recordId,N'COVERAGE_GROUP_CHANGED',CONCAT(N'Grupo de cobertura tecnológica actualizado con ',@memberCount,N' certificaciones. El relevo para métricas sigue el orden configurado y cada certificación conserva su propia vigencia.'),@actorEmail);`);
+
+      await transaction.commit();
+      return (await this.detail(collaboratorId, recordId))?.item ?? null;
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  }
+
   async tracking(): Promise<CertificationTrackingRecord[]> {
     const pool = await getDbConnection();
     const result = await pool.request().query(`
@@ -896,6 +1059,8 @@ export class CollaboratorCertificationRepository {
         cc.Name AS certificationName,
         cc.CertificationType AS certificationType,
         tech.Name AS technologyName,
+        CAST(pc.CoverageGroupId AS NVARCHAR(36)) AS coverageGroupId,
+        pc.CoveragePriority AS coveragePriority,
         cc.InitialCompletionDays AS initialCompletionDays,
         CONVERT(VARCHAR(10),pc.InitialDueDate,23) AS initialDueDate,
         pc.BaseStatus AS baseStatus,
@@ -983,13 +1148,38 @@ export class CollaboratorCertificationRepository {
         daysToInitialSchedule:schedule.daysRemaining,
         initialScheduleTiming:schedule.timing,
         maxAttempts: row.maxAttempts === null ? null : Number(row.maxAttempts),
+        coverageGroupId: row.coverageGroupId ? String(row.coverageGroupId) : null,
+        coveragePriority: Math.min(255, Math.max(1, Number(row.coveragePriority) || 1)),
+        metricActive: false,
+        coverageHandover: false,
+        coveragePreviousCertificationName: null,
+        coverageNoValidCertification: false,
         recertificationEnabled: Boolean(row.recertificationEnabled),
         requiresAttempts: Boolean(row.requiresAttempts),
         tracksScore: Boolean(row.tracksScore),
         criticalActionRequired: Boolean(row.criticalActionRequired),
       };
     }) as CertificationTrackingRecord[];
-    return rows;
+    const activity = certificationCoverageActivity(rows.map((item) => ({
+      recordId: item.certificationRecordId,
+      personId: item.personId,
+      certificationName: item.certificationName,
+      applicable: true,
+      baseStatus: item.status === 'NOT_APPLICABLE' ? 'NOT_APPLICABLE' : (item.status === 'VALID' || item.status === 'EXPIRING' || item.status === 'EXPIRED' || item.status === 'RECERTIFICATION_PENDING' ? 'APPROVED' : item.status),
+        coverageGroupId: item.coverageGroupId,
+      coveragePriority: item.coveragePriority,
+      expirationDate: item.expirationDate,
+    })), bbvaBusinessDate());
+    return rows.map((item) => {
+      const coverage = activity.get(item.certificationRecordId);
+      return {
+        ...item,
+        metricActive: coverage?.metricActive ?? false,
+        coverageHandover: coverage?.handover ?? false,
+        coveragePreviousCertificationName: coverage?.previousCertificationName ?? null,
+        coverageNoValidCertification: coverage?.noValidCoverage ?? false,
+      };
+    });
   }
 
   async listImportCatalog(): Promise<ImportCertificationCatalogConfig[]> {

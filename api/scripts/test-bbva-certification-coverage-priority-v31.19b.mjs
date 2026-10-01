@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url));
+const root=path.resolve(here,'..','..');
+const read=(relative)=>fs.readFileSync(path.join(root,relative),'utf8');
+const migration=read('api/scripts/migrate-bbva-certification-coverage-priority-v31.19b.sql');
+const apply=read('api/scripts/apply-bbva-certification-coverage-priority-v31.19b.mjs');
+assert.match(migration,/CoverageGroupId/);
+assert.match(migration,/CoveragePriority/);
+assert.match(apply,/HasCoverageSlotIndex/);
+console.log('BBVA Certification Coverage V31.19b migration compatibility: OK');

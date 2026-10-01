@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const here=path.dirname(fileURLToPath(import.meta.url));
+const root=path.resolve(here,'..','..');
+const read=(relative)=>fs.readFileSync(path.join(root,relative),'utf8');
+const repository=read('api/src/lib/bbvaCollaboratorCertificationRepository.ts');
+const dashboard=read('api/src/lib/bbvaDashboardService.ts');
+const helper=read('api/src/lib/bbvaCertificationCoverage.ts');
+assert.match(helper,/coveragePriority/);
+assert.match(repository,/updateCoverage\(/);
+assert.match(repository,/CoverageGroupId/);
+assert.match(dashboard,/row\.metricActive/);
+console.log('BBVA Certification Coverage V31.19 compatibility: OK');
+console.log('- grupo de cobertura y una sola certificación activa para métricas se conservan: OK');

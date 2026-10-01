@@ -1,5 +1,5 @@
 import { CollaboratorCertificationRepository } from './bbvaCollaboratorCertificationRepository.js';
-import type { CertificationAttemptInput, CertificationAttemptUpdateInput, CertificationUpdateInput, CertificationCriticalResolutionInput } from './bbvaCollaboratorCertificationDomain.js';
+import type { CertificationAttemptInput, CertificationAttemptUpdateInput, CertificationUpdateInput, CertificationCriticalResolutionInput, CertificationCoverageUpdateInput } from './bbvaCollaboratorCertificationDomain.js';
 import { CRITICAL_TWO_ATTEMPT_TYPES, isCriticalResolutionOpen, isCriticalTwoAttemptExhausted } from './bbvaCertificationRules.js';
 import { vendorQuarterContext, vendorQuarterForDate } from './bbvaVendorCalendar.js';
 import { BbvaOperationalQuarterRepository } from './bbvaOperationalQuarterRepository.js';
@@ -81,7 +81,8 @@ export class CollaboratorCertificationService {
     const rawItems = await repository.tracking();
     const items = rawItems.map((item) => ({ ...item, quarterCode: vendorQuarterForDate(item.expirationDate, operationalQuarterOverrides)?.code ?? null }));
     const quarter = vendorQuarterContext(new Date(), null, operationalQuarterOverrides);
-    const exhaustedAttempts = items.filter((item) =>
+    const metricItems = items.filter((item) => item.metricActive);
+    const exhaustedAttempts = metricItems.filter((item) =>
       isCriticalTwoAttemptExhausted({
         certificationType: item.certificationType,
         maxAttempts: item.maxAttempts,
@@ -98,7 +99,7 @@ export class CollaboratorCertificationService {
         targetStartDate: quarter.targetQuarter?.startDate ?? null,
         targetEndDate: quarter.targetQuarter?.endDate ?? null,
         daysToTargetStart: quarter.daysToTargetStart,
-        pendingCertifications: items.length,
+        pendingCertifications: metricItems.length,
         exhaustedAttempts,
         referenceDate: quarter.referenceDate,
         years: quarter.years,
@@ -112,6 +113,22 @@ export class CollaboratorCertificationService {
     if (!certificationId) throw Object.assign(new Error('La certificación es obligatoria.'), { statusCode: 400 });
     const certificationLevel = cleanText(valueOf(payload, 'certificationLevel'), 16)?.toUpperCase() ?? null;
     return repository.addManual(collaboratorId, certificationId, certificationLevel, actorEmail);
+  }
+
+  async updateCoverage(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string) {
+    const rawMemberRecordIds = valueOf(payload, 'memberRecordIds');
+    if (!Array.isArray(rawMemberRecordIds)) {
+      throw Object.assign(new Error('Selecciona las certificaciones tecnológicas que formarán el grupo de cobertura.'), { statusCode: 400 });
+    }
+    const memberRecordIds = [...new Set(rawMemberRecordIds.map((value) => cleanText(value, 36)).filter((value): value is string => Boolean(value)))];
+    if (!memberRecordIds.length) {
+      throw Object.assign(new Error('El grupo de cobertura debe incluir al menos la certificación seleccionada.'), { statusCode: 400 });
+    }
+    if (memberRecordIds.length > 255) {
+      throw Object.assign(new Error('Un grupo de cobertura admite hasta 255 certificaciones tecnológicas.'), { statusCode: 400 });
+    }
+    const input: CertificationCoverageUpdateInput = { memberRecordIds };
+    return repository.updateCoverage(collaboratorId, recordId, input, actorEmail);
   }
 
   async update(collaboratorId: string, recordId: string, payload: unknown, actorEmail: string) {
