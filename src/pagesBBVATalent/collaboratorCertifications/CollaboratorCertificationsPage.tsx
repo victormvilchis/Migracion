@@ -46,6 +46,10 @@ function isCriticalExitOpen(item: CollaboratorCertification) {
   return item.criticalActionRequired === true || item.criticalResolutionStatus === 'LOW_REQUESTED';
 }
 
+function isRecertificationToSchedule(item: CollaboratorCertification) {
+  return item.currentCycle > 1 && item.status === 'PENDING' && !item.scheduledDate;
+}
+
 
 function followUp(item: CollaboratorCertification) {
   if (item.criticalResolutionStatus === 'INTERN') return 'Resuelto como becario';
@@ -54,6 +58,7 @@ function followUp(item: CollaboratorCertification) {
   if (isCriticalDecisionPending(item)) return 'CRÍTICO · Resolver baja o becario';
   if (item.status === 'NOT_APPLICABLE') return 'Sin seguimiento';
   if (item.status === 'RECERTIFICATION_PENDING') return 'Recertificar';
+  if (isRecertificationToSchedule(item)) return 'Programar recertificación';
   if (item.status === 'EXPIRED') return 'Vencida';
   if (item.status === 'EXPIRING') return `Vence ${formatDate(item.expirationDate)}`;
   if (item.requiresAttempts && item.maxAttempts && item.attemptCount >= item.maxAttempts) return `Intentos agotados (${item.maxAttempts})`;
@@ -197,41 +202,41 @@ export const CollaboratorCertificationsPage: React.FC = () => {
   if (query.error) return <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert>;
 
   return (
-    <div className="space-y-3 animate-fade-in">
+    <div className="bbva-page bbva-collaborator-certifications-page space-y-3 animate-fade-in">
       <div className="flex justify-start"><BBVAFormBackButton onBack={() => navigate(returnTo)} /></div>
       {error ? <BBVAAlert tone="error" onClose={() => setError(null)}>{error}</BBVAAlert> : null}
       {criticalItems.length ? <BBVAAlert tone="error" persistent title="Atención crítica">{criticalItems.length} certificación{criticalItems.length === 1 ? '' : 'es'} de Desarrollo Seguro, Tecnológica o Normativa agotaron 2/2 intentos. Revisa si corresponde solicitar baja o gestionar el caso como becario.</BBVAAlert> : null}
       {coverageWithoutValidityItems.length ? <BBVAAlert tone="error" persistent title="Sin cobertura tecnológica vigente">Este colaborador tiene {coverageWithoutValidityItems.length} grupo{coverageWithoutValidityItems.length === 1 ? '' : 's'} de cobertura sin ninguna certificación tecnológica vigente.</BBVAAlert> : null}
       {coverageHandoverItems.length || coverageAlternateExpiringItems.length ? <BBVAAlert tone="info" persistent title="Cobertura tecnológica">{coverageHandoverItems.length ? `${coverageHandoverItems.length} relevo${coverageHandoverItems.length === 1 ? '' : 's'} activo${coverageHandoverItems.length === 1 ? '' : 's'}. ` : ''}{coverageAlternateExpiringItems.length ? `${coverageAlternateExpiringItems.length} alterna${coverageAlternateExpiringItems.length === 1 ? '' : 's'} próxima${coverageAlternateExpiringItems.length === 1 ? '' : 's'} a vencer. ` : ''}Cada certificación mantiene su propia fecha de expiración.</BBVAAlert> : null}
 
-      <section className="overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
-        <div className="border-b border-slate-200 bg-slate-50/60 p-4 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-950/35">
+      <section className="bbva-density-card overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+        <div className="bbva-certification-header border-b border-slate-200 bg-slate-50/60 p-4 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-950/35">
           <div className="min-w-0">
             <h1 className="truncate text-[19px] font-semibold text-slate-950 [.bbva-dark_&]:text-white">{collaborator.fullName}</h1>
             <div className="mt-1 text-[10.5px] font-medium text-slate-500">{[collaborator.profile, collaborator.currentTechnology, collaborator.expertise].filter(Boolean).join(' · ')}</div>
           </div>
 
-      <BBVAFilterBar actions={<button type="button" onClick={() => void add()} disabled={!certificationId || (needsLevel && !certificationLevel) || addMutation.isPending} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 text-[10.5px] font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-3.5 w-3.5" />Agregar certificación</button>}>
+      <div className="bbva-density-filters bbva-certification-filters"><BBVAFilterBar actions={<button type="button" onClick={() => void add()} disabled={!certificationId || (needsLevel && !certificationLevel) || addMutation.isPending} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 text-[10.5px] font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"><Plus className="h-3.5 w-3.5" />Agregar certificación</button>}>
         <div className="relative w-full sm:w-[270px]"><Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" /><input value={search} onChange={(e) => listMemory.patch({search:e.target.value,page:0})} placeholder="Buscar certificación" className="h-9 w-full rounded-xl border border-slate-300 bg-white pl-8 pr-3 text-[11px] outline-none focus:border-blue-500" /></div>
         <div className="w-full sm:w-[180px]"><BBVASearchableSelect value={status} onChange={(value) => listMemory.patch({status:value as 'ALL' | CollaboratorCertificationStatus,page:0})} options={[{ value: 'ALL', label: 'Todos los estados' }, ...Object.entries(COLLABORATOR_CERTIFICATION_STATUS_LABELS).filter(([value]) => value !== 'NOT_APPLICABLE').map(([value, label]) => ({ value, label }))]} ariaLabel="Filtrar por estado" /></div>
         <div className="min-w-[250px] flex-1 xl:max-w-[520px]"><BBVASearchableSelect value={certificationId} onChange={(value)=>{setCertificationId(value);setCertificationLevel('');}} options={[{ value: '', label: 'Seleccionar certificación para agregar' }, ...availableOptions.map((option) => ({ value: option.id, label: option.name, description: option.certificationType === 'TECHNOLOGICAL' ? `${option.technologyName ?? 'Tecnológica'} · niveles ${option.allowedLevels.join(', ') || 'sin configurar'}` : undefined }))]} ariaLabel="Seleccionar certificación para agregar" /></div>
         {needsLevel ? <div className="w-full sm:w-[140px]"><BBVASearchableSelect value={certificationLevel} onChange={setCertificationLevel} options={[{value:'',label:'Nivel'},...(selectedCatalogOption?.allowedLevels ?? []).filter((level)=>level!=='GENERIC').sort((a,b)=>({JR:1,STD:2,SR:3}[a]??99)-({JR:1,STD:2,SR:3}[b]??99)).map((level)=>({value:level,label:level}))]} ariaLabel="Nivel de certificación" /></div> : null}
-      </BBVAFilterBar>
+      </BBVAFilterBar></div>
 
 
-          <div className="mt-3 grid overflow-hidden rounded-xl border border-slate-200 bg-white sm:grid-cols-3 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/70">
-            <div className="border-b border-slate-100 px-4 py-3.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Cobertura</div><div className="mt-1.5 text-[26px] font-semibold leading-none text-blue-700">{summary?.coveragePercent ?? 100}%</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">{(summary?.valid ?? 0) + (summary?.expiring ?? 0)} cubiertas de {summary?.applicable ?? 0} activas · {summary?.reserve ?? 0} alterna{(summary?.reserve ?? 0) === 1 ? '' : 's'}</div></div>
-            <div className="border-b border-slate-100 px-4 py-3.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Atención</div><div className={`mt-1.5 text-[26px] font-semibold leading-none ${attentionCount ? 'text-amber-700' : 'text-emerald-700'}`}>{attentionCount}</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">pendientes, vencidas, reprobadas o por recertificar</div></div>
-            <div className="px-4 py-3.5"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Próximas a vencer</div><div className="mt-1.5 text-[26px] font-semibold leading-none text-amber-700">{summary?.expiring ?? 0}</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">seguimiento preventivo</div></div>
+          <div className="bbva-density-metrics mt-3 grid overflow-hidden rounded-xl border border-slate-200 bg-white sm:grid-cols-3 [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/70">
+            <div className="border-b border-slate-100 px-4 py-3.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Cobertura</div><div className="mt-1.5 bbva-metric-value text-[26px] font-semibold leading-none text-blue-700">{summary?.coveragePercent ?? 100}%</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">{(summary?.valid ?? 0) + (summary?.expiring ?? 0)} cubiertas de {summary?.applicable ?? 0} activas · {summary?.reserve ?? 0} alterna{(summary?.reserve ?? 0) === 1 ? '' : 's'}</div></div>
+            <div className="border-b border-slate-100 px-4 py-3.5 sm:border-b-0 sm:border-r [.bbva-dark_&]:border-slate-800"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Atención</div><div className={`mt-1.5 bbva-metric-value text-[26px] font-semibold leading-none ${attentionCount ? 'text-amber-700' : 'text-emerald-700'}`}>{attentionCount}</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">pendientes, vencidas, reprobadas o por recertificar</div></div>
+            <div className="px-4 py-3.5"><div className="text-[9.5px] font-bold uppercase tracking-[0.055em] text-slate-500">Próximas a vencer</div><div className="mt-1.5 bbva-metric-value text-[26px] font-semibold leading-none text-amber-700">{summary?.expiring ?? 0}</div><div className="mt-1.5 text-[10.5px] font-medium text-slate-500">seguimiento preventivo</div></div>
           </div>
         </div>
 
       </section>
 
 
-      <section className="overflow-visible rounded-xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
-            <div className="overflow-x-auto overflow-y-visible">
-              <table className="w-full min-w-[820px] table-fixed text-left text-[10.5px]">
+      <section className="bbva-density-card overflow-visible rounded-xl border border-slate-200 bg-white shadow-sm [.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-slate-900/75">
+            <div className="bbva-density-table-scroll overflow-x-auto overflow-y-visible">
+              <table className="bbva-density-table bbva-collaborator-certifications-table w-full min-w-[820px] table-fixed text-left text-[10.5px]">
                 <thead className="border-b border-slate-200 bg-slate-50 text-[8.5px] font-semibold uppercase tracking-[0.04em] text-slate-500"><tr><th className="w-[34%] px-3 py-2"><BBVATableSortHeader label="Certificación" active={sort==='certificationName'} direction={direction} onClick={()=>changeSort('certificationName')}/></th><th className="w-[18%] px-3 py-2"><BBVATableSortHeader label="Última aprobación" active={sort==='approvedDate'} direction={direction} onClick={()=>changeSort('approvedDate')}/></th><th className="w-[22%] px-3 py-2"><BBVATableSortHeader label="Seguimiento" active={sort==='followUp'} direction={direction} onClick={()=>changeSort('followUp')}/></th><th className="w-[14%] px-3 py-2"><BBVATableSortHeader label="Estado" active={sort==='status'} direction={direction} onClick={()=>changeSort('status')}/></th><th className="w-[12%] px-3 py-2 text-right">Acciones</th></tr></thead>
                 <tbody className="divide-y divide-slate-100">{paged.map((item) => {
                   const approvedCycle = item.baseStatus === 'APPROVED';
@@ -242,7 +247,7 @@ export const CollaboratorCertificationsPage: React.FC = () => {
                     <td className="px-3 py-2.5"><div className="font-semibold text-slate-900">{displayCertificationName(item.certificationName)}</div><div className="mt-0.5 truncate text-[9.5px] text-slate-500">{[item.technologyName ? sentenceCaseData(item.technologyName) : null, item.certificationLevel && item.certificationLevel !== 'GENERIC' ? `Nivel ${item.certificationLevel}` : null, item.provider ? sentenceCaseData(item.provider) : null].filter(Boolean).join(' · ') || 'General'}</div>{coverageRoleLabel(item) ? <div className="mt-1 flex flex-wrap gap-1"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[8px] font-semibold ${coverageRoleTone(item)}`}>{coverageRoleLabel(item)}</span>{item.metricActive && item.coverageNoValidCertification ? <span className="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2 py-0.5 text-[8px] font-semibold text-rose-700 [.bbva-dark_&]:border-rose-500/30 [.bbva-dark_&]:bg-rose-500/10 [.bbva-dark_&]:text-rose-300">Sin cobertura vigente</span> : item.metricActive && item.coverageHandover ? <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[8px] font-semibold text-amber-700 [.bbva-dark_&]:border-amber-500/30 [.bbva-dark_&]:bg-amber-500/10 [.bbva-dark_&]:text-amber-300">Relevo activo{item.coveragePreviousCertificationName ? ` · ${displayCertificationName(item.coveragePreviousCertificationName)} → ${displayCertificationName(item.certificationName)}` : ''}</span> : !item.metricActive && item.status === 'EXPIRING' ? <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[8px] font-semibold text-amber-700 [.bbva-dark_&]:border-amber-500/30 [.bbva-dark_&]:bg-amber-500/10 [.bbva-dark_&]:text-amber-300">Alterna por vencer</span> : null}</div> : null}</td>
                     <td className="px-3 py-2.5"><div>{formatDate(item.approvedDate)}</div>{item.attemptCount > 0 ? <div className="mt-0.5 text-[9px] text-slate-400">{item.attemptCount} intento{item.attemptCount === 1 ? '' : 's'} en ciclo {item.currentCycle}</div> : null}</td>
                     <td className="px-3 py-2.5"><span className="text-[9.5px] font-medium text-slate-600">{followUp(item)}</span></td>
-                    <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[8.5px] font-bold uppercase text-white">Crítico</span> : <span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>}</td>
+                    <td className="px-3 py-2.5">{criticalOpen ? <span className="inline-flex rounded-full bg-rose-600 px-2 py-0.5 text-[8.5px] font-bold uppercase text-white">Crítico</span> : isRecertificationToSchedule(item) ? <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[8.5px] font-semibold text-amber-700 [.bbva-dark_&]:border-amber-500/30 [.bbva-dark_&]:bg-amber-500/10 [.bbva-dark_&]:text-amber-300">Recertificación por programar</span> : <span className={`inline-flex rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${tone[item.status]}`}>{COLLABORATOR_CERTIFICATION_STATUS_LABELS[item.status]}</span>}</td>
                     <td className="px-3 py-2.5 text-right"><BBVAActionMenu items={[
                       ...(criticalDecision ? [{ id: 'critical-resolve', label: 'Resolver baja / becario', icon: ArrowRightLeft, tone: 'danger' as const, onClick: () => setPendingCritical(item) }] : []),
                       ...(item.criticalResolutionStatus === 'LOW_REQUESTED' ? [{ id: 'critical-low-continue', label: 'Continuar baja BBVA', icon: ArrowRightLeft, tone: 'danger' as const, onClick: () => navigate(`/bbva/collaborators/${id}/move-to-talent`, { state: { criticalCertification: item.certificationName, criticalMessage: 'Solicitud de baja registrada por agotamiento 2/2. Completa el movimiento para confirmar la salida de BBVA.', preferredReasonGroup: 'BBVA_EXIT' } }) }] : []),

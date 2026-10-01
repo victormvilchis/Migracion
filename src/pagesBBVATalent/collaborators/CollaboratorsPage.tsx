@@ -87,13 +87,13 @@ export const CollaboratorsPage: React.FC = () => {
   const changeSort=(field:SortField)=>memory.patch(sort===field?{direction:direction==='asc'?'desc':'asc',page:0}:{sort:field,direction:'asc',page:0});
   const clearMessage=()=>navigate(location.pathname,{replace:true,state:{}});
 
-  return <div className="space-y-3 animate-fade-in">
-    <div className="flex flex-wrap items-center justify-end gap-2">
+  return <div className="bbva-page bbva-collaborators-page space-y-3 animate-fade-in">
+    <div className="bbva-page-actions flex flex-wrap items-center justify-end gap-2">
       <button type="button" onClick={() => navigate('/bbva/collaborators/import')} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-[11px] font-semibold text-slate-700 shadow-xs transition hover:bg-slate-50"><FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />Cargar Tablero</button>
       <button type="button" onClick={() => navigate('/bbva/collaborators/new')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[11px] font-semibold text-white shadow-sm transition hover:bg-blue-500"><Plus className="h-3.5 w-3.5" />Agregar colaborador</button>
     </div>
     {message ? <BBVAAlert tone="success" onClose={clearMessage}>{message}</BBVAAlert> : null}
-    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
+    <div className="bbva-density-filters bbva-collaborator-filters grid gap-2 md:grid-cols-2 xl:grid-cols-6">
       <div className="relative xl:col-span-2"><Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" /><input value={search} onChange={(e)=>memory.patch({search:e.target.value,page:0})} placeholder="Buscar por nombre, correo, IS o usuario" className="h-9 w-full rounded-xl border border-slate-300 bg-white py-1 pl-8 pr-2.5 text-[11px] text-slate-900 outline-none focus:border-blue-500" /></div>
       <BBVAMultiSelect values={selectedTechnologies} onChange={(values)=>memory.patch({technologyFilter:encodeMultiValue(values),page:0})} options={(technologiesQuery.data?.items??[]).map((o)=>({value:o.id,label:String(o.name).toUpperCase()}))} placeholder="Todas las tecnologías" selectedLabel="tecnologías" ariaLabel="Filtrar por tecnología" />
       <BBVASearchableSelect value={deliveryManagerFilter} onChange={(v)=>memory.patch({deliveryManagerFilter:v,page:0})} options={[{value:'ALL',label:'Todos los DM'},...deliveryManagerOptions.map((value)=>({value,label:upperDisplay(value)}))]} ariaLabel="Filtrar por Delivery Manager" />
@@ -103,7 +103,7 @@ export const CollaboratorsPage: React.FC = () => {
     </div>
     {(search||selectedTechnologies.length||deliveryManagerFilter!=='ALL'||statusFilter!=='ALL'||structure2Filter!=='ALL'||structure3Filter!=='ALL')?<div className="flex justify-end"><button type="button" onClick={()=>memory.reset()} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">Limpiar filtros</button></div>:null}
     {query.isLoading ? <div className="rounded-lg border border-slate-200 bg-white p-8 text-center text-xs text-slate-500">Cargando colaboradores...</div> : query.error ? <BBVAAlert tone="error">{(query.error as Error).message}</BBVAAlert> : <div className="bbva-table-shell overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm">
-      <div className="overflow-x-auto overflow-y-visible"><table className="w-full min-w-[900px] table-auto text-left text-[10.5px]">
+      <div className="bbva-density-table-scroll overflow-x-auto overflow-y-visible"><table className="bbva-density-table bbva-collaborators-table w-full min-w-[900px] table-auto text-left text-[10.5px]">
         <thead className="border-b border-slate-200 bg-slate-50/90 text-[9px] font-semibold uppercase tracking-[.035em] text-slate-600"><tr>
           <th className="min-w-[220px] px-2 py-1.5"><BBVATableSortHeader label="Colaborador" active={sort==='name'} direction={direction} onClick={()=>changeSort('name')} /></th>
           <th className="min-w-[260px] px-2 py-1.5"><BBVATableSortHeader label="Perfil / tecnología" active={sort==='role'||sort==='technology'} direction={direction} onClick={()=>changeSort(sort==='role'?'technology':'role')} /></th>
@@ -115,7 +115,7 @@ export const CollaboratorsPage: React.FC = () => {
         </tr></thead>
         <tbody className="divide-y divide-slate-200">{paged.map((item)=>{const cert=certificationStatus(item);const isExpanded=expanded===item.id;return <Fragment key={item.id}>
           <tr
-            className={`h-[42px] cursor-pointer transition hover:bg-blue-50/35 ${isExpanded ? 'bg-blue-50/45' : ''}`}
+            className={`bbva-density-row h-[42px] cursor-pointer transition hover:bg-blue-50/35 ${isExpanded ? 'bg-blue-50/45' : ''}`}
             onClick={() => setExpanded(isExpanded ? null : item.id)}
             aria-expanded={isExpanded}
             title="Clic para ver contexto del colaborador"
@@ -127,7 +127,7 @@ export const CollaboratorsPage: React.FC = () => {
             <td className="whitespace-nowrap px-2 py-1.5"><span className={`rounded-full px-2 py-1 text-[8.5px] font-semibold ${certificationTone[cert]}`}>{certificationLabels[cert]}</span></td>
             <td className="whitespace-nowrap px-2 py-1.5 text-right" onClick={(event)=>event.stopPropagation()}><BBVAActionMenu items={[{id:'view',label:'Ver',icon:Eye,onClick:()=>navigate(`/bbva/collaborators/${item.id}`)},{id:'edit',label:'Editar',icon:Pencil,onClick:()=>navigate(`/bbva/collaborators/${item.id}/edit`)},{id:'certifications',label:'Certificaciones',icon:Award,onClick:()=>navigate(`/bbva/collaborators/${item.id}/certifications`)},{id:'move-to-talent',label:'Mover a Banco de talento',icon:ArrowRightLeft,onClick:()=>navigate(`/bbva/collaborators/${item.id}/move-to-talent`)}]} /></td>
           </tr>
-          {isExpanded ? <tr className="bg-slate-50/75"><td colSpan={7} className="px-3 py-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-10">
+          {isExpanded ? <tr className="bbva-density-expanded-row bg-slate-50/75"><td colSpan={7} className="px-3 py-3"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-10">
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">IS Softtek</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{upperIdentity(item.softtekCode)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Usuario BBVA / XM</div><div className="mt-1 text-[10px] font-semibold text-slate-700">{upperIdentity(item.bbvaUser||item.corporateUser)}</div></div>
             <div><div className="text-[8px] font-semibold uppercase tracking-[.05em] text-slate-400">Correo BBVA</div><div className="mt-1 truncate text-[10px] font-semibold text-slate-700" title={item.bbvaEmail??''}>{item.bbvaEmail||'No disponible'}</div></div>

@@ -61,7 +61,19 @@ assert.match(tracking,/>Limpiar<\/BBVAButton>/s);
 assert.doesNotMatch(reports,/Snapshots del periodo|Una fila por día capturado/);
 assert.doesNotMatch(metrics,/Certificaciones que vencen en/);
 assert.doesNotMatch(tracking,/>Certificaciones por atender</);
-assert.match(collaboratorCerts,/<BBVAFilterBar(?:\s+actions=\{[\s\S]*?\})?>[\s\S]*?<section className="overflow-visible rounded-xl border/);
+const collaboratorFilterIndex = collaboratorCerts.indexOf('<BBVAFilterBar');
+const collaboratorTableIndex = collaboratorCerts.indexOf('<table');
+assert.ok(collaboratorFilterIndex >= 0, 'Certificaciones del colaborador debe conservar BBVAFilterBar.');
+assert.ok(collaboratorTableIndex >= 0, 'Certificaciones del colaborador debe conservar una tabla.');
+assert.match(
+  collaboratorCerts,
+  /bbva-collaborator-certifications-table/,
+  'Certificaciones del colaborador debe conservar la tabla corporativa BBVA.'
+);
+assert.ok(
+  collaboratorFilterIndex < collaboratorTableIndex,
+  'Certificaciones del colaborador: filtros deben permanecer antes de la tabla aunque cambien wrappers o clases de densidad.'
+);
 
 // Toda página BBVA con tabla incorpora la paginación corporativa.
 const pageRoot=path.join(root,'src/pagesBBVATalent');

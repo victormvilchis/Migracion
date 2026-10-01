@@ -47,10 +47,10 @@ export const BBVASidebar: React.FC<BBVASidebarProps> = ({ collapsed = false, mob
   return (
     <aside
       className={cn(
-        'flex h-[calc(100vh-4rem)] flex-col border-r transition-[width,background-color,border-color,color] duration-300',
+        'bbva-sidebar flex h-[calc(100vh-4rem)] flex-col border-r transition-[width,background-color,border-color,color] duration-300',
         'border-slate-200 bg-white text-slate-900 shadow-xs',
         '[.bbva-dark_&]:border-slate-800 [.bbva-dark_&]:bg-[#020617] [.bbva-dark_&]:text-slate-100 [.bbva-dark_&]:shadow-none',
-        mobile ? 'w-[220px] shadow-2xl' : collapsed ? 'w-[58px]' : 'w-[206px]'
+        mobile ? 'bbva-sidebar--mobile w-[220px] shadow-2xl' : collapsed ? 'bbva-sidebar--collapsed w-[58px]' : 'bbva-sidebar--expanded w-[206px]'
       )}
     >
       <div
@@ -99,7 +99,7 @@ export const BBVASidebar: React.FC<BBVASidebarProps> = ({ collapsed = false, mob
                   type="button"
                   onClick={() => handleGroupClick(group)}
                   className={cn(
-                    'group relative flex h-8 w-full items-center rounded-md border text-left text-[11px] font-semibold transition-all duration-200',
+                    'bbva-sidebar-group group relative flex h-8 w-full items-center rounded-md border text-left text-[11px] font-semibold transition-all duration-200',
                     collapsed && !mobile ? 'justify-center px-0' : 'gap-2 px-2',
                     groupActive
                       ? 'border-blue-200/80 bg-blue-50/80 text-blue-950 [.bbva-dark_&]:border-white/10 [.bbva-dark_&]:bg-white/10 [.bbva-dark_&]:text-white'
@@ -129,7 +129,7 @@ export const BBVASidebar: React.FC<BBVASidebarProps> = ({ collapsed = false, mob
                         onClick={onClose}
                         className={({ isActive }) =>
                           cn(
-                            'flex min-h-7 items-center gap-2 rounded-md px-2 text-[10.5px] transition',
+                            'bbva-sidebar-link flex min-h-7 items-center gap-2 rounded-md px-2 text-[10.5px] transition',
                             isActive || location.pathname.startsWith(`${module.path}/`)
                               ? 'bg-blue-50 font-semibold text-blue-950 [.bbva-dark_&]:bg-white/10 [.bbva-dark_&]:text-white'
                               : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 [.bbva-dark_&]:text-slate-400 [.bbva-dark_&]:hover:bg-white/[0.05] [.bbva-dark_&]:hover:text-slate-200'
@@ -155,7 +155,7 @@ export const BBVASidebar: React.FC<BBVASidebarProps> = ({ collapsed = false, mob
                             type="button"
                             onClick={() => toggleSection(section.id)}
                             className={cn(
-                              'flex min-h-7 w-full items-center gap-1.5 rounded-md px-1.5 text-left text-[10px] font-medium transition',
+                              'bbva-sidebar-section flex min-h-7 w-full items-center gap-1.5 rounded-md px-1.5 text-left text-[10px] font-medium transition',
                               sectionActive
                                 ? 'text-slate-900 [.bbva-dark_&]:text-white'
                                 : 'text-slate-500 hover:text-slate-900 [.bbva-dark_&]:text-slate-500 [.bbva-dark_&]:hover:text-slate-300'
@@ -174,7 +174,7 @@ export const BBVASidebar: React.FC<BBVASidebarProps> = ({ collapsed = false, mob
                                   onClick={onClose}
                                   className={({ isActive }) =>
                                     cn(
-                                      'flex min-h-7 items-center gap-1.5 rounded-md px-2 text-[10px] transition',
+                                      'bbva-sidebar-link bbva-sidebar-link--nested flex min-h-7 items-center gap-1.5 rounded-md px-2 text-[10px] transition',
                                       isActive || location.pathname.startsWith(`${module.path}/`)
                                         ? 'bg-blue-50 font-semibold text-blue-950 [.bbva-dark_&]:bg-white/10 [.bbva-dark_&]:text-white'
                                         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 [.bbva-dark_&]:text-slate-500 [.bbva-dark_&]:hover:bg-white/[0.05] [.bbva-dark_&]:hover:text-slate-300'

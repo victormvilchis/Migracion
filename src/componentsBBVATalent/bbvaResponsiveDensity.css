@@ -1,0 +1,867 @@
+/*
+ * V31.23 — BBVA responsive desktop density
+ * Scope is intentionally limited to the BBVA workspace. Do not move these
+ * rules to global document/root selectors and do not replace them with zoom
+ * or transform scaling.
+ */
+.bbva-workspace[data-workspace='bbva'] {
+  --bbva-density-page-x: 16px;
+  --bbva-density-page-y: 16px;
+  --bbva-density-section-gap: 12px;
+  --bbva-density-inline-gap: 8px;
+  --bbva-density-control-height: 36px;
+  --bbva-density-control-font: 11px;
+  --bbva-density-body-font: 12px;
+  --bbva-density-title-xl: 24px;
+  --bbva-density-title-lg: 20px;
+  --bbva-density-title-md: 16px;
+  --bbva-density-text-sm: 12px;
+  --bbva-density-text-xs: 11px;
+  --bbva-density-context-height: 40px;
+  --bbva-density-control-x: 12px;
+  --bbva-density-table-font: 10.5px;
+  --bbva-density-table-head-font: 9px;
+  --bbva-density-table-x: 8px;
+  --bbva-density-table-y: 6px;
+  --bbva-density-row-height: 42px;
+  --bbva-density-expanded-y: 12px;
+  --bbva-density-card-padding: 16px;
+  --bbva-density-metric-value: 26px;
+  --bbva-density-sidebar-width: 206px;
+  --bbva-density-sidebar-collapsed-width: 58px;
+  --bbva-density-sidebar-header-height: 40px;
+  --bbva-density-sidebar-row-height: 32px;
+  --bbva-density-sidebar-link-height: 28px;
+  --bbva-density-sidebar-font: 11px;
+  --bbva-density-sidebar-link-font: 10.5px;
+  --bbva-density-collaborators-min-width: 900px;
+  --bbva-density-certs-min-width: 820px;
+  --bbva-density-tracking-min-width: 1360px;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-main-surface {
+  padding: var(--bbva-density-page-y) var(--bbva-density-page-x) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-collaborators-page > :not([hidden]) ~ :not([hidden]),
+.bbva-workspace[data-workspace='bbva'] .bbva-collaborator-certifications-page > :not([hidden]) ~ :not([hidden]) {
+  margin-top: var(--bbva-density-section-gap) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-certification-tracking-page > :not([hidden]) ~ :not([hidden]) {
+  margin-top: min(8px, var(--bbva-density-section-gap)) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-page-actions,
+.bbva-workspace[data-workspace='bbva'] .bbva-density-filters,
+.bbva-workspace[data-workspace='bbva'] .bbva-density-filters > div,
+.bbva-workspace[data-workspace='bbva'] .bbva-density-filters form {
+  gap: var(--bbva-density-inline-gap) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-filters input:not([type='checkbox']):not([type='radio']),
+.bbva-workspace[data-workspace='bbva'] .bbva-density-filters select,
+.bbva-workspace[data-workspace='bbva'] .bbva-density-filters button,
+.bbva-workspace[data-workspace='bbva'] .bbva-page-actions button {
+  min-height: var(--bbva-density-control-height);
+  height: var(--bbva-density-control-height) !important;
+  font-size: var(--bbva-density-control-font) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-filters button,
+.bbva-workspace[data-workspace='bbva'] .bbva-page-actions button {
+  padding-left: var(--bbva-density-control-x) !important;
+  padding-right: var(--bbva-density-control-x) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-filters .relative > svg.absolute {
+  top: 50% !important;
+  transform: translateY(-50%);
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-card .bbva-certification-header {
+  padding: var(--bbva-density-card-padding) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-metrics {
+  gap: var(--bbva-density-inline-gap) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-metrics > div {
+  padding: calc(var(--bbva-density-card-padding) * 0.875) var(--bbva-density-card-padding) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-metrics .bbva-metric-value {
+  font-size: var(--bbva-density-metric-value) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-table {
+  font-size: var(--bbva-density-table-font) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-table th {
+  padding: var(--bbva-density-table-y) var(--bbva-density-table-x) !important;
+  font-size: var(--bbva-density-table-head-font) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-table td {
+  padding: var(--bbva-density-table-y) var(--bbva-density-table-x) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-table .bbva-density-row {
+  height: var(--bbva-density-row-height) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-density-expanded-row > td {
+  padding-top: var(--bbva-density-expanded-y) !important;
+  padding-bottom: var(--bbva-density-expanded-y) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-collaborators-table {
+  min-width: var(--bbva-density-collaborators-min-width) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-collaborator-certifications-table {
+  min-width: var(--bbva-density-certs-min-width) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-tracking-table {
+  min-width: var(--bbva-density-tracking-min-width) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-sidebar.bbva-sidebar--expanded {
+  width: var(--bbva-density-sidebar-width) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-sidebar.bbva-sidebar--collapsed {
+  width: var(--bbva-density-sidebar-collapsed-width) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-sidebar-header {
+  height: var(--bbva-density-sidebar-header-height) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-sidebar-group {
+  height: var(--bbva-density-sidebar-row-height) !important;
+  font-size: var(--bbva-density-sidebar-font) !important;
+}
+
+.bbva-workspace[data-workspace='bbva'] .bbva-sidebar-link,
+.bbva-workspace[data-workspace='bbva'] .bbva-sidebar-section {
+  min-height: var(--bbva-density-sidebar-link-height) !important;
+  font-size: var(--bbva-density-sidebar-link-font) !important;
+}
+
+/* 1367–1600: subtle compaction; Full HD remains on the base values above. */
+@media (min-width: 1024px) and (max-width: 1600px) {
+  .bbva-workspace[data-workspace='bbva'] {
+    --bbva-density-page-x: 12px;
+    --bbva-density-page-y: 12px;
+    --bbva-density-section-gap: 10px;
+    --bbva-density-inline-gap: 7px;
+    --bbva-density-control-height: 34px;
+    --bbva-density-control-font: 10.5px;
+    --bbva-density-body-font: 11.5px;
+    --bbva-density-title-xl: 22px;
+    --bbva-density-title-lg: 18px;
+    --bbva-density-title-md: 15px;
+    --bbva-density-text-sm: 11px;
+    --bbva-density-text-xs: 10px;
+    --bbva-density-context-height: 38px;
+    --bbva-density-control-x: 10px;
+    --bbva-density-table-font: 10.25px;
+    --bbva-density-table-head-font: 8.75px;
+    --bbva-density-table-x: 7px;
+    --bbva-density-table-y: 5px;
+    --bbva-density-row-height: 39px;
+    --bbva-density-expanded-y: 10px;
+    --bbva-density-card-padding: 14px;
+    --bbva-density-metric-value: 24px;
+    --bbva-density-sidebar-width: 196px;
+    --bbva-density-sidebar-collapsed-width: 54px;
+    --bbva-density-sidebar-header-height: 38px;
+    --bbva-density-sidebar-row-height: 30px;
+    --bbva-density-sidebar-link-height: 26px;
+    --bbva-density-sidebar-font: 10.5px;
+    --bbva-density-sidebar-link-font: 10px;
+    --bbva-density-tracking-min-width: 1180px;
+  }
+}
+
+/* 1367–1440: laptop density without hiding columns. */
+@media (min-width: 1024px) and (max-width: 1440px) {
+  .bbva-workspace[data-workspace='bbva'] {
+    --bbva-density-page-x: 10px;
+    --bbva-density-page-y: 10px;
+    --bbva-density-section-gap: 8px;
+    --bbva-density-inline-gap: 6px;
+    --bbva-density-control-height: 32px;
+    --bbva-density-control-font: 10px;
+    --bbva-density-body-font: 11px;
+    --bbva-density-title-xl: 21px;
+    --bbva-density-title-lg: 17px;
+    --bbva-density-title-md: 14px;
+    --bbva-density-text-sm: 10.5px;
+    --bbva-density-text-xs: 9.75px;
+    --bbva-density-context-height: 36px;
+    --bbva-density-control-x: 9px;
+    --bbva-density-table-font: 10px;
+    --bbva-density-table-head-font: 8.5px;
+    --bbva-density-table-x: 6px;
+    --bbva-density-table-y: 4px;
+    --bbva-density-row-height: 36px;
+    --bbva-density-expanded-y: 8px;
+    --bbva-density-card-padding: 12px;
+    --bbva-density-metric-value: 23px;
+    --bbva-density-sidebar-width: 188px;
+    --bbva-density-sidebar-collapsed-width: 52px;
+    --bbva-density-sidebar-header-height: 36px;
+    --bbva-density-sidebar-row-height: 29px;
+    --bbva-density-sidebar-link-height: 25px;
+    --bbva-density-sidebar-font: 10.25px;
+    --bbva-density-sidebar-link-font: 9.75px;
+    --bbva-density-collaborators-min-width: 860px;
+    --bbva-density-certs-min-width: 780px;
+    --bbva-density-tracking-min-width: 1080px;
+  }
+}
+
+/* 1366x768 target: intentionally close to the useful density of ~75–80% browser zoom. */
+@media (min-width: 1024px) and (max-width: 1366px) {
+  .bbva-workspace[data-workspace='bbva'] {
+    --bbva-density-page-x: 8px;
+    --bbva-density-page-y: 8px;
+    --bbva-density-section-gap: 7px;
+    --bbva-density-inline-gap: 5px;
+    --bbva-density-control-height: 30px;
+    --bbva-density-control-font: 9.75px;
+    --bbva-density-body-font: 10.75px;
+    --bbva-density-title-xl: 20px;
+    --bbva-density-title-lg: 16px;
+    --bbva-density-title-md: 13.5px;
+    --bbva-density-text-sm: 10px;
+    --bbva-density-text-xs: 9.5px;
+    --bbva-density-context-height: 34px;
+    --bbva-density-control-x: 8px;
+    --bbva-density-table-font: 9.75px;
+    --bbva-density-table-head-font: 8.25px;
+    --bbva-density-table-x: 5px;
+    --bbva-density-table-y: 3px;
+    --bbva-density-row-height: 34px;
+    --bbva-density-expanded-y: 7px;
+    --bbva-density-card-padding: 10px;
+    --bbva-density-metric-value: 22px;
+    --bbva-density-sidebar-width: 180px;
+    --bbva-density-sidebar-collapsed-width: 50px;
+    --bbva-density-sidebar-header-height: 34px;
+    --bbva-density-sidebar-row-height: 28px;
+    --bbva-density-sidebar-link-height: 24px;
+    --bbva-density-sidebar-font: 10px;
+    --bbva-density-sidebar-link-font: 9.5px;
+    --bbva-density-collaborators-min-width: 830px;
+    --bbva-density-certs-min-width: 750px;
+    --bbva-density-tracking-min-width: 1010px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .bbva-certification-header h1 {
+    font-size: 17px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .bbva-density-table td [class*='text-[9.5px]'],
+  .bbva-workspace[data-workspace='bbva'] .bbva-density-table td [class*='text-[9px]'] {
+    line-height: 1.15;
+  }
+}
+
+/* 1280x720 class: densest supported desktop mode, still without hiding core data. */
+@media (min-width: 1024px) and (max-width: 1280px) {
+  .bbva-workspace[data-workspace='bbva'] {
+    --bbva-density-page-x: 7px;
+    --bbva-density-page-y: 7px;
+    --bbva-density-section-gap: 6px;
+    --bbva-density-inline-gap: 5px;
+    --bbva-density-control-height: 30px;
+    --bbva-density-control-font: 9.5px;
+    --bbva-density-body-font: 10.5px;
+    --bbva-density-title-xl: 19px;
+    --bbva-density-title-lg: 15.5px;
+    --bbva-density-title-md: 13px;
+    --bbva-density-text-sm: 9.75px;
+    --bbva-density-text-xs: 9.25px;
+    --bbva-density-context-height: 34px;
+    --bbva-density-control-x: 7px;
+    --bbva-density-table-font: 9.5px;
+    --bbva-density-table-head-font: 8px;
+    --bbva-density-table-x: 4px;
+    --bbva-density-table-y: 3px;
+    --bbva-density-row-height: 32px;
+    --bbva-density-expanded-y: 6px;
+    --bbva-density-card-padding: 9px;
+    --bbva-density-metric-value: 21px;
+    --bbva-density-sidebar-width: 172px;
+    --bbva-density-sidebar-collapsed-width: 48px;
+    --bbva-density-sidebar-header-height: 34px;
+    --bbva-density-sidebar-row-height: 27px;
+    --bbva-density-sidebar-link-height: 23px;
+    --bbva-density-sidebar-font: 9.75px;
+    --bbva-density-sidebar-link-font: 9.25px;
+    --bbva-density-collaborators-min-width: 800px;
+    --bbva-density-certs-min-width: 720px;
+    --bbva-density-tracking-min-width: 960px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .bbva-collaborator-filters {
+    grid-template-columns: minmax(210px, 1.45fr) repeat(4, minmax(150px, 1fr)) !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .bbva-collaborator-filters > :first-child {
+    grid-column: auto !important;
+  }
+}
+
+
+/* =============================================================
+ * V31.24 — DENSIDAD TRANSVERSAL DEL WORKSPACE BBVA
+ *
+ * La V31.23 etiquetó las pantallas más críticas. Esta capa generaliza la
+ * misma densidad a todo lo renderizado dentro de .bbva-workspace sin tocar
+ * html/body/#root ni componentes fuera de /bbva.
+ * ============================================================= */
+
+.bbva-workspace[data-workspace='bbva'] .bbva-context-bar {
+  min-height: var(--bbva-density-context-height);
+}
+
+/* Tablas: cualquier tabla dentro de BBVA adopta la densidad del viewport,
+   aunque la pantalla no tenga un marcador específico V31.23. */
+.bbva-workspace[data-workspace='bbva'] table {
+  font-size: var(--bbva-density-table-font);
+}
+
+.bbva-workspace[data-workspace='bbva'] table th {
+  font-size: var(--bbva-density-table-head-font);
+}
+
+/* Base heredada para texto que no usa una utilidad Tailwind explícita. */
+.bbva-workspace[data-workspace='bbva'] .bbva-main-surface {
+  font-size: var(--bbva-density-body-font);
+}
+
+/* Solo escritorio compacto. Full HD / >1600 conserva prácticamente el
+   layout existente y las reglas específicas anteriores. */
+@media (min-width: 1024px) and (max-width: 1600px) {
+  /* Controles de todo BBVA. No se fuerza altura de textarea ni controles
+     icon-only pequeños; las utilidades h-8/h-9/h-10 se compactan aparte. */
+  .bbva-workspace[data-workspace='bbva'] input:not([type='checkbox']):not([type='radio']),
+  .bbva-workspace[data-workspace='bbva'] select,
+  .bbva-workspace[data-workspace='bbva'] textarea,
+  .bbva-workspace[data-workspace='bbva'] button {
+    font-size: var(--bbva-density-control-font);
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .h-10,
+  .bbva-workspace[data-workspace='bbva'] .h-9 {
+    height: var(--bbva-density-control-height) !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .min-h-10,
+  .bbva-workspace[data-workspace='bbva'] .min-h-9 {
+    min-height: var(--bbva-density-control-height) !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .h-8 {
+    height: max(28px, calc(var(--bbva-density-control-height) - 2px)) !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .min-h-8 {
+    min-height: max(28px, calc(var(--bbva-density-control-height) - 2px)) !important;
+  }
+
+  /* Tipografía estructural: afecta todas las páginas BBVA que usen las
+     utilidades estándar, sin alterar textos arbitrarios pequeños/badges. */
+  .bbva-workspace[data-workspace='bbva'] .text-2xl {
+    font-size: var(--bbva-density-title-xl) !important;
+    line-height: 1.2 !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .text-xl {
+    font-size: var(--bbva-density-title-lg) !important;
+    line-height: 1.2 !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .text-lg {
+    font-size: var(--bbva-density-title-md) !important;
+    line-height: 1.25 !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .text-base {
+    font-size: var(--bbva-density-body-font) !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .text-sm {
+    font-size: var(--bbva-density-text-sm) !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] .text-xs {
+    font-size: var(--bbva-density-text-xs) !important;
+  }
+
+  /* Espaciado transversal. Se reducen utilidades grandes/medianas dentro de
+     BBVA; no se reescriben utilidades globales ni clases de otros módulos. */
+  .bbva-workspace[data-workspace='bbva'] .gap-6 { gap: calc(var(--bbva-density-section-gap) + 4px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .gap-5 { gap: calc(var(--bbva-density-section-gap) + 3px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .gap-4 { gap: calc(var(--bbva-density-section-gap) + 2px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .gap-3 { gap: var(--bbva-density-section-gap) !important; }
+  .bbva-workspace[data-workspace='bbva'] .gap-2 { gap: var(--bbva-density-inline-gap) !important; }
+
+  .bbva-workspace[data-workspace='bbva'] .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(var(--bbva-density-section-gap) + 4px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(var(--bbva-density-section-gap) + 3px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(var(--bbva-density-section-gap) + 2px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: var(--bbva-density-section-gap) !important; }
+  .bbva-workspace[data-workspace='bbva'] .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: var(--bbva-density-inline-gap) !important; }
+
+  .bbva-workspace[data-workspace='bbva'] .p-6 { padding: calc(var(--bbva-density-card-padding) + 4px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .p-5 { padding: calc(var(--bbva-density-card-padding) + 2px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .p-4 { padding: var(--bbva-density-card-padding) !important; }
+  .bbva-workspace[data-workspace='bbva'] .p-3 { padding: max(7px, calc(var(--bbva-density-card-padding) - 2px)) !important; }
+
+  .bbva-workspace[data-workspace='bbva'] .px-6 { padding-left: calc(var(--bbva-density-card-padding) + 4px) !important; padding-right: calc(var(--bbva-density-card-padding) + 4px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .px-5 { padding-left: calc(var(--bbva-density-card-padding) + 2px) !important; padding-right: calc(var(--bbva-density-card-padding) + 2px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .px-4 { padding-left: var(--bbva-density-card-padding) !important; padding-right: var(--bbva-density-card-padding) !important; }
+  .bbva-workspace[data-workspace='bbva'] .px-3 { padding-left: max(7px, calc(var(--bbva-density-card-padding) - 2px)) !important; padding-right: max(7px, calc(var(--bbva-density-card-padding) - 2px)) !important; }
+
+  .bbva-workspace[data-workspace='bbva'] .py-6 { padding-top: calc(var(--bbva-density-card-padding) + 4px) !important; padding-bottom: calc(var(--bbva-density-card-padding) + 4px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .py-5 { padding-top: calc(var(--bbva-density-card-padding) + 2px) !important; padding-bottom: calc(var(--bbva-density-card-padding) + 2px) !important; }
+  .bbva-workspace[data-workspace='bbva'] .py-4 { padding-top: var(--bbva-density-card-padding) !important; padding-bottom: var(--bbva-density-card-padding) !important; }
+  .bbva-workspace[data-workspace='bbva'] .py-3 { padding-top: max(7px, calc(var(--bbva-density-card-padding) - 2px)) !important; padding-bottom: max(7px, calc(var(--bbva-density-card-padding) - 2px)) !important; }
+
+  /* Todas las tablas BBVA, no solo las tres pantallas etiquetadas en V31.23. */
+  .bbva-workspace[data-workspace='bbva'] table th,
+  .bbva-workspace[data-workspace='bbva'] table td {
+    padding-top: var(--bbva-density-table-y) !important;
+    padding-bottom: var(--bbva-density-table-y) !important;
+    padding-left: var(--bbva-density-table-x) !important;
+    padding-right: var(--bbva-density-table-x) !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'] table tbody tr {
+    min-height: var(--bbva-density-row-height);
+  }
+
+  /* Formularios / filtros construidos con grids estándar reciben la misma
+     compactación sin requerir marcadores por página. */
+  .bbva-workspace[data-workspace='bbva'] form.grid,
+  .bbva-workspace[data-workspace='bbva'] form .grid,
+  .bbva-workspace[data-workspace='bbva'] [class*='grid-cols-'] {
+    column-gap: var(--bbva-density-section-gap);
+    row-gap: var(--bbva-density-section-gap);
+  }
+
+  /* Evita que headers y toolbars sigan gastando altura aunque la página no
+     haya sido adaptada de forma individual. */
+  .bbva-workspace[data-workspace='bbva'] .bbva-context-bar,
+  .bbva-workspace[data-workspace='bbva'] [class*='bbva-'][class*='header'] {
+    min-height: var(--bbva-density-context-height);
+  }
+}
+
+
+/* =============================================================
+ * V31.25 — DENSIDAD LAPTOP PLUS PARA PANTALLAS OPERATIVAS
+ *
+ * Colaboradores, Banco de talento, Seguimiento y Métricas necesitan una
+ * densidad adicional en laptops. BBVALayout identifica esas rutas mediante
+ * data-bbva-density-profile="compact-plus". No se utiliza zoom/scale.
+ *
+ * El alto del viewport también participa porque equipos 1920x1080 con
+ * escalado de Windows 125% suelen exponer a Chrome un viewport CSS cercano
+ * a 1536x700–850.
+ * ============================================================= */
+
+@media (min-width: 1024px) and (max-width: 1600px),
+       (min-width: 1024px) and (max-height: 900px) {
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] {
+    --bbva-density-page-x: 8px;
+    --bbva-density-page-y: 7px;
+    --bbva-density-section-gap: 6px;
+    --bbva-density-inline-gap: 5px;
+    --bbva-density-control-height: 30px;
+    --bbva-density-control-font: 9.75px;
+    --bbva-density-body-font: 10.5px;
+    --bbva-density-title-xl: 19px;
+    --bbva-density-title-lg: 16px;
+    --bbva-density-title-md: 13.5px;
+    --bbva-density-text-sm: 10px;
+    --bbva-density-text-xs: 9.25px;
+    --bbva-density-context-height: 34px;
+    --bbva-density-control-x: 8px;
+    --bbva-density-table-font: 9.25px;
+    --bbva-density-table-head-font: 8px;
+    --bbva-density-table-x: 5px;
+    --bbva-density-table-y: 3px;
+    --bbva-density-row-height: 31px;
+    --bbva-density-expanded-y: 6px;
+    --bbva-density-card-padding: 9px;
+    --bbva-density-metric-value: 20px;
+    --bbva-density-sidebar-width: 176px;
+    --bbva-density-sidebar-collapsed-width: 48px;
+    --bbva-density-sidebar-header-height: 32px;
+    --bbva-density-sidebar-row-height: 27px;
+    --bbva-density-sidebar-link-height: 23px;
+    --bbva-density-sidebar-font: 9.75px;
+    --bbva-density-sidebar-link-font: 9.25px;
+    --bbva-density-collaborators-min-width: 780px;
+    --bbva-density-certs-min-width: 690px;
+    --bbva-density-tracking-min-width: 930px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] table button {
+    min-height: 24px !important;
+    height: 24px !important;
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] table .rounded-full {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] .bbva-density-metrics,
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] [aria-label*='Resumen'],
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] [aria-label*='Métric'],
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] [aria-label*='Metric'] {
+    gap: 5px !important;
+  }
+}
+
+/* 1440-class laptop or low usable height: stronger than the generic V31.24
+   mode. This is the common EliteBook/Windows-scaling scenario. */
+@media (min-width: 1024px) and (max-width: 1440px),
+       (min-width: 1024px) and (max-height: 820px) {
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] {
+    --bbva-density-page-x: 6px;
+    --bbva-density-page-y: 6px;
+    --bbva-density-section-gap: 5px;
+    --bbva-density-inline-gap: 4px;
+    --bbva-density-control-height: 28px;
+    --bbva-density-control-font: 9.25px;
+    --bbva-density-body-font: 10px;
+    --bbva-density-title-xl: 18px;
+    --bbva-density-title-lg: 15px;
+    --bbva-density-title-md: 13px;
+    --bbva-density-text-sm: 9.5px;
+    --bbva-density-text-xs: 8.75px;
+    --bbva-density-context-height: 32px;
+    --bbva-density-control-x: 7px;
+    --bbva-density-table-font: 8.75px;
+    --bbva-density-table-head-font: 7.75px;
+    --bbva-density-table-x: 4px;
+    --bbva-density-table-y: 2px;
+    --bbva-density-row-height: 29px;
+    --bbva-density-expanded-y: 5px;
+    --bbva-density-card-padding: 8px;
+    --bbva-density-metric-value: 19px;
+    --bbva-density-sidebar-width: 166px;
+    --bbva-density-sidebar-collapsed-width: 46px;
+    --bbva-density-sidebar-header-height: 31px;
+    --bbva-density-sidebar-row-height: 26px;
+    --bbva-density-sidebar-link-height: 22px;
+    --bbva-density-sidebar-font: 9.5px;
+    --bbva-density-sidebar-link-font: 9px;
+    --bbva-density-collaborators-min-width: 750px;
+    --bbva-density-certs-min-width: 660px;
+    --bbva-density-tracking-min-width: 890px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] .rounded-2xl {
+    border-radius: 10px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] .rounded-xl {
+    border-radius: 8px !important;
+  }
+}
+
+/* 1366x768 / 1280x720: densest mode for the four information-heavy views.
+   Core columns and controls remain present; we reduce whitespace first. */
+@media (min-width: 1024px) and (max-width: 1366px),
+       (min-width: 1024px) and (max-height: 768px) {
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] {
+    --bbva-density-page-x: 5px;
+    --bbva-density-page-y: 5px;
+    --bbva-density-section-gap: 4px;
+    --bbva-density-inline-gap: 4px;
+    --bbva-density-control-height: 27px;
+    --bbva-density-control-font: 9px;
+    --bbva-density-body-font: 9.75px;
+    --bbva-density-title-xl: 17px;
+    --bbva-density-title-lg: 14.5px;
+    --bbva-density-title-md: 12.5px;
+    --bbva-density-text-sm: 9.25px;
+    --bbva-density-text-xs: 8.5px;
+    --bbva-density-context-height: 30px;
+    --bbva-density-control-x: 6px;
+    --bbva-density-table-font: 8.5px;
+    --bbva-density-table-head-font: 7.5px;
+    --bbva-density-table-x: 3px;
+    --bbva-density-table-y: 2px;
+    --bbva-density-row-height: 28px;
+    --bbva-density-expanded-y: 4px;
+    --bbva-density-card-padding: 7px;
+    --bbva-density-metric-value: 18px;
+    --bbva-density-sidebar-width: 158px;
+    --bbva-density-sidebar-collapsed-width: 44px;
+    --bbva-density-sidebar-header-height: 30px;
+    --bbva-density-sidebar-row-height: 25px;
+    --bbva-density-sidebar-link-height: 21px;
+    --bbva-density-sidebar-font: 9.25px;
+    --bbva-density-sidebar-link-font: 8.75px;
+    --bbva-density-collaborators-min-width: 720px;
+    --bbva-density-certs-min-width: 630px;
+    --bbva-density-tracking-min-width: 850px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] table button {
+    min-height: 22px !important;
+    height: 22px !important;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+    font-size: 8.5px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] table svg {
+    width: 11px;
+    height: 11px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] .bbva-page-actions button,
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='compact-plus'] .bbva-density-filters button {
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+  }
+}
+
+
+/* =============================================================
+ * V31.26 — BANCO DE TALENTO ULTRA COMPACT
+ *
+ * Banco de talento is the most information-dense operational list and needs
+ * one additional density step on laptops. BBVALayout assigns
+ * data-bbva-density-profile="talent-bank-ultra" only to /bbva/talent-bank.
+ *
+ * This is responsive density, not browser/CSS scaling:
+ * - no zoom
+ * - no transform-based scaling
+ * - no global html/body/#root changes
+ * ============================================================= */
+
+@media (min-width: 1024px) and (max-width: 1600px),
+       (min-width: 1024px) and (max-height: 900px) {
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] {
+    --bbva-density-page-x: 6px;
+    --bbva-density-page-y: 5px;
+    --bbva-density-section-gap: 4px;
+    --bbva-density-inline-gap: 4px;
+    --bbva-density-control-height: 27px;
+    --bbva-density-control-font: 9px;
+    --bbva-density-body-font: 9.75px;
+    --bbva-density-title-xl: 17px;
+    --bbva-density-title-lg: 14.5px;
+    --bbva-density-title-md: 12.5px;
+    --bbva-density-text-sm: 9.25px;
+    --bbva-density-text-xs: 8.5px;
+    --bbva-density-context-height: 30px;
+    --bbva-density-control-x: 6px;
+    --bbva-density-table-font: 8.5px;
+    --bbva-density-table-head-font: 7.5px;
+    --bbva-density-table-x: 3px;
+    --bbva-density-table-y: 2px;
+    --bbva-density-row-height: 28px;
+    --bbva-density-expanded-y: 4px;
+    --bbva-density-card-padding: 7px;
+    --bbva-density-metric-value: 18px;
+    --bbva-density-sidebar-width: 158px;
+    --bbva-density-sidebar-collapsed-width: 44px;
+    --bbva-density-sidebar-header-height: 30px;
+    --bbva-density-sidebar-row-height: 25px;
+    --bbva-density-sidebar-link-height: 21px;
+    --bbva-density-sidebar-font: 9.25px;
+    --bbva-density-sidebar-link-font: 8.75px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table {
+    width: 100% !important;
+    min-width: 820px !important;
+    font-size: 8.5px !important;
+    line-height: 1.15 !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table th {
+    font-size: 7.5px !important;
+    padding: 3px !important;
+    line-height: 1.1 !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table td {
+    padding: 2px 3px !important;
+    line-height: 1.15 !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table button {
+    min-height: 21px !important;
+    height: 21px !important;
+    padding: 1px 4px !important;
+    font-size: 8px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table svg {
+    width: 10px !important;
+    height: 10px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table .rounded-full {
+    padding: 1px 5px !important;
+    font-size: 7.75px !important;
+    line-height: 1.15 !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra']
+  input:not([type='checkbox']):not([type='radio']),
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] select {
+    min-height: 27px !important;
+    height: 27px !important;
+    font-size: 9px !important;
+  }
+}
+
+/* HP EliteBook / 1440-class laptop / Windows 125% scaling. */
+@media (min-width: 1024px) and (max-width: 1440px),
+       (min-width: 1024px) and (max-height: 820px) {
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] {
+    --bbva-density-page-x: 4px;
+    --bbva-density-page-y: 4px;
+    --bbva-density-section-gap: 3px;
+    --bbva-density-inline-gap: 3px;
+    --bbva-density-control-height: 25px;
+    --bbva-density-control-font: 8.5px;
+    --bbva-density-body-font: 9.25px;
+    --bbva-density-title-xl: 16px;
+    --bbva-density-title-lg: 13.5px;
+    --bbva-density-title-md: 12px;
+    --bbva-density-text-sm: 8.75px;
+    --bbva-density-text-xs: 8px;
+    --bbva-density-context-height: 28px;
+    --bbva-density-control-x: 5px;
+    --bbva-density-table-font: 8px;
+    --bbva-density-table-head-font: 7px;
+    --bbva-density-table-x: 2px;
+    --bbva-density-table-y: 1px;
+    --bbva-density-row-height: 25px;
+    --bbva-density-expanded-y: 3px;
+    --bbva-density-card-padding: 6px;
+    --bbva-density-metric-value: 17px;
+    --bbva-density-sidebar-width: 148px;
+    --bbva-density-sidebar-collapsed-width: 42px;
+    --bbva-density-sidebar-header-height: 28px;
+    --bbva-density-sidebar-row-height: 23px;
+    --bbva-density-sidebar-link-height: 20px;
+    --bbva-density-sidebar-font: 8.75px;
+    --bbva-density-sidebar-link-font: 8.25px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table {
+    min-width: 760px !important;
+    font-size: 8px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table th {
+    font-size: 7px !important;
+    padding: 2px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table td {
+    padding: 1px 2px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table button {
+    min-height: 20px !important;
+    height: 20px !important;
+    font-size: 7.75px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] .rounded-2xl {
+    border-radius: 8px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] .rounded-xl {
+    border-radius: 7px !important;
+  }
+}
+
+/* 1366x768 / 1280x720: strongest Talent Bank density. */
+@media (min-width: 1024px) and (max-width: 1366px),
+       (min-width: 1024px) and (max-height: 768px) {
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] {
+    --bbva-density-page-x: 3px;
+    --bbva-density-page-y: 3px;
+    --bbva-density-section-gap: 3px;
+    --bbva-density-inline-gap: 2px;
+    --bbva-density-control-height: 24px;
+    --bbva-density-control-font: 8.25px;
+    --bbva-density-body-font: 9px;
+    --bbva-density-title-xl: 15px;
+    --bbva-density-title-lg: 13px;
+    --bbva-density-title-md: 11.5px;
+    --bbva-density-text-sm: 8.5px;
+    --bbva-density-text-xs: 7.75px;
+    --bbva-density-context-height: 27px;
+    --bbva-density-control-x: 4px;
+    --bbva-density-table-font: 7.75px;
+    --bbva-density-table-head-font: 6.75px;
+    --bbva-density-table-x: 2px;
+    --bbva-density-table-y: 1px;
+    --bbva-density-row-height: 24px;
+    --bbva-density-expanded-y: 2px;
+    --bbva-density-card-padding: 5px;
+    --bbva-density-metric-value: 16px;
+    --bbva-density-sidebar-width: 142px;
+    --bbva-density-sidebar-collapsed-width: 40px;
+    --bbva-density-sidebar-header-height: 27px;
+    --bbva-density-sidebar-row-height: 22px;
+    --bbva-density-sidebar-link-height: 19px;
+    --bbva-density-sidebar-font: 8.5px;
+    --bbva-density-sidebar-link-font: 8px;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table {
+    min-width: 720px !important;
+    font-size: 7.75px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table th {
+    font-size: 6.75px !important;
+    padding: 2px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table td {
+    padding: 1px 2px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table button {
+    min-height: 19px !important;
+    height: 19px !important;
+    padding: 1px 3px !important;
+    font-size: 7.5px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table svg {
+    width: 9px !important;
+    height: 9px !important;
+  }
+
+  .bbva-workspace[data-workspace='bbva'][data-bbva-density-profile='talent-bank-ultra'] table .rounded-full {
+    padding: 1px 4px !important;
+    font-size: 7.25px !important;
+  }
+}
